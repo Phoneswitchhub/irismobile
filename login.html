@@ -182,12 +182,34 @@ function pickRole(r) {
   document.getElementById('sellerExtra').style.display = r === 'seller' ? 'block' : 'none';
 }
 
-// PIN auto-focus
+// PIN auto-focus (모바일 가상 키보드 최적화 버전)
 function setupPin(ids) {
   ids.forEach((id, i) => {
     const el = document.getElementById(id);
-    el.addEventListener('input', () => { if (el.value && i < ids.length - 1) document.getElementById(ids[i+1]).focus(); });
-    el.addEventListener('keydown', e => { if (e.key === 'Backspace' && !el.value && i > 0) document.getElementById(ids[i-1]).focus(); });
+    if (!el) return;
+    
+    // 입력 이벤트 리스너 (글자 입력 시 다음 인풋 포커스)
+    el.addEventListener('input', () => {
+      if (el.value.length >= 1) {
+        el.value = el.value.slice(0, 1); // 1글자 초과 시 잘라내기
+        if (i < ids.length - 1) {
+          document.getElementById(ids[i+1]).focus();
+        }
+      }
+    });
+    
+    // 백스페이스 감지 리스너
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Backspace') {
+        if (!el.value && i > 0) {
+          const prevEl = document.getElementById(ids[i-1]);
+          prevEl.focus();
+          prevEl.value = ''; // 이전 칸 지우기
+        } else {
+          el.value = ''; // 현재 칸 지우기
+        }
+      }
+    });
   });
 }
 setupPin(['l1','l2','l3','l4']);
@@ -205,13 +227,19 @@ async function doLogin() {
   errEl.textContent = '';
 
   setLoading('btnLogin', true, '로그인 중...');
-  const { error } = await supabase.auth.signInWithPassword({
-    email: phoneToEmail(phone),
-    password: makePassword(pin, phone)
-  });
-  setLoading('btnLogin', false);
-  if (error) { errEl.textContent = '전화번호 또는 PIN이 올바르지 않습니다.'; return; }
-  await redirect();
+  try {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: phoneToEmail(phone),
+      password: makePassword(pin, phone)
+    });
+    setLoading('btnLogin', false);
+    if (error) { errEl.textContent = '전화번호 또는 PIN이 올바르지 않습니다.'; return; }
+    await redirect();
+  } catch (err) {
+    setLoading('btnLogin', false);
+    errEl.textContent = '네트워크 오류가 발생했습니다. (현지 CORS 보안 제약 또는 네트워크 상태 확인)';
+    console.error(err);
+  }
 }
 
 async function doRegister() {
@@ -237,64 +265,69 @@ async function doRegister() {
   }
 
   setLoading('btnReg', true, '가입 중...');
+  try {
+    const isAdmin = ADMIN_PHONE && phone === ADMIN_PHONE;
+    const { data, error } = await supabase.auth.signUp({
+      email: phoneToEmail(phone),
+      password: makePassword(pin, phone)
+    });
 
-  const isAdmin = ADMIN_PHONE && phone === ADMIN_PHONE;
-  const { data, error } = await supabase.auth.signUp({
-    email: phoneToEmail(phone),
-    password: makePassword(pin, phone)
-  });
+    if (error) {
+      setLoading('btnReg', false);
+      errEl.textContent = error.message.includes('already') ? '이미 등록된 전화번호입니다.' : error.message;
+      return;
+    }
 
-  if (error) {
-    setLoading('btnReg', false);
-    errEl.textContent = error.message.includes('already') ? '이미 등록된 전화번호입니다.' : error.message;
-    return;
-  }
-
-  // Logo upload for sellers
-  let logoUrl = null;
-  if (role === 'seller') {
-    const file = document.getElementById('rLogo').files[0];
-    if (file) {
-      const ext = file.name.split('.').pop();
-      const path = `avatars/${data.user.id}_logo.${ext}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
-      if (!upErr) {
-        const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
-        logoUrl = urlData.publicUrl;
+    // Logo upload for sellers
+    let logoUrl = null;
+    if (role === 'seller') {
+      const file = document.getElementById('rLogo').files[0];
+      if (file) {
+        const ext = file.name.split('.').pop();
+        const path = `avatars/${data.user.id}_logo.${ext}`;
+        const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+        if (!upErr) {
+          const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
+          logoUrl = urlData.publicUrl;
+        }
       }
     }
-  }
 
-  // Insert profile with extended fields for sellers
-  const profileData = {
-    id: data.user.id,
-    phone, name,
-    role: isAdmin ? 'admin' : role,
-    store_name: store || null,
-    profile_image: logoUrl,
-    is_approved: role === 'buyer' || isAdmin
-  };
+    // Insert profile with extended fields for sellers
+    const profileData = {
+      id: data.user.id,
+      phone, name,
+      role: isAdmin ? 'admin' : role,
+      store_name: store || null,
+      profile_image: logoUrl,
+      is_approved: role === 'buyer' || isAdmin
+    };
 
-  if (role === 'seller') {
-    profileData.partner_type = 'partner'; // Newly registered partner shop
-    profileData.location_province = province;
-    profileData.location_address = address;
-    profileData.location_coords = coords || null;
-    profileData.payout_method = payout;
-    profileData.commission_rate = 10.00; // default 10%
-    profileData.description = '검증된 협력사 매장';
-  }
+    if (role === 'seller') {
+      profileData.partner_type = 'partner'; // Newly registered partner shop
+      profileData.location_province = province;
+      profileData.location_address = address;
+      profileData.location_coords = coords || null;
+      profileData.payout_method = payout;
+      profileData.commission_rate = 10.00; // default 10%
+      profileData.description = '검증된 협력사 매장';
+    }
 
-  const { error: pe } = await supabase.from('profiles').insert(profileData);
+    const { error: pe } = await supabase.from('profiles').insert(profileData);
 
-  setLoading('btnReg', false);
-  if (pe) { errEl.textContent = '오류: ' + pe.message; return; }
+    setLoading('btnReg', false);
+    if (pe) { errEl.textContent = '오류: ' + pe.message; return; }
 
-  if (role === 'seller' && !isAdmin) {
-    okEl.textContent = '✅ 판매자 등록 완료! 관리자 승인 후 활성화됩니다.';
-    setTimeout(() => { window.location.href = 'index.html'; }, 3000);
-  } else {
-    await redirect();
+    if (role === 'seller' && !isAdmin) {
+      okEl.textContent = '✅ 판매자 등록 완료! 관리자 승인 후 활성화됩니다.';
+      setTimeout(() => { window.location.href = 'index.html'; }, 3000);
+    } else {
+      await redirect();
+    }
+  } catch (err) {
+    setLoading('btnReg', false);
+    errEl.textContent = '네트워크 오류가 발생했습니다. (현지 CORS 보안 제약 또는 네트워크 상태 확인)';
+    console.error(err);
   }
 }
 

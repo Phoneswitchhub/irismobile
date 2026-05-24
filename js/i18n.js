@@ -198,68 +198,6 @@ const TRANSLATIONS = {
     loading: "လုပ်ဆောင်နေပါသည်...",
     success_order: "✅ အော်ဒါတင်ခြင်း အောင်မြင်ပါသည်။ ဆိုင်မှ မကြာမီ ဆက်သွယ်ပေးပါမည်။",
     error_occurred: "❌ အမှားအယွင်းရှိပါသည်: "
-  }း",
-    hero_title: "ဖုန်းများကို စိတ်ချစွာ<br><span class='grad'>ဝယ်ယူ/ရောင်းချပါ</span>",
-    hero_sub: "စိတ်ချရသော ဆိုင်ခွဲများနှင့် မိတ်ဖက်ဆိုင်များမှ ဖုန်းများကို အာမခံချက်ရှိရှိ ဝယ်ယူလိုက်ပါ။ ထိုင်းတစ်နိုင်ငံလုံး ပို့ဆောင်ပေးပြီး အိမ်ရောက်ငွေချေစနစ် (COD) ရရှိနိုင်ပါသည်!",
-    btn_shop_now: "🛍️ စျေးဝယ်မည်",
-    btn_register_seller: "💼 ဆိုင်ဖွင့်လှစ်ရန် လျှောက်ထားရန်",
-    stat_products: "တင်ထားသော ဖုန်းများ",
-    stat_sellers: "ဖွင့်လှစ်ထားသော ဆိုင်များ",
-    stat_orders: "အောင်မြင်သော အရောင်းအဝယ်များ",
-    
-    // Bottom Nav Tabs
-    tab_shop: "စျေးဝယ်ရန်",
-    tab_search: "ရှာဖွေရန်",
-    tab_shops: "ဆိုင်များ",
-    tab_mypage: "ကျွန်ုပ်၏ပရိုဖိုင်",
-
-    // Search Page
-    search_placeholder: "ဖုန်းအမျိုးအစား ရှာရန် (ဥပမာ- iPhone 15)...",
-    search_location_label: "ဒေသအလိုက် ရွေးချယ်ရန်:",
-    search_all_locations: "ဒေသအားလုံး",
-    search_stock: "လက်ကျန်အရေအတွက်",
-    search_no_results: "ရှာဖွေမှု မတွေ့ရှိပါ။",
-    search_store_location: "ဆိုင်လိပ်စာ",
-    search_view_map: "မြေပုံကြည့်ရန်",
-    
-    // Shop Page / Product
-    all_categories: "အားလုံး",
-    condition_new: "အသစ်စက်စက်",
-    condition_s: "အသုံးပြုပြီး အဆင့် (S)",
-    condition_a: "အသုံးပြုပြီး အဆင့် (A)",
-    condition_b: "အသုံးပြုပြီး အဆင့် (B)",
-    btn_buy: "🛒 ဝယ်ယူမည်",
-    product_condition: "ဖုန်းအခြေအနေ",
-    product_location: "ဒေသ",
-    product_seller: "ဆိုင်အမည်",
-    product_status_active: "ရောင်းရန်ရှိသည်",
-    product_status_sold: "ရောင်းပြီး",
-    
-    // Partner Shops Page
-    shops_title: "ဆိုင်ခွဲများနှင့် မိတ်ဖက်ဆိုင်များ",
-    shops_desc: "Phone Switch Hub မှ တရားဝင်အသိအမှတ်ပြုထားသော ယုံကြည်စိတ်ချရသည့် မိတ်ဖက်ဆိုင်များဖြစ်ကြပါသည်။",
-    partner_subsidiary: "ကိုယ်ပိုင်ဆိုင်ခွဲ",
-    partner_merchant: "တရားဝင် မိတ်ဖက်ဆိုင်",
-    
-    // Order Modal
-    order_title: "🛍️ ဝယ်ယူရန် တောင်းဆိုမှု",
-    order_qty: "အရေအတွက်",
-    order_notes: "မှတ်ချက် (ရွေးချယ်ရန်)",
-    order_notes_placeholder: "အရောင်၊ မန်မိုရီ သို့မဟုတ် အခြားတောင်းဆိုချက်များ",
-    order_payment: "ငွေပေးချေမှုပုံစံ ရွေးချယ်ရန်",
-    order_pay_online: "အွန်လိုင်းငွေလွှဲ (ကုမ္ပဏီသို့ တိုက်ရိုက်ပေးချေမှု)",
-    order_pay_cod: "အိမ်ရောက်ငွေချေစနစ် (COD)",
-    order_total: "စုစုပေါင်းကျသင့်ငွေ",
-    btn_submit_order: "✅ အော်ဒါတင်မည်",
-    
-    // Common / Buttons
-    login: "လော့ဂ်အင်ဝင်ရန်",
-    logout: "လော့ဂ်အောက်ထွက်ရန်",
-    dashboard: "ဒက်ရှ်ဘုတ်",
-    cancel: "ပယ်ဖျက်မည်",
-    loading: "လုပ်ဆောင်နေပါသည်...",
-    success_order: "✅ အော်ဒါတင်ခြင်း အောင်မြင်ပါသည်။ ဆိုင်မှ မကြာမီ ဆက်သွယ်ပေးပါမည်။",
-    error_occurred: "❌ အမှားအယွင်းရှိပါသည်: "
   }
 };
 
