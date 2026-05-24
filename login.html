@@ -7,6 +7,12 @@
   <meta name="description" content="Phone Switch Hub에 로그인하거나 회원가입하세요.">
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    window.onerror = function(message, source, lineno, colno, error) {
+      alert("JS Error: " + message + "\nLine: " + lineno + "\nFile: " + source);
+      return false;
+    };
+  </script>
 </head>
 <body>
 
