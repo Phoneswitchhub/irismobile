@@ -291,15 +291,14 @@
 
       <div class="form-group"><label class="form-label">상품 설명</label><textarea class="form-textarea" id="pDesc" placeholder="상품 상태, 구성품, 특이사항 등을 입력하세요"></textarea></div>
       
-      <div class="form-group">
-        <label class="form-label">상품 사진 (최대 3장)</label>
+        <label class="form-label">상품 사진 (최대 10장)</label>
         <div class="img-upload" onclick="document.getElementById('pImgInput').click()" style="padding:20px;">
           <div class="img-upload-ico" style="font-size:24px; margin-bottom:4px;">📷</div>
-          <div class="img-upload-txt" style="font-size:11px;">클릭하여 사진 선택 <span>(max 3장)</span></div>
+          <div class="img-upload-txt" style="font-size:11px;">클릭하여 사진 선택 <span>(max 10장)</span></div>
         </div>
         <input type="file" id="pImgInput" accept="image/*" multiple style="display:none;" onchange="previewImages(this)">
         <div class="preview-grid" id="imgPreviews"></div>
-        <div id="existingImages"></div>
+        <div id="existingImages" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;"></div>
       </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:16px;">
@@ -537,8 +536,8 @@ async function editProduct(id, useExisting = false) {
   document.getElementById('imgPreviews').innerHTML = '';
   document.getElementById('existingImages').innerHTML = (p.images || []).map((url, i) =>
     `<div style="position:relative;display:inline-block;margin-right:8px;margin-top:8px;">
-      <img src="${url}" class="prev-img" style="width:60px; height:60px;">
-      <button onclick="event.stopPropagation(); removeExistingImg(${i})" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--red);color:#fff;border:none;cursor:pointer;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center;">✕</button>
+      <img src="${url}" class="prev-img" style="width:60px; height:60px; object-fit:cover; border-radius:6px;">
+      <button onclick="event.stopPropagation(); removeExistingImg(${i})" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--red);color:#fff;border:none;cursor:pointer;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,0.3);">✕</button>
      </div>`
   ).join('');
   document.getElementById('prodModal').classList.add('open');
@@ -554,13 +553,29 @@ function removeExistingImg(i) {
 }
 
 function previewImages(input) {
-  const files = Array.from(input.files).slice(0, 3);
+  const existingCount = editingProduct && editingProduct.images ? editingProduct.images.length : 0;
+  const maxAllowed = 10 - existingCount;
+  if (input.files.length > maxAllowed) {
+    showToast(`❌ 사진은 기존 이미지를 포함하여 최대 10장까지 등록 가능합니다. (추가 가능: ${maxAllowed}장)`, 'error');
+  }
+  const files = Array.from(input.files).slice(0, maxAllowed);
   newImageFiles = files;
   const prev = document.getElementById('imgPreviews');
   prev.innerHTML = '';
   files.forEach(f => {
     const reader = new FileReader();
-    reader.onload = e => { const img = document.createElement('img'); img.src = e.target.result; img.className = 'prev-img'; img.style.width = '60px'; img.style.height = '60px'; prev.appendChild(img); };
+    reader.onload = e => { 
+      const img = document.createElement('img'); 
+      img.src = e.target.result; 
+      img.className = 'prev-img'; 
+      img.style.width = '60px'; 
+      img.style.height = '60px'; 
+      img.style.objectFit = 'cover';
+      img.style.borderRadius = '6px';
+      img.style.marginRight = '8px';
+      img.style.marginTop = '8px';
+      prev.appendChild(img); 
+    };
     reader.readAsDataURL(f);
   });
 }
@@ -577,6 +592,13 @@ async function saveProduct() {
   setLoading('btnSaveProd', true, '저장 중…');
 
   // Upload new images
+  const existingCount = editingProduct && editingProduct.images ? editingProduct.images.length : 0;
+  if (existingCount + newImageFiles.length > 10) {
+    showToast('❌ 사진은 기존 이미지를 포함하여 최대 10장까지만 업로드할 수 있습니다.', 'error');
+    setLoading('btnSaveProd', false);
+    return;
+  }
+
   let imageUrls = editingProduct ? [...(editingProduct.images || [])] : [];
   for (const file of newImageFiles) {
     const compressedFile = await resizeAndCompressImage(file);
@@ -609,6 +631,7 @@ async function saveProduct() {
   setLoading('btnSaveProd', false);
   if (error) { showToast('❌ 오류: ' + error.message, 'error'); return; }
   showToast('✅ 상품이 저장됐습니다!', 'success');
+  newImageFiles = [];
   closeProdModal();
   await loadMyProducts();
   await loadStats();
@@ -646,7 +669,7 @@ async function saveProfile() {
   let profileImage = myProfile.profile_image;
   const file = document.getElementById('profImg').files[0];
   if (file) {
-    const compressedFile = await resizeAndCompressImage(file);
+    const compressedFile = await resizeAndCompressImage(file, 400, 0.8);
     const path = `avatars/${myProfile.id}.jpg`;
     await supabase.storage.from('avatars').upload(path, compressedFile, { upsert: true });
     const { data } = supabase.storage.from('avatars').getPublicUrl(path);
@@ -667,6 +690,7 @@ async function saveProfile() {
   setLoading('btnSaveProfile', false);
   if (error) { showToast('❌ 오류: ' + error.message, 'error'); return; }
   showToast('✅ 프로필이 저장됐습니다!', 'success');
+  document.getElementById('profImg').value = '';
   
   // Refresh local memory
   myProfile.name = name;

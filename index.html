@@ -106,12 +106,20 @@
       <div class="search-row" style="margin-bottom:14px;">
         <input type="text" class="search-in" id="searchKeyword" data-i18n="search_placeholder" placeholder="모델명 검색..." oninput="triggerSearch()">
       </div>
-      <div style="margin-bottom:20px; display:flex; align-items:center; gap:10px;">
-        <span style="font-size:12px; color:var(--t2); font-weight:700;" data-i18n="search_location_label">지역 필터:</span>
-        <select class="form-input" id="searchProvince" style="flex:1; padding:8px 12px;" onchange="triggerSearch()">
+      <div style="margin-bottom:12px; display:flex; align-items:center; gap:10px;">
+        <span style="font-size:12px; color:var(--t2); font-weight:700; min-width:60px;" data-i18n="search_location_label">지역 필터:</span>
+        <select class="form-input" id="searchProvince" style="flex:1; padding:8px 12px; font-size:12px;" onchange="triggerSearch()">
           <!-- Populated dynamically -->
           <option value="all" data-i18n="search_all_locations">전체 지역</option>
         </select>
+      </div>
+      <div style="margin-bottom:20px; display:flex; align-items:center; gap:10px;">
+        <span style="font-size:12px; color:var(--t2); font-weight:700; min-width:60px;">예산 범위:</span>
+        <div style="display:flex; align-items:center; gap:6px; flex:1;">
+          <input type="number" class="form-input" id="searchMinPrice" placeholder="최소 가격" style="flex:1; padding:8px 10px; font-size:12px;" oninput="triggerSearch()">
+          <span style="color:var(--t3); font-size:12px;">~</span>
+          <input type="number" class="form-input" id="searchMaxPrice" placeholder="최대 가격" style="flex:1; padding:8px 10px; font-size:12px;" oninput="triggerSearch()">
+        </div>
       </div>
 
       <!-- Search Results Grid -->
@@ -545,29 +553,36 @@ function renderProds(list, elementId) {
 async function triggerSearch() {
   const kw = document.getElementById('searchKeyword').value.trim().toLowerCase();
   const prov = document.getElementById('searchProvince').value;
+  const minPrice = Number(document.getElementById('searchMinPrice').value) || 0;
+  const maxPrice = Number(document.getElementById('searchMaxPrice').value) || Infinity;
   const grid = document.getElementById('searchResultsGrid');
-  
-  if (!kw && prov === 'all') {
-    grid.innerHTML = `<div class="empty" style="grid-column:1/-1;"><div class="empty-ico">🔍</div><div class="empty-ttl">${t('search_placeholder')}</div></div>`;
-    return;
-  }
   
   let query = supabase.from('products')
     .select('id, title, description, price, images, category, seller_id, condition, stock, status, profiles(name, store_name, partner_type, location_province, location_district, location_address)')
     .eq('status', 'active');
     
-  if (kw) {
-    query = query.ilike('title', `%${kw}%`);
-  }
-  
   const { data } = await query;
   let results = data || [];
+  
+  if (kw) {
+    results = results.filter(p => 
+      p.title.toLowerCase().includes(kw) || 
+      (p.description && p.description.toLowerCase().includes(kw)) ||
+      (p.category && p.category.toLowerCase().includes(kw))
+    );
+  }
   
   if (prov !== 'all') {
     results = results.filter(p => p.profiles?.location_province === prov);
   }
   
-  renderProds(results, 'searchResultsGrid');
+  results = results.filter(p => p.price >= minPrice && p.price <= maxPrice);
+  
+  if (results.length === 0) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1;"><div class="empty-ico">🔍</div><div class="empty-ttl">검색 조건에 맞는 상품이 없습니다</div></div>`;
+  } else {
+    renderProds(results, 'searchResultsGrid');
+  }
 }
 
 // Category filter action
@@ -593,6 +608,10 @@ function switchTab(tabId) {
   if (target) {
     document.getElementById(target.view).classList.add('active');
     document.querySelectorAll('.tab-bar .tab-item')[target.idx].classList.add('active');
+  }
+
+  if (tabId === 'search') {
+    triggerSearch();
   }
   
   // Real-time language updates

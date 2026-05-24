@@ -344,7 +344,7 @@ async function doRegister() {
     if (role === 'seller') {
       const file = document.getElementById('rLogo').files[0];
       if (file) {
-        const compressedFile = await resizeAndCompressImage(file);
+        const compressedFile = await resizeAndCompressImage(file, 400, 0.8);
         const path = `avatars/${userId}_logo.jpg`;
         const { error: upErr } = await supabase.storage.from('avatars').upload(path, compressedFile, { upsert: true });
         if (!upErr) {
