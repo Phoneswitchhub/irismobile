@@ -33,3 +33,45 @@ SET
   location_address = 'MBK Center 4th Floor, Bangkok',
   payout_method = 'parent_payment'
 WHERE role = 'seller' AND (store_name LIKE '%Iris%' OR store_name IS NULL);
+
+-- ============================================================
+-- 5. RLS 관리자 권한 복구 정책 추가
+-- 관리자 검사용 SECURITY DEFINER 함수 생성 (RLS 무한 재귀 호출 방지용)
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- profiles 테이블에 관리자 정책 추가
+DROP POLICY IF EXISTS "profiles_update_admin" ON public.profiles;
+CREATE POLICY "profiles_update_admin" ON public.profiles
+  FOR UPDATE
+  USING (public.is_admin());
+
+DROP POLICY IF EXISTS "profiles_delete_admin" ON public.profiles;
+CREATE POLICY "profiles_delete_admin" ON public.profiles
+  FOR DELETE
+  USING (public.is_admin());
+
+-- products 테이블에 관리자 정책 추가
+DROP POLICY IF EXISTS "products_delete_admin" ON public.products;
+CREATE POLICY "products_delete_admin" ON public.products
+  FOR DELETE
+  USING (public.is_admin());
+
+-- orders 테이블에 관리자 정책 추가
+DROP POLICY IF EXISTS "orders_select_admin" ON public.orders;
+CREATE POLICY "orders_select_admin" ON public.orders
+  FOR SELECT
+  USING (public.is_admin());
+
+DROP POLICY IF EXISTS "orders_update_admin" ON public.orders;
+CREATE POLICY "orders_update_admin" ON public.orders
+  FOR UPDATE
+  USING (public.is_admin());

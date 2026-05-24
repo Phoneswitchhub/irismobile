@@ -5,224 +5,259 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>판매자 대시보드 — Phone Switch Hub</title>
   <link rel="stylesheet" href="../css/style.css">
+  <style>
+    /* Mobile-first Overrides for Seller Dashboard */
+    .main-hd {
+      padding: 14px 16px;
+      background: transparent;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      top: auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .main-body {
+      padding: 16px;
+    }
+    .stat-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      padding: 16px;
+    }
+    .sc-icon {
+      width: 38px;
+      height: 38px;
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+    .sc-val {
+      font-size: 20px;
+    }
+    .card {
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    
+    /* Mobile orders card layout */
+    .mobile-order-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 14px;
+      margin-bottom: 12px;
+      transition: var(--ease);
+    }
+    .mobile-order-card:hover {
+      border-color: var(--border2);
+    }
+    .mobile-order-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 8px;
+      margin-bottom: 8px;
+    }
+    .mobile-order-body {
+      font-size: 13px;
+      color: var(--t2);
+      line-height: 1.5;
+    }
+    .mobile-order-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      justify-content: flex-end;
+    }
+    .btn-action-sm {
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      transition: var(--ease);
+    }
+  </style>
 </head>
 <body>
-<div class="db-wrap">
 
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <div class="sb-head">
-      <a href="../index.html" class="nav-logo">
-        <div class="nav-logo-icon">💎</div>
-        <span class="nav-logo-text">PHONE SWITCH HUB</span>
-      </a>
+<div class="app-shell" style="padding-bottom:76px;">
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a href="../index.html" class="nav-logo">
+      <div class="nav-logo-icon">💎</div>
+      <span class="nav-logo-text" style="font-size: 16px; letter-spacing: 0.5px;">SELLER PORTAL</span>
+    </a>
+    <div class="nav-links">
+      <button class="btn-nav btn-nav-outline" style="padding: 6px 10px; font-size: 11px;" onclick="doLogout()">🚪 로그아웃</button>
     </div>
-    <nav class="sb-nav">
-      <div class="sb-sec-lbl">메뉴 / Menu</div>
-      <button class="sb-link active" onclick="showPage('overview')"><span class="ico">📊</span> 개요</button>
-      <button class="sb-link" onclick="showPage('products')"><span class="ico">📱</span> 내 상품</button>
-      <button class="sb-link" onclick="showPage('orders')"><span class="ico">📦</span> 주문 내역</button>
-      <button class="sb-link" onclick="showPage('profile')"><span class="ico">👤</span> 프로필</button>
-      <div class="sb-sec-lbl">바로가기</div>
-      <a class="sb-link" href="../index.html"><span class="ico">🏠</span> 메인 홈</a>
-    </nav>
-    <div class="sb-foot">
-      <div class="sb-user">
-        <div class="sb-avatar" id="sbAvatar">💼</div>
-        <div>
-          <div class="sb-uname" id="sbName">로딩중…</div>
-          <div class="sb-urole" id="sbPartnerType">판매자</div>
+  </nav>
+
+  <!-- ==================== VIEW 1: OVERVIEW ==================== -->
+  <div id="page-overview" class="view-section active">
+    <div class="main-hd">
+      <h1>📊 개요 Overview</h1>
+      <span id="hd-date" style="color:var(--t2);font-size:12px;"></span>
+    </div>
+    <div class="main-body">
+      
+      <!-- Seller Config Info Header -->
+      <div class="card" style="margin-bottom: 20px; background: rgba(139, 92, 246, 0.08); border-color: var(--border2); display: flex; flex-direction: column; gap: 8px; padding: 12px 14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="font-size: 11px; color: var(--purple-l); font-weight: 700;">🏪 매장 정산 구조 정보</div>
+          <div style="font-size: 14px; font-weight: 900;" id="overviewStoreName">—</div>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; font-size: 11px; color: var(--t2);">
+          <div>수수료율: <span style="font-weight: 800; color: var(--gold);" id="overviewCommRate">—</span></div>
+          <div>정산방식: <span style="font-weight: 800; color: var(--cyan);" id="overviewPayoutMethod">—</span></div>
+          <div>지역: <span style="font-weight: 800; color: var(--t1);" id="overviewProvince">—</span></div>
         </div>
       </div>
-      <button class="btn-nav btn-nav-outline" style="width:100%;margin-top:12px;justify-content:center;" onclick="doLogout()">🚪 로그아웃</button>
-    </div>
-  </aside>
 
-  <!-- MAIN -->
-  <main class="main">
-
-    <!-- ===== OVERVIEW PAGE ===== -->
-    <div id="page-overview">
-      <div class="main-hd">
-        <h1>📊 개요 Overview</h1>
-        <span id="hd-date" style="color:var(--t2);font-size:13px;"></span>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="sc-icon" style="background:rgba(139,92,246,.15);">📱</div>
+          <div class="sc-val" id="sc1">—</div>
+          <div class="sc-lbl">등록 상품</div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-icon" style="background:rgba(251,191,36,.15);">📦</div>
+          <div class="sc-val" id="sc2">—</div>
+          <div class="sc-lbl">대기 주문</div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-icon" style="background:rgba(16,185,129,.15);">✅</div>
+          <div class="sc-val" id="sc3">—</div>
+          <div class="sc-lbl">완료 거래</div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-icon" style="background:rgba(34,211,238,.15);">💰</div>
+          <div class="sc-val" id="sc4">—</div>
+          <div class="sc-lbl">누적 매출 (฿)</div>
+        </div>
       </div>
-      <div class="main-body">
+
+      <div class="card" style="padding: 12px;">
+        <h3 style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;margin-bottom:12px;">최근 주문</h3>
+        <div id="recentOrders">
+          <div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;">로딩 중…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== VIEW 2: PRODUCTS ==================== -->
+  <div id="page-products" class="view-section" style="display:none;">
+    <div class="main-hd">
+      <h1>📱 내 상품 관리</h1>
+      <button class="btn-nav" onclick="openAddProduct()" style="padding: 6px 12px; font-size: 11px;">➕ 상품 등록</button>
+    </div>
+    <div class="main-body">
+      <div class="products-grid" id="myProductsGrid">
+        <div class="empty" style="grid-column:1/-1;"><div class="empty-ico">📱</div><div class="empty-ttl">로딩 중…</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== VIEW 3: ORDERS ==================== -->
+  <div id="page-orders" class="view-section" style="display:none;">
+    <div class="main-hd">
+      <h1>📦 전체 주문 내역</h1>
+    </div>
+    <div class="main-body">
+      <div id="allOrders">
+        <div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;">로딩 중…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== VIEW 4: PROFILE ==================== -->
+  <div id="page-profile" class="view-section" style="display:none;">
+    <div class="main-hd">
+      <h1>👤 프로필 및 매장 설정</h1>
+    </div>
+    <div class="main-body">
+      <div class="card" style="padding:16px;">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div class="s-avatar" style="width:80px;height:80px;font-size:32px;margin:0 auto 10px;" id="profAvatarPreview">💼</div>
+          <label style="cursor:pointer;">
+            <span class="btn-sm btn-purple" style="font-size:11px; padding:6px 12px;">📷 사진 변경</span>
+            <input type="file" id="profImg" accept="image/*" style="display:none;" onchange="previewAvatar(this)">
+          </label>
+        </div>
+        <div class="form-group"><label class="form-label">담당자명</label><input type="text" class="form-input" id="profName"></div>
+        <div class="form-group"><label class="form-label">전화번호</label><input type="text" class="form-input" id="profPhone" disabled style="opacity:.6;"></div>
+        <div class="form-group"><label class="form-label">매장명</label><input type="text" class="form-input" id="profStore"></div>
         
-        <!-- Seller Config Info Header -->
-        <div class="card" style="margin-bottom: 24px; background: rgba(139, 92, 246, 0.08); border-color: var(--border2); display: flex; gap: 20px; flex-wrap: wrap; justify-content: space-between; align-items: center;">
-          <div>
-            <div style="font-size: 13px; color: var(--purple-l); font-weight: 700;">🏪 매장 정산 구조 정보</div>
-            <div style="font-size: 20px; font-weight: 900; margin-top: 4px;" id="overviewStoreName">—</div>
-          </div>
-          <div style="display: flex; gap: 24px;">
-            <div>
-              <div style="font-size: 11px; color: var(--t2);">수수료율</div>
-              <div style="font-size: 16px; font-weight: 800; color: var(--gold);" id="overviewCommRate">—</div>
-            </div>
-            <div>
-              <div style="font-size: 11px; color: var(--t2);">기본 거래 정산 방식</div>
-              <div style="font-size: 16px; font-weight: 800; color: var(--cyan);" id="overviewPayoutMethod">—</div>
-            </div>
-            <div>
-              <div style="font-size: 11px; color: var(--t2);">소속 지역</div>
-              <div style="font-size: 16px; font-weight: 800; color: var(--t1);" id="overviewProvince">—</div>
-            </div>
-          </div>
+        <div class="form-group">
+          <label class="form-label">매장 지역 (Province)</label>
+          <select class="form-input" id="profProvince">
+            <option value="">선택해주세요</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">매장 구/군 (District)</label>
+          <select class="form-input" id="profDistrict">
+            <option value="">선택해주세요</option>
+          </select>
+        </div>
+        
+        <div class="form-group"><label class="form-label">매장 상세 주소</label><textarea class="form-textarea" id="profAddress"></textarea></div>
+        <div class="form-group"><label class="form-label">매장 구글맵 좌표 (위도, 경도)</label><input type="text" class="form-input" id="profCoords" placeholder="예: 13.7563, 100.5018"></div>
+        
+        <div class="form-group">
+          <label class="form-label">수수료 정산 및 결제 방식 (기본)</label>
+          <select class="form-input" id="profPayout" disabled style="opacity:.7; background:rgba(0,0,0,0.1);">
+            <option value="parent_payment">플랫폼 전체 수금 후 정산 (Parent Payment)</option>
+            <option value="cod_commission">캐쉬온딜리버리(COD) 직접 거래 후 수수료 송금 (COD &amp; Commission)</option>
+          </select>
+          <span style="font-size:10px; color:var(--t3); margin-top:4px; display:block; line-height:1.2;">* 정산 방식 변경은 모회사 관리자(Phone Switch Hub)에게 요청해야 합니다.</span>
         </div>
 
-        <div class="stat-grid">
-          <div class="stat-card">
-            <div class="sc-icon" style="background:rgba(139,92,246,.15);">📱</div>
-            <div class="sc-val" id="sc1">—</div>
-            <div class="sc-lbl">등록 상품</div>
-          </div>
-          <div class="stat-card">
-            <div class="sc-icon" style="background:rgba(251,191,36,.15);">📦</div>
-            <div class="sc-val" id="sc2">—</div>
-            <div class="sc-lbl">대기 주문</div>
-          </div>
-          <div class="stat-card">
-            <div class="sc-icon" style="background:rgba(16,185,129,.15);">✅</div>
-            <div class="sc-val" id="sc3">—</div>
-            <div class="sc-lbl">완료 거래</div>
-          </div>
-          <div class="stat-card">
-            <div class="sc-icon" style="background:rgba(34,211,238,.15);">💰</div>
-            <div class="sc-val" id="sc4">—</div>
-            <div class="sc-lbl">누적 매출 (฿)</div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-            <h3 style="font-family:'Outfit',sans-serif;font-size:16px;font-weight:700;">최근 주문</h3>
-          </div>
-          <div class="tbl-wrap">
-            <table class="tbl">
-              <thead>
-                <tr>
-                  <th>구매자/배송지</th>
-                  <th>상품/상태</th>
-                  <th>금액/수량</th>
-                  <th>결제/수수료</th>
-                  <th>날짜</th>
-                  <th>주문상태</th>
-                  <th>처리</th>
-                </tr>
-              </thead>
-              <tbody id="recentOrders">
-                <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--t3);">로딩 중…</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <div class="form-group"><label class="form-label">매장 소개</label><textarea class="form-textarea" id="profDesc"></textarea></div>
+        <button class="btn-submit" id="btnSaveProfile" onclick="saveProfile()">💾 저장하기</button>
       </div>
     </div>
+  </div>
 
-    <!-- ===== PRODUCTS PAGE ===== -->
-    <div id="page-products" style="display:none;">
-      <div class="main-hd">
-        <h1>📱 내 상품 관리</h1>
-        <button class="btn-nav" onclick="openAddProduct()">➕ 상품 등록</button>
-      </div>
-      <div class="main-body">
-        <div class="products-grid" id="myProductsGrid">
-          <div class="empty" style="grid-column:1/-1;"><div class="empty-ico">📱</div><div class="empty-ttl">로딩 중…</div></div>
-        </div>
-      </div>
+  <!-- BOTTOM TAB BAR -->
+  <div class="tab-bar">
+    <div class="tab-item active" id="tab-overview" onclick="showPage('overview', this)">
+      <span class="tab-item-icon">📊</span>
+      <span>개요</span>
     </div>
-
-    <!-- ===== ORDERS PAGE ===== -->
-    <div id="page-orders" style="display:none;">
-      <div class="main-hd"><h1>📦 전체 주문 내역</h1></div>
-      <div class="main-body">
-        <div class="card">
-          <div class="tbl-wrap">
-            <table class="tbl">
-              <thead>
-                <tr>
-                  <th>주문번호</th>
-                  <th>구매자/배송지</th>
-                  <th>상품/상태</th>
-                  <th>금액/수량</th>
-                  <th>결제/수수료</th>
-                  <th>날짜</th>
-                  <th>주문상태</th>
-                  <th>처리</th>
-                </tr>
-              </thead>
-              <tbody id="allOrders">
-                <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--t3);">로딩 중…</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+    <div class="tab-item" id="tab-products" onclick="showPage('products', this)">
+      <span class="tab-item-icon">📱</span>
+      <span>내 상품</span>
     </div>
-
-    <!-- ===== PROFILE PAGE ===== -->
-    <div id="page-profile" style="display:none;">
-      <div class="main-hd"><h1>👤 프로필 및 매장 설정</h1></div>
-      <div class="main-body">
-        <div class="card" style="max-width:560px;">
-          <div style="text-align:center;margin-bottom:28px;">
-            <div class="s-avatar" style="width:90px;height:90px;font-size:38px;margin:0 auto 12px;" id="profAvatarPreview">💼</div>
-            <label style="cursor:pointer;">
-              <span class="btn-sm btn-purple">📷 사진 변경</span>
-              <input type="file" id="profImg" accept="image/*" style="display:none;" onchange="previewAvatar(this)">
-            </label>
-          </div>
-          <div class="form-group"><label class="form-label">담당자명</label><input type="text" class="form-input" id="profName"></div>
-          <div class="form-group"><label class="form-label">전화번호</label><input type="text" class="form-input" id="profPhone" disabled style="opacity:.6;"></div>
-          <div class="form-group"><label class="form-label">매장명</label><input type="text" class="form-input" id="profStore"></div>
-          
-          <div class="form-group">
-            <label class="form-label">매장 지역 (Province)</label>
-            <select class="form-input" id="profProvince">
-              <option value="Bangkok">Bangkok</option>
-              <option value="Chiang Mai">Chiang Mai</option>
-              <option value="Chonburi">Chonburi</option>
-              <option value="Phuket">Phuket</option>
-              <option value="Samut Prakan">Samut Prakan</option>
-              <option value="Nonthaburi">Nonthaburi</option>
-              <option value="Pathum Thani">Pathum Thani</option>
-            </select>
-          </div>
-          
-          <div class="form-group"><label class="form-label">매장 상세 주소</label><textarea class="form-textarea" id="profAddress"></textarea></div>
-          <div class="form-group"><label class="form-label">매장 구글맵 좌표 (위도, 경도)</label><input type="text" class="form-input" id="profCoords" placeholder="예: 13.7563, 100.5018"></div>
-          
-          <div class="form-group">
-            <label class="form-label">수수료 정산 및 결제 방식 (기본)</label>
-            <select class="form-input" id="profPayout" disabled style="opacity:.7; background:rgba(0,0,0,0.1);">
-              <option value="parent_payment">플랫폼 전체 수금 후 정산 (Parent Payment)</option>
-              <option value="cod_commission">캐쉬온딜리버리(COD) 직접 거래 후 수수료 송금 (COD &amp; Commission)</option>
-            </select>
-            <span style="font-size:11px; color:var(--t3); margin-top:4px; display:block;">* 정산 방식 변경은 모회사 관리자(Phone Switch Hub)에게 요청해야 합니다.</span>
-          </div>
-
-          <div class="form-group"><label class="form-label">매장 소개</label><textarea class="form-textarea" id="profDesc"></textarea></div>
-          <button class="btn-submit" id="btnSaveProfile" onclick="saveProfile()">💾 저장하기</button>
-        </div>
-      </div>
+    <div class="tab-item" id="tab-orders" onclick="showPage('orders', this)">
+      <span class="tab-item-icon">📦</span>
+      <span>주문 내역</span>
     </div>
-
-  </main>
+    <div class="tab-item" id="tab-profile" onclick="showPage('profile', this)">
+      <span class="tab-item-icon">👤</span>
+      <span>프로필</span>
+    </div>
+  </div>
 </div>
 
 <!-- ADD/EDIT PRODUCT MODAL -->
 <div class="modal-bg" id="prodModal">
-  <div class="modal" style="max-width:580px;">
-    <div class="modal-hd">
+  <div class="modal" style="max-width:440px; padding:20px;">
+    <div class="modal-hd" style="margin-bottom:16px;">
       <span class="modal-title" id="prodModalTitle">📱 상품 등록</span>
       <button class="modal-x" onclick="closeProdModal()">✕</button>
     </div>
-    <div style="overflow-y:auto;max-height:70vh;">
+    <div style="overflow-y:auto; max-height:65vh; padding-right:4px;">
       <input type="hidden" id="editProductId">
       <div class="form-group"><label class="form-label">상품명 *</label><input type="text" class="form-input" id="pTitle" placeholder="예: iPhone 15 Pro 128GB Space Black"></div>
       
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div class="form-group">
           <label class="form-label">가격 (฿) *</label>
           <input type="number" class="form-input" id="pPrice" placeholder="25000">
@@ -238,7 +273,7 @@
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div class="form-group">
           <label class="form-label">기기 등급 (Condition) *</label>
           <select class="form-select" id="pCondition">
@@ -258,18 +293,18 @@
       
       <div class="form-group">
         <label class="form-label">상품 사진 (최대 3장)</label>
-        <div class="img-upload" onclick="document.getElementById('pImgInput').click()">
-          <div class="img-upload-ico">📷</div>
-          <div class="img-upload-txt">클릭하여 사진 선택 <span>(JPG, PNG, max 5MB)</span></div>
+        <div class="img-upload" onclick="document.getElementById('pImgInput').click()" style="padding:20px;">
+          <div class="img-upload-ico" style="font-size:24px; margin-bottom:4px;">📷</div>
+          <div class="img-upload-txt" style="font-size:11px;">클릭하여 사진 선택 <span>(max 3장)</span></div>
         </div>
         <input type="file" id="pImgInput" accept="image/*" multiple style="display:none;" onchange="previewImages(this)">
         <div class="preview-grid" id="imgPreviews"></div>
         <div id="existingImages"></div>
       </div>
     </div>
-    <div style="display:flex;gap:12px;margin-top:16px;">
-      <button class="btn-submit" id="btnSaveProd" onclick="saveProduct()" style="flex:1;">💾 저장</button>
-      <button class="btn-sm btn-red" onclick="closeProdModal()" style="padding:14px 20px;border-radius:var(--r);">취소</button>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn-submit" id="btnSaveProd" onclick="saveProduct()" style="flex:1; margin-top:0;">💾 저장</button>
+      <button class="btn-sm btn-red" onclick="closeProdModal()" style="padding:12px 16px;border-radius:var(--r-sm);">취소</button>
     </div>
   </div>
 </div>
@@ -277,6 +312,7 @@
 <div class="toast" id="globalToast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/thailand-addresses.js"></script>
 <script src="../js/config.js"></script>
 <script>
 let myProfile = null;
@@ -291,16 +327,11 @@ async function init() {
   const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
   if (!p || (p.role !== 'seller' && p.role !== 'admin')) { window.location.href = '../index.html'; return; }
   if (p.role === 'seller' && !p.is_approved) {
-    document.body.innerHTML = '<div style="text-align:center;padding:100px 20px;"><div style="font-size:56px;margin-bottom:20px;">⏳</div><h2 style="font-family:Outfit,sans-serif;font-size:28px;">승인 대기 중</h2><p style="color:var(--t2);margin-top:10px;">관리자 승인 후 대시보드를 사용할 수 있습니다.</p><a href="../index.html" style="display:inline-block;margin-top:24px;padding:12px 28px;background:var(--gp);color:#fff;border-radius:12px;font-weight:700;text-decoration:none;">홈으로</a></div>';
+    document.body.innerHTML = '<div style="text-align:center;padding:100px 20px; background:#070b18; min-height:100vh; color:#fff;"><div style="font-size:56px;margin-bottom:20px;">⏳</div><h2 style="font-family:Outfit,sans-serif;font-size:28px;">승인 대기 중</h2><p style="color:var(--t2);margin-top:10px; font-size:14px;">관리자 승인 후 대시보드를 사용할 수 있습니다.</p><a href="../index.html" style="display:inline-block;margin-top:24px;padding:12px 28px;background:var(--gp);color:#fff;border-radius:12px;font-weight:700;text-decoration:none;">홈으로</a></div>';
     return;
   }
 
   myProfile = p;
-  
-  // Set sidebar name and type
-  document.getElementById('sbName').textContent = p.store_name || p.name;
-  const pTypeMap = { subsidiary: 'Iris 직영점', partner: '공식협력사' };
-  document.getElementById('sbPartnerType').textContent = pTypeMap[p.partner_type] || '판매 파트너';
   
   // Date
   document.getElementById('hd-date').textContent = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -309,13 +340,20 @@ async function init() {
   document.getElementById('overviewStoreName').textContent = p.store_name || p.name;
   document.getElementById('overviewCommRate').textContent = (p.commission_rate || 10.00) + '%';
   document.getElementById('overviewPayoutMethod').textContent = p.payout_method === 'cod_commission' ? 'COD 및 수수료 수금' : '본사 직접정산';
-  document.getElementById('overviewProvince').textContent = p.location_province || 'Bangkok';
+  document.getElementById('overviewProvince').textContent = p.location_province ? `${p.location_province}${p.location_district ? ' - ' + p.location_district : ''}` : 'Bangkok';
 
   // Fill profile form
   document.getElementById('profName').value = p.name;
   document.getElementById('profPhone').value = '+66 ' + p.phone;
   document.getElementById('profStore').value = p.store_name || '';
-  document.getElementById('profProvince').value = p.location_province || 'Bangkok';
+  
+  // Initialize Thailand address dropdowns
+  try {
+    initThailandAddressSelects('profProvince', 'profDistrict', p.location_province || '', p.location_district || '');
+  } catch (e) {
+    console.error("Address dropdowns init failed:", e);
+  }
+  
   document.getElementById('profAddress').value = p.location_address || '';
   document.getElementById('profCoords').value = p.location_coords || '';
   document.getElementById('profPayout').value = p.payout_method || 'parent_payment';
@@ -323,7 +361,6 @@ async function init() {
   
   if (p.profile_image) {
     document.getElementById('profAvatarPreview').innerHTML = `<img src="${p.profile_image}" style="width:100%;height:100%;object-fit:cover;">`;
-    document.getElementById('sbAvatar').innerHTML = `<img src="${p.profile_image}" style="width:100%;height:100%;object-fit:cover;">`;
   }
 
   await loadStats();
@@ -351,69 +388,67 @@ async function loadRecentOrders() {
   const { data } = await supabase.from('orders')
     .select('*, products(title, condition), profiles!orders_buyer_id_fkey(name, phone)')
     .eq('seller_id', myProfile.id).order('created_at', { ascending: false }).limit(5);
-  renderOrderTable('recentOrders', data || [], false);
+  renderOrderCards('recentOrders', data || []);
 }
 
 async function loadAllOrders() {
   const { data } = await supabase.from('orders')
     .select('*, products(title, condition), profiles!orders_buyer_id_fkey(name, phone)')
     .eq('seller_id', myProfile.id).order('created_at', { ascending: false });
-  renderOrderTable('allOrders', data || [], true);
+  renderOrderCards('allOrders', data || []);
 }
 
-function renderOrderTable(tbodyId, orders, isAllPage) {
-  const tbody = document.getElementById(tbodyId);
-  if (!orders.length) { 
-    const colSpan = isAllPage ? 8 : 7;
-    tbody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align:center;padding:30px;color:var(--t3);">주문이 없습니다</td></tr>`; 
+function renderOrderCards(containerId, orders) {
+  const container = document.getElementById(containerId);
+  if (!orders || !orders.length) { 
+    container.innerHTML = `<div style="text-align:center;padding:30px;color:var(--t3);font-size:12px;">주문이 없습니다</div>`; 
     return; 
   }
   
-  tbody.innerHTML = orders.map(o => {
-    // Delivery address and buyer info
+  container.innerHTML = orders.map(o => {
     const buyerName = o.profiles?.name || '—';
     const buyerPhone = o.profiles?.phone ? '+66 ' + o.profiles.phone : '—';
     const deliveryAddr = o.delivery_address || '주소 정보 없음';
-    
-    // Product details
     const prodTitle = o.products?.title || '—';
     const condition = o.products?.condition || 'Used S';
-    
-    // Payout and commission status
     const isCOD = o.payment_method === 'cod';
-    const payBadge = isCOD ? '<span class="badge bg-red" style="margin-top:4px;">COD (배송후 수금)</span>' : '<span class="badge bg-green" style="margin-top:4px;">온라인 에스크로</span>';
+    const payBadge = isCOD ? '<span class="badge bg-red">COD</span>' : '<span class="badge bg-green">온라인</span>';
     const comm = o.commission_amount ? `฿${Number(o.commission_amount).toLocaleString()}` : '฿0';
-    const payoutText = o.payout_status === 'completed' ? '<span style="color:var(--green);">정산완료</span>' : '<span style="color:var(--red);">정산대기</span>';
+    const payoutBadge = o.payout_status === 'completed' ? '<span class="badge bg-green">정산완료</span>' : '<span class="badge bg-yellow">정산대기</span>';
+
+    let actionButtons = '';
+    if (o.status === 'pending') {
+      actionButtons += `<button class="btn-action-sm btn-green" onclick="updateOrder('${o.id}','confirmed')">주문 확인</button>`;
+      actionButtons += `<button class="btn-action-sm btn-red" onclick="updateOrder('${o.id}','cancelled')">주문 취소</button>`;
+    } else if (o.status === 'confirmed') {
+      actionButtons += `<button class="btn-action-sm btn-purple" onclick="updateOrder('${o.id}','completed')">배송 완료</button>`;
+    }
 
     return `
-      <tr>
-        ${isAllPage ? `<td style="font-size:11px;color:var(--t3);">${o.id.slice(0,8)}…</td>` : ''}
-        <td>
-          <div style="font-weight:600;color:var(--t1);">${buyerName}</div>
-          <div style="font-size:11px;color:var(--t2);">${buyerPhone}</div>
-          <div style="font-size:11px;color:var(--t3);margin-top:4px;max-width:160px;white-space:normal;line-height:1.3;">🏠 ${deliveryAddr}</div>
-        </td>
-        <td>
-          <div style="font-weight:600;">${prodTitle}</div>
-          <span class="badge bg-purple" style="font-size:10px;margin-top:4px;">${condition}</span>
-        </td>
-        <td>
-          <div style="color:var(--gold);font-weight:700;">฿${Number(o.total_price).toLocaleString()}</div>
-          <div style="font-size:11px;color:var(--t2);">${o.quantity} 개</div>
-        </td>
-        <td>
-          <div>${payBadge}</div>
-          <div style="font-size:11px;color:var(--t2);margin-top:4px;">수수료: <b>${comm}</b></div>
-          <div style="font-size:11px;margin-top:2px;">상태: ${payoutText}</div>
-        </td>
-        <td style="font-size:12px;color:var(--t3);">${formatDate(o.created_at)}</td>
-        <td><span class="badge ${statusBadge(o.status)}">${statusText(o.status)}</span></td>
-        <td>
-          ${o.status === 'pending' ? `<button class="btn-sm btn-green" onclick="updateOrder('${o.id}','confirmed')">확인</button>` : ''}
-          ${o.status === 'confirmed' ? `<button class="btn-sm btn-purple" onclick="updateOrder('${o.id}','completed')">배송완료</button>` : ''}
-          ${o.status === 'pending' ? `<button class="btn-sm btn-red" style="margin-top:4px;" onclick="updateOrder('${o.id}','cancelled')">취소</button>` : ''}
-        </td>
-      </tr>
+      <div class="mobile-order-card">
+        <div class="mobile-order-header">
+          <span style="font-size:11px;color:var(--t3);font-weight:700;">주문 #${o.id.slice(0,8)}</span>
+          <span class="badge ${statusBadge(o.status)}">${statusText(o.status)}</span>
+        </div>
+        <div class="mobile-order-body">
+          <div style="font-weight:700;color:var(--t1);font-size:13px;margin-bottom:6px;">
+            ${prodTitle} <span class="badge bg-purple" style="font-size:9px;margin-left:4px;">${condition}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px;">
+            <span>수량: ${o.quantity}개</span>
+            <span style="color:var(--gold);font-weight:800;font-size:14px;">฿${Number(o.total_price).toLocaleString()}</span>
+          </div>
+          <div style="background:rgba(255,255,255,0.02);border-radius:6px;padding:8px;font-size:11px;margin-bottom:8px;">
+            <div>👤 <b>${buyerName}</b> (${buyerPhone})</div>
+            <div style="margin-top:4px;color:var(--t3);line-height:1.3;">📍 ${deliveryAddr}</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;">
+            <div>결제: ${payBadge} / 수수료: ${comm}</div>
+            <div>정산: ${payoutBadge}</div>
+          </div>
+        </div>
+        ${actionButtons ? `<div class="mobile-order-actions">${actionButtons}</div>` : ''}
+      </div>
     `;
   }).join('');
 }
@@ -436,25 +471,25 @@ async function loadMyProducts() {
     const conditionText = p.condition || 'Used S';
     
     return `
-      <div class="product-card">
+      <div class="product-card" onclick="editProduct('${p.id}')">
         <div class="p-img">
           ${p.images?.[0] ? `<img src="${p.images[0]}" alt="${p.title}" loading="lazy">` : { iPhone:'🍎', Samsung:'🌟', Xiaomi:'🔴' }[p.category] || '📱'}
           <div class="p-badge">${p.category || 'Mobile'}</div>
           <div style="position:absolute;top:10px;right:10px;"><span class="badge ${p.status === 'active' ? 'bg-green' : 'bg-gray'}">${p.status === 'active' ? '판매중' : '숨김'}</span></div>
         </div>
         <div class="p-info">
-          <div class="meta-row">
-            <span class="badge bg-purple" style="font-size:10px;">등급: ${conditionText}</span>
+          <div class="meta-row" style="margin-bottom:4px;">
+            <span class="badge bg-purple" style="font-size:9px;">등급: ${conditionText}</span>
             <span style="font-size:11px;color:var(--t2);">재고: <b>${p.stock}</b>개</span>
           </div>
-          <div class="p-title" style="margin-top:6px;">${p.title}</div>
-          <div class="p-price">฿${Number(p.price).toLocaleString()} <small>THB</small></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-            <button class="btn-sm btn-purple" onclick="editProduct('${p.id}')">✏️ 수정</button>
-            <button class="btn-sm ${p.status === 'active' ? 'btn-red' : 'btn-green'}" onclick="toggleStatus('${p.id}','${p.status}')">
+          <div class="p-title" style="margin-top:4px; font-size:12px; height:36px; overflow:hidden;">${p.title}</div>
+          <div class="p-price" style="font-size:16px; margin-bottom:8px;">฿${Number(p.price).toLocaleString()} <small style="font-size:10px;">THB</small></div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;">
+            <button class="btn-sm btn-purple" style="padding:4px 8px; font-size:10px;" onclick="event.stopPropagation(); editProduct('${p.id}')">✏️ 수정</button>
+            <button class="btn-sm ${p.status === 'active' ? 'btn-red' : 'btn-green'}" style="padding:4px 8px; font-size:10px;" onclick="event.stopPropagation(); toggleStatus('${p.id}','${p.status}')">
               ${p.status === 'active' ? '🙈 숨기기' : '👁️ 공개'}
             </button>
-            <button class="btn-sm btn-red" onclick="deleteProduct('${p.id}')">🗑️</button>
+            <button class="btn-sm btn-red" style="padding:4px 6px; font-size:10px;" onclick="event.stopPropagation(); deleteProduct('${p.id}')">🗑️</button>
           </div>
         </div>
       </div>
@@ -494,8 +529,8 @@ async function editProduct(id) {
   document.getElementById('imgPreviews').innerHTML = '';
   document.getElementById('existingImages').innerHTML = (p.images || []).map((url, i) =>
     `<div style="position:relative;display:inline-block;margin-right:8px;margin-top:8px;">
-      <img src="${url}" class="prev-img">
-      <button onclick="removeExistingImg(${i})" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--red);color:#fff;border:none;cursor:pointer;font-size:12px;line-height:1;">✕</button>
+      <img src="${url}" class="prev-img" style="width:60px; height:60px;">
+      <button onclick="removeExistingImg(${i})" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--red);color:#fff;border:none;cursor:pointer;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center;">✕</button>
      </div>`
   ).join('');
   document.getElementById('prodModal').classList.add('open');
@@ -513,7 +548,7 @@ function previewImages(input) {
   prev.innerHTML = '';
   files.forEach(f => {
     const reader = new FileReader();
-    reader.onload = e => { const img = document.createElement('img'); img.src = e.target.result; img.className = 'prev-img'; prev.appendChild(img); };
+    reader.onload = e => { const img = document.createElement('img'); img.src = e.target.result; img.className = 'prev-img'; img.style.width = '60px'; img.style.height = '60px'; prev.appendChild(img); };
     reader.readAsDataURL(f);
   });
 }
@@ -575,11 +610,14 @@ async function saveProfile() {
   const name = document.getElementById('profName').value.trim();
   const store = document.getElementById('profStore').value.trim();
   const prov = document.getElementById('profProvince').value;
+  const dist = document.getElementById('profDistrict').value;
   const address = document.getElementById('profAddress').value.trim();
   const coords = document.getElementById('profCoords').value.trim();
   const desc = document.getElementById('profDesc').value.trim();
   if (!name) { showToast('❌ 이름을 입력해주세요.', 'error'); return; }
   if (!store) { showToast('❌ 매장명을 입력해주세요.', 'error'); return; }
+  if (!prov) { showToast('❌ 지역(주)을 선택해주세요.', 'error'); return; }
+  if (!dist) { showToast('❌ 구/군(District)을 선택해주세요.', 'error'); return; }
 
   setLoading('btnSaveProfile', true, '저장 중…');
 
@@ -596,6 +634,7 @@ async function saveProfile() {
     name,
     store_name: store,
     location_province: prov,
+    location_district: dist,
     location_address: address,
     location_coords: coords || null,
     description: desc,
@@ -606,24 +645,23 @@ async function saveProfile() {
   if (error) { showToast('❌ 오류: ' + error.message, 'error'); return; }
   showToast('✅ 프로필이 저장됐습니다!', 'success');
   
-  // Refresh local memory and navbar text
+  // Refresh local memory
   myProfile.name = name;
   myProfile.store_name = store;
   myProfile.location_province = prov;
+  myProfile.location_district = dist;
   myProfile.location_address = address;
   myProfile.location_coords = coords || null;
   myProfile.description = desc;
   myProfile.profile_image = profileImage;
   
-  document.getElementById('sbName').textContent = store;
   if (profileImage) {
     document.getElementById('profAvatarPreview').innerHTML = `<img src="${profileImage}" style="width:100%;height:100%;object-fit:cover;">`;
-    document.getElementById('sbAvatar').innerHTML = `<img src="${profileImage}" style="width:100%;height:100%;object-fit:cover;">`;
   }
   
   // Update overview details
   document.getElementById('overviewStoreName').textContent = store;
-  document.getElementById('overviewProvince').textContent = prov;
+  document.getElementById('overviewProvince').textContent = `${prov}${dist ? ' - ' + dist : ''}`;
 }
 
 function previewAvatar(input) {
@@ -637,12 +675,28 @@ function previewAvatar(input) {
 
 function closeProdModal() { document.getElementById('prodModal').classList.remove('open'); }
 
-function showPage(pg) {
+function showPage(pg, el) {
   ['overview','products','orders','profile'].forEach(p => {
-    document.getElementById('page-' + p).style.display = p === pg ? 'block' : 'none';
+    const elPage = document.getElementById('page-' + p);
+    if (elPage) {
+      if (p === pg) {
+        elPage.style.display = 'block';
+        elPage.classList.add('active');
+      } else {
+        elPage.style.display = 'none';
+        elPage.classList.remove('active');
+      }
+    }
   });
-  document.querySelectorAll('.sb-link').forEach(l => l.classList.remove('active'));
-  event.currentTarget.classList.add('active');
+  
+  document.querySelectorAll('.tab-item').forEach(l => l.classList.remove('active'));
+  if (el) {
+    el.classList.add('active');
+  } else {
+    const targetTab = document.getElementById('tab-' + pg);
+    if (targetTab) targetTab.classList.add('active');
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function doLogout() { await supabase.auth.signOut(); window.location.href = '../login.html'; }

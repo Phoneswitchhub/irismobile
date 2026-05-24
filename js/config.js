@@ -6,9 +6,7 @@ const SUPABASE_KEY = 'sb_publishable_WoOZ0hIKP7EV8_l5FKUuyw_awLAvP0Q';
 // 예: 태국 번호 0812345678 -> '0812345678'
 const ADMIN_PHONE = ''; // ← 여기에 본인 전화번호 입력!
 
-// Supabase 클라이언트 생성
-const { createClient } = window.supabase;
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+// 1. 유틸리티 함수 선언 (Supabase 라이브러리 로드 오류 시에도 ReferenceError 방지)
 
 // 전화번호 → 이메일 변환 (내부 인증용)
 function phoneToEmail(phone) {
@@ -64,6 +62,7 @@ function setLoading(btnId, loading, text = '처리 중...') {
 
 // 현재 유저 + 프로필 가져오기
 async function getCurrentProfile() {
+  if (!supabase) return null;
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
   const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
@@ -77,4 +76,18 @@ async function redirectByRole() {
   if (profile.role === 'admin') window.location.href = '/irismobile/admin/dashboard.html';
   else if (profile.role === 'seller') window.location.href = '/irismobile/seller/dashboard.html';
   else window.location.href = '/irismobile/index.html';
+}
+
+// 2. Supabase 클라이언트 안전하게 생성
+try {
+  if (window.supabase && window.supabase.createClient) {
+    const { createClient } = window.supabase;
+    window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+  } else {
+    window.supabase = null;
+    console.error("Supabase 라이브러리가 로드되지 않았습니다. CDN 스크립트 연결을 확인하세요.");
+  }
+} catch (err) {
+  window.supabase = null;
+  console.error("Supabase client 초기화 실패:", err);
 }

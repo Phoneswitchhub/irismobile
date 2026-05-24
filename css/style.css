@@ -145,7 +145,7 @@ img{max-width:100%}
 .form-textarea{width:100%;padding:13px 15px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--t1);font-size:14px;outline:none;resize:vertical;min-height:90px;font-family:'Inter',sans-serif;transition:var(--ease)}
 .form-textarea:focus{border-color:var(--purple);background:rgba(139,92,246,.08)}
 .form-select{width:100%;padding:13px 15px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--t1);font-size:14px;outline:none;font-family:'Inter',sans-serif;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2394a3b8'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 15px center;padding-right:42px}
-.form-select option{background:var(--bg2)}
+.form-select option, .form-input option{background:var(--bg2);color:var(--t1)}
 .phone-row{display:flex;gap:8px}
 .cc{padding:13px 12px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--t1);font-size:14px;min-width:76px;text-align:center;font-weight:700}
 .pin-row{display:flex;gap:10px;justify-content:center}

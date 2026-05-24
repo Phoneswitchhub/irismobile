@@ -107,15 +107,15 @@
             <input type="text" class="form-input" id="rStore" placeholder="예: Kim Mobile Shop">
           </div>
           <div class="form-group">
-            <label class="form-label">매장 소속 지역 (주) / พื้นที่ร้านค้า</label>
+            <label class="form-label">매장 소속 지역 (주) / พื้นที่ร้านค้า (จังหวัด)</label>
             <select class="form-input" id="rProvince">
-              <option value="Bangkok">Bangkok (방콕)</option>
-              <option value="Chiang Mai">Chiang Mai (치앙마이)</option>
-              <option value="Chonburi">Chonburi (촌부리)</option>
-              <option value="Phuket">Phuket (푸켓)</option>
-              <option value="Samut Prakan">Samut Prakan (사뭇프라칸)</option>
-              <option value="Nonthaburi">Nonthaburi (논타부리)</option>
-              <option value="Pathum Thani">Pathum Thani (빠ทุม타니)</option>
+              <option value="">지역(주) 선택 / 선택해주세요</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">매장 소속 구/군 (District) / อำเภอ</label>
+            <select class="form-input" id="rDistrict">
+              <option value="">구/군 선택 / 선택해주세요</option>
             </select>
           </div>
           <div class="form-group">
@@ -161,6 +161,7 @@
 
 <div class="toast" id="globalToast"></div>
 
+<script src="js/thailand-addresses.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/config.js"></script>
 <script>
@@ -171,6 +172,13 @@ try {
   if (window.applyTranslations) applyTranslations();
 } catch (e) {
   console.error("Translation init failed:", e);
+}
+
+// Initialize Thailand address dropdowns
+try {
+  initThailandAddressSelects('rProvince', 'rDistrict');
+} catch (e) {
+  console.error("Address dropdowns init failed:", e);
 }
 
 // Already logged in check (CORS/file protocol safe)
@@ -266,6 +274,7 @@ async function doRegister() {
   const pin = getPin(['r1','r2','r3','r4']);
   const store = document.getElementById('rStore').value.trim();
   const province = document.getElementById('rProvince').value;
+  const district = document.getElementById('rDistrict').value;
   const address = document.getElementById('rAddress').value.trim();
   const coords = document.getElementById('rCoords').value.trim();
   const payout = document.getElementById('rPayout').value;
@@ -279,21 +288,55 @@ async function doRegister() {
   if (pin.length !== 4) { errEl.textContent = 'PIN 4자리를 설정해주세요'; return; }
   if (role === 'seller') {
     if (!store) { errEl.textContent = '매장명을 입력해주세요'; return; }
+    if (!province) { errEl.textContent = '지역(주)을 선택해주세요'; return; }
+    if (!district) { errEl.textContent = '구/군(District)을 선택해주세요'; return; }
     if (!address) { errEl.textContent = '상세 주소를 입력해주세요'; return; }
   }
 
   setLoading('btnReg', true, '가입 중...');
   try {
-    const isAdmin = ADMIN_PHONE && phone === ADMIN_PHONE;
-    const { data, error } = await supabase.auth.signUp({
-      email: phoneToEmail(phone),
-      password: makePassword(pin, phone)
-    });
+    const isAdmin = !!(ADMIN_PHONE && phone === ADMIN_PHONE);
+    let userId = null;
 
-    if (error) {
-      setLoading('btnReg', false);
-      errEl.textContent = error.message.includes('already') ? '이미 등록된 전화번호입니다.' : error.message;
-      return;
+    // Check if there is already an active session matching this phone number
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (currentUser && phoneToEmail(phone) === currentUser.email) {
+      userId = currentUser.id;
+    } else {
+      const { data, error } = await supabase.auth.signUp({
+        email: phoneToEmail(phone),
+        password: makePassword(pin, phone)
+      });
+
+      if (error) {
+        if (error.message.includes('already')) {
+          // Check if profile actually exists in database
+          const { data: existingProfile } = await supabase.from('profiles').select('id').eq('phone', phone).maybeSingle();
+          if (existingProfile) {
+            setLoading('btnReg', false);
+            errEl.textContent = '이미 등록된 전화번호입니다. 로그인해주세요.';
+            return;
+          } else {
+            // Profile does not exist (broken state) -> Try to login to complete registration
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email: phoneToEmail(phone),
+              password: makePassword(pin, phone)
+            });
+            if (signInError) {
+              setLoading('btnReg', false);
+              errEl.textContent = '이미 가입 진행 중인 번호입니다. 기존 PIN 번호로 로그인하시거나 다른 번호로 가입해주세요.';
+              return;
+            }
+            userId = signInData.user.id;
+          }
+        } else {
+          setLoading('btnReg', false);
+          errEl.textContent = error.message;
+          return;
+        }
+      } else {
+        userId = data.user.id;
+      }
     }
 
     // Logo upload for sellers
@@ -302,7 +345,7 @@ async function doRegister() {
       const file = document.getElementById('rLogo').files[0];
       if (file) {
         const ext = file.name.split('.').pop();
-        const path = `avatars/${data.user.id}_logo.${ext}`;
+        const path = `avatars/${userId}_logo.${ext}`;
         const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
         if (!upErr) {
           const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
@@ -313,7 +356,7 @@ async function doRegister() {
 
     // Insert profile with extended fields for sellers
     const profileData = {
-      id: data.user.id,
+      id: userId,
       phone, name,
       role: isAdmin ? 'admin' : role,
       store_name: store || null,
@@ -324,6 +367,7 @@ async function doRegister() {
     if (role === 'seller') {
       profileData.partner_type = 'partner'; // Newly registered partner shop
       profileData.location_province = province;
+      profileData.location_district = district;
       profileData.location_address = address;
       profileData.location_coords = coords || null;
       profileData.payout_method = payout;
@@ -353,7 +397,18 @@ async function redirect() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
   const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (!p) { window.location.href = 'index.html'; return; }
+  if (!p) { 
+    // 프로필이 없는 경우 (인증은 되었으나 프로필 생성이 실패한 비정상 세션)
+    // 회원가입 페이지로 이동시키고 전화번호를 입력하여 완성을 유도합니다.
+    showToast('프로필 정보가 완성되지 않았습니다. 가입 정보를 입력하여 완료해 주세요.', 'error');
+    switchForm('reg');
+    const rawEmail = user.email || '';
+    const phoneNum = rawEmail.split('@')[0];
+    if (phoneNum) {
+      document.getElementById('rPhone').value = phoneNum;
+    }
+    return; 
+  }
   if (p.role === 'admin') window.location.href = 'admin/dashboard.html';
   else if (p.role === 'seller') window.location.href = 'seller/dashboard.html';
   else window.location.href = 'index.html';

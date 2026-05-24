@@ -288,6 +288,11 @@ async function init() {
         } else {
           dash.href = p.role === 'admin' ? 'admin/dashboard.html' : 'seller/dashboard.html';
         }
+      } else {
+        // 프로필이 없는 경우 (인증은 되었으나 프로필 생성이 실패한 비정상 세션)
+        console.warn("User has active auth session but no profile exists. Redirecting to complete registration...");
+        window.location.href = 'login.html';
+        return;
       }
     }
 
@@ -303,7 +308,7 @@ async function init() {
 
     // 4. Load Shops
     const { data: profilesList } = await supabase.from('profiles')
-      .select('id, name, store_name, profile_image, description, partner_type, location_province, location_address, location_coords, commission_rate, payout_method')
+      .select('id, name, store_name, profile_image, description, partner_type, location_province, location_district, location_address, location_coords, commission_rate, payout_method')
       .eq('role', 'seller')
       .eq('is_approved', true);
     
@@ -374,7 +379,8 @@ function renderShopsListView(list) {
     const badgeClass = s.partner_type === 'subsidiary' ? 'meta-subsidiary' : 'meta-partner';
     const badgeText = s.partner_type === 'subsidiary' ? t('partner_subsidiary') : t('partner_merchant');
     
-    return `
+            const locText = s.location_province ? `${s.location_province}${s.location_district ? ' - ' + s.location_district : ''}` : 'Bangkok';
+            return `
       <div class="card" style="display:flex; flex-direction:column; gap:12px;">
         <div style="display:flex; align-items:center; gap:12px;">
           <div class="s-avatar" style="margin:0; width:52px; height:52px;">
@@ -385,7 +391,7 @@ function renderShopsListView(list) {
               ${name}
               <span class="meta-tag ${badgeClass}" style="font-size:9px;">${badgeText}</span>
             </div>
-            <div style="font-size:12px; color:var(--t2); margin-top:2px;">📍 ${s.location_province || 'Bangkok'}</div>
+            <div style="font-size:12px; color:var(--t2); margin-top:2px;">📍 ${locText}</div>
           </div>
         </div>
         <div style="font-size:12px; color:var(--t2); line-height:1.5;">${s.description || '검증된 파트너 매장입니다.'}</div>
@@ -413,7 +419,7 @@ function populateLocationFilter(list) {
 // Load products
 async function loadProducts(cat) {
   let q = supabase.from('products')
-    .select('id, title, description, price, images, category, seller_id, condition, stock, status, profiles(name, store_name, partner_type, location_province, location_address)')
+    .select('id, title, description, price, images, category, seller_id, condition, stock, status, profiles(name, store_name, partner_type, location_province, location_district, location_address)')
     .eq('status', 'active')
     .order('created_at', { ascending: false });
   
@@ -435,6 +441,7 @@ function renderProds(list, elementId) {
   g.innerHTML = list.map(p => {
     const storeName = p.profiles?.store_name || p.profiles?.name || '판매자';
     const province = p.profiles?.location_province || 'Bangkok';
+    const districtText = p.profiles?.location_district ? ` - ${p.profiles.location_district}` : '';
     const isSubsidiary = p.profiles?.partner_type === 'subsidiary';
     const storeBadge = isSubsidiary ? 'meta-subsidiary' : 'meta-partner';
     const conditionText = t('condition_' + (p.condition ? p.condition.toLowerCase().replace(' ', '') : 's'));
@@ -448,7 +455,7 @@ function renderProds(list, elementId) {
         <div class="p-info">
           <div class="meta-row">
             <span class="meta-tag ${storeBadge}">${storeName}</span>
-            <span class="meta-loc">📍 ${province}</span>
+            <span class="meta-loc">📍 ${province}${districtText}</span>
           </div>
           <div class="p-title">${p.title}</div>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;">
@@ -475,7 +482,7 @@ async function triggerSearch() {
   }
   
   let query = supabase.from('products')
-    .select('id, title, description, price, images, category, seller_id, condition, stock, status, profiles(name, store_name, partner_type, location_province, location_address)')
+    .select('id, title, description, price, images, category, seller_id, condition, stock, status, profiles(name, store_name, partner_type, location_province, location_district, location_address)')
     .eq('status', 'active');
     
   if (kw) {
@@ -540,7 +547,7 @@ async function openOrder(id) {
   if (!currentProd) {
     // If not found in main view, check in search results
     const { data } = await supabase.from('products')
-      .select('id, title, description, price, images, category, seller_id, condition, stock, status, profiles(name, store_name, partner_type, location_province, location_address, commission_rate, payout_method)')
+      .select('id, title, description, price, images, category, seller_id, condition, stock, status, profiles(name, store_name, partner_type, location_province, location_district, location_address, commission_rate, payout_method)')
       .eq('id', id).single();
     currentProd = data;
   }
