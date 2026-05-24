@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>관리자 대시보드 — Iris Mobile</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="db-wrap">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-head">
+      <a href="../index.html" class="nav-logo">
+        <div class="nav-logo-icon">💎</div>
+        <span class="nav-logo-text">IRIS MOBILE</span>
+      </a>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-sec-lbl">관리자 메뉴</div>
+      <button class="sb-link active" onclick="showPage('overview',this)"><span class="ico">📊</span> 개요</button>
+      <button class="sb-link" onclick="showPage('sellers',this)"><span class="ico">💼</span> 판매자 관리</button>
+      <button class="sb-link" onclick="showPage('buyers',this)"><span class="ico">👥</span> 구매자 관리</button>
+      <button class="sb-link" onclick="showPage('products',this)"><span class="ico">📱</span> 전체 상품</button>
+      <button class="sb-link" onclick="showPage('orders',this)"><span class="ico">📦</span> 전체 주문</button>
+      <div class="sb-sec-lbl">바로가기</div>
+      <a class="sb-link" href="../index.html"><span class="ico">🏠</span> 메인 홈</a>
+      <a class="sb-link" href="../shop.html"><span class="ico">🛍️</span> 쇼핑몰</a>
+    </nav>
+    <div class="sb-foot">
+      <div class="sb-user">
+        <div class="sb-avatar">👑</div>
+        <div>
+          <div class="sb-uname" id="adminName">관리자</div>
+          <div class="sb-urole">Admin</div>
+        </div>
+      </div>
+      <button class="btn-nav btn-nav-outline" style="width:100%;margin-top:12px;justify-content:center;" onclick="doLogout()">🚪 로그아웃</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- ===== OVERVIEW ===== -->
+    <div id="page-overview">
+      <div class="main-hd"><h1>📊 관리자 개요</h1><span id="adminDate" style="color:var(--t2);font-size:13px;"></span></div>
+      <div class="main-body">
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="sc-icon" style="background:rgba(139,92,246,.15);">👥</div>
+            <div class="sc-val" id="aUsers">—</div><div class="sc-lbl">전체 회원</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-icon" style="background:rgba(251,191,36,.15);">💼</div>
+            <div class="sc-val" id="aSellers">—</div><div class="sc-lbl">판매자</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-icon" style="background:rgba(16,185,129,.15);">📱</div>
+            <div class="sc-val" id="aProds">—</div><div class="sc-lbl">등록 상품</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-icon" style="background:rgba(34,211,238,.15);">📦</div>
+            <div class="sc-val" id="aOrders">—</div><div class="sc-lbl">전체 주문</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-icon" style="background:rgba(251,191,36,.15);">💰</div>
+            <div class="sc-val" id="aRevenue">—</div><div class="sc-lbl">총 매출 (฿)</div>
+          </div>
+          <div class="stat-card" style="cursor:pointer;" onclick="showPage('sellers',null)">
+            <div class="sc-icon" style="background:rgba(239,68,68,.15);">⏳</div>
+            <div class="sc-val" id="aPending">—</div><div class="sc-lbl">승인 대기</div>
+          </div>
+        </div>
+
+        <!-- Pending sellers alert -->
+        <div id="pendingAlert" style="display:none;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);border-radius:var(--r);padding:18px;margin-bottom:24px;display:flex;align-items:center;gap:12px;">
+          <span style="font-size:24px;">⚠️</span>
+          <div>
+            <div style="font-weight:700;margin-bottom:4px;">판매자 승인 대기 중</div>
+            <div style="font-size:13px;color:var(--t2);">승인 대기 중인 판매자가 있습니다. <span style="color:var(--gold);cursor:pointer;font-weight:700;" onclick="showPage('sellers',null)">지금 확인하기 →</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="font-family:'Outfit',sans-serif;font-weight:700;margin-bottom:18px;">최근 주문 현황</h3>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr><th>구매자</th><th>판매자</th><th>상품</th><th>금액</th><th>날짜</th><th>상태</th></tr></thead>
+              <tbody id="recentOrdersTbl"><tr><td colspan="6" style="text-align:center;padding:30px;color:var(--t3);">로딩 중…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SELLERS ===== -->
+    <div id="page-sellers" style="display:none;">
+      <div class="main-hd">
+        <h1>💼 판매자 관리</h1>
+        <div style="display:flex;gap:8px;">
+          <span class="badge bg-yellow" id="pendingCount">대기 0</span>
+          <span class="badge bg-green" id="approvedCount">승인 0</span>
+        </div>
+      </div>
+      <div class="main-body">
+        <!-- Pending -->
+        <h3 style="font-family:'Outfit',sans-serif;font-weight:700;margin-bottom:14px;">⏳ 승인 대기</h3>
+        <div class="tbl-wrap" style="margin-bottom:28px;">
+          <table class="tbl">
+            <thead><tr><th>이름</th><th>전화번호</th><th>매장명</th><th>소개</th><th>가입일</th><th>처리</th></tr></thead>
+            <tbody id="pendingSellers"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--t3);">로딩 중…</td></tr></tbody>
+          </table>
+        </div>
+        <!-- Approved -->
+        <h3 style="font-family:'Outfit',sans-serif;font-weight:700;margin-bottom:14px;">✅ 승인된 판매자</h3>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>이름</th><th>전화번호</th><th>매장명</th><th>상품수</th><th>가입일</th><th>처리</th></tr></thead>
+            <tbody id="approvedSellers"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--t3);">로딩 중…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== BUYERS ===== -->
+    <div id="page-buyers" style="display:none;">
+      <div class="main-hd"><h1>👥 구매자 관리</h1></div>
+      <div class="main-body">
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>이름</th><th>전화번호</th><th>가입일</th><th>주문수</th><th>처리</th></tr></thead>
+            <tbody id="buyersTbl"><tr><td colspan="5" style="text-align:center;padding:30px;color:var(--t3);">로딩 중…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PRODUCTS ===== -->
+    <div id="page-products" style="display:none;">
+      <div class="main-hd"><h1>📱 전체 상품</h1></div>
+      <div class="main-body">
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>상품명</th><th>판매자</th><th>카테고리</th><th>가격</th><th>재고</th><th>상태</th><th>등록일</th><th>처리</th></tr></thead>
+            <tbody id="allProductsTbl"><tr><td colspan="8" style="text-align:center;padding:30px;color:var(--t3);">로딩 중…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== ORDERS ===== -->
+    <div id="page-orders" style="display:none;">
+      <div class="main-hd"><h1>📦 전체 주문</h1></div>
+      <div class="main-body">
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>주문번호</th><th>구매자</th><th>판매자</th><th>상품</th><th>금액</th><th>날짜</th><th>상태</th></tr></thead>
+            <tbody id="allOrdersTbl"><tr><td colspan="7" style="text-align:center;padding:30px;color:var(--t3);">로딩 중…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="globalToast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/config.js"></script>
+<script>
+async function init() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) { window.location.href = '../login.html'; return; }
+  const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+  if (!p || p.role !== 'admin') { window.location.href = '../index.html'; return; }
+  document.getElementById('adminName').textContent = p.name;
+  document.getElementById('adminDate').textContent = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  await Promise.all([loadStats(), loadRecentOrders(), loadSellers(), loadBuyers(), loadAllProducts(), loadAllOrders()]);
+}
+
+async function loadStats() {
+  const [users, sellers, prods, orders, revenue, pending] = await Promise.all([
+    supabase.from('profiles').select('*', { count: 'exact', head: true }),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'seller').eq('is_approved', true),
+    supabase.from('products').select('*', { count: 'exact', head: true }),
+    supabase.from('orders').select('*', { count: 'exact', head: true }),
+    supabase.from('orders').select('total_price').eq('status', 'completed'),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'seller').eq('is_approved', false)
+  ]);
+  document.getElementById('aUsers').textContent = users.count || 0;
+  document.getElementById('aSellers').textContent = sellers.count || 0;
+  document.getElementById('aProds').textContent = prods.count || 0;
+  document.getElementById('aOrders').textContent = orders.count || 0;
+  const total = (revenue.data || []).reduce((s, o) => s + Number(o.total_price), 0);
+  document.getElementById('aRevenue').textContent = total.toLocaleString();
+  const pc = pending.count || 0;
+  document.getElementById('aPending').textContent = pc;
+  if (pc > 0) document.getElementById('pendingAlert').style.display = 'flex';
+}
+
+async function loadRecentOrders() {
+  const { data } = await supabase.from('orders')
+    .select('*, products(title), buyer:profiles!orders_buyer_id_fkey(name), seller:profiles!orders_seller_id_fkey(name)')
+    .order('created_at', { ascending: false }).limit(8);
+  const tbody = document.getElementById('recentOrdersTbl');
+  if (!data?.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--t3);">주문 없음</td></tr>'; return; }
+  tbody.innerHTML = data.map(o => `
+    <tr>
+      <td>${o.buyer?.name || '—'}</td>
+      <td>${o.seller?.name || '—'}</td>
+      <td>${o.products?.title || '—'}</td>
+      <td style="color:var(--gold);font-weight:700;">฿${Number(o.total_price).toLocaleString()}</td>
+      <td style="font-size:12px;color:var(--t3);">${formatDate(o.created_at)}</td>
+      <td><span class="badge ${statusBadge(o.status)}">${statusText(o.status)}</span></td>
+    </tr>
+  `).join('');
+}
+
+async function loadSellers() {
+  const { data: pending } = await supabase.from('profiles').select('*').eq('role', 'seller').eq('is_approved', false).order('created_at', { ascending: false });
+  const { data: approved } = await supabase.from('profiles').select('*').eq('role', 'seller').eq('is_approved', true).order('created_at', { ascending: false });
+
+  document.getElementById('pendingCount').textContent = `대기 ${pending?.length || 0}`;
+  document.getElementById('approvedCount').textContent = `승인 ${approved?.length || 0}`;
+
+  const pb = document.getElementById('pendingSellers');
+  if (!pending?.length) { pb.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--t3);">대기 중인 판매자 없음 ✅</td></tr>'; }
+  else pb.innerHTML = pending.map(s => `
+    <tr>
+      <td style="font-weight:600;color:var(--t1);">${s.name}</td>
+      <td>+66 ${s.phone}</td>
+      <td>${s.store_name || '—'}</td>
+      <td style="font-size:12px;color:var(--t2);max-width:160px;">${s.description || '—'}</td>
+      <td style="font-size:12px;color:var(--t3);">${formatDate(s.created_at)}</td>
+      <td style="display:flex;gap:6px;">
+        <button class="btn-sm btn-green" onclick="approveSeller('${s.id}')">✅ 승인</button>
+        <button class="btn-sm btn-red" onclick="rejectSeller('${s.id}')">❌ 거절</button>
+      </td>
+    </tr>
+  `).join('');
+
+  const ab = document.getElementById('approvedSellers');
+  if (!approved?.length) { ab.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--t3);">없음</td></tr>'; }
+  else ab.innerHTML = approved.map(s => `
+    <tr>
+      <td style="font-weight:600;color:var(--t1);">${s.name}</td>
+      <td>+66 ${s.phone}</td>
+      <td>${s.store_name || '—'}</td>
+      <td>—</td>
+      <td style="font-size:12px;color:var(--t3);">${formatDate(s.created_at)}</td>
+      <td><button class="btn-sm btn-red" onclick="suspendSeller('${s.id}')">🚫 정지</button></td>
+    </tr>
+  `).join('');
+}
+
+async function approveSeller(id) {
+  await supabase.from('profiles').update({ is_approved: true }).eq('id', id);
+  showToast('✅ 판매자가 승인됐습니다!', 'success');
+  await Promise.all([loadStats(), loadSellers()]);
+}
+
+async function rejectSeller(id) {
+  if (!confirm('거절하면 계정이 비활성화됩니다. 계속하시겠습니까?')) return;
+  await supabase.from('profiles').update({ role: 'buyer' }).eq('id', id);
+  showToast('❌ 판매자가 거절됐습니다.', 'error');
+  await loadSellers();
+}
+
+async function suspendSeller(id) {
+  if (!confirm('이 판매자를 정지하시겠습니까?')) return;
+  await supabase.from('profiles').update({ is_approved: false }).eq('id', id);
+  showToast('🚫 판매자가 정지됐습니다.', 'error');
+  await loadSellers();
+}
+
+async function loadBuyers() {
+  const { data } = await supabase.from('profiles').select('*').eq('role', 'buyer').order('created_at', { ascending: false });
+  const tbody = document.getElementById('buyersTbl');
+  if (!data?.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--t3);">구매자 없음</td></tr>'; return; }
+  tbody.innerHTML = data.map(b => `
+    <tr>
+      <td style="font-weight:600;color:var(--t1);">${b.name}</td>
+      <td>+66 ${b.phone}</td>
+      <td style="font-size:12px;color:var(--t3);">${formatDate(b.created_at)}</td>
+      <td>—</td>
+      <td><button class="btn-sm btn-red" onclick="deleteUser('${b.id}')">🗑️ 삭제</button></td>
+    </tr>
+  `).join('');
+}
+
+async function deleteUser(id) {
+  if (!confirm('정말 삭제하시겠습니까?')) return;
+  await supabase.from('profiles').delete().eq('id', id);
+  showToast('🗑️ 회원이 삭제됐습니다.');
+  await loadBuyers(); await loadStats();
+}
+
+async function loadAllProducts() {
+  const { data } = await supabase.from('products').select('*, profiles(name)').order('created_at', { ascending: false });
+  const tbody = document.getElementById('allProductsTbl');
+  if (!data?.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--t3);">상품 없음</td></tr>'; return; }
+  tbody.innerHTML = data.map(p => `
+    <tr>
+      <td style="font-weight:600;color:var(--t1);max-width:180px;">${p.title}</td>
+      <td>${p.profiles?.name || '—'}</td>
+      <td><span class="badge bg-purple">${p.category}</span></td>
+      <td style="color:var(--gold);font-weight:700;">฿${Number(p.price).toLocaleString()}</td>
+      <td>${p.stock}</td>
+      <td><span class="badge ${p.status === 'active' ? 'bg-green' : 'bg-gray'}">${p.status === 'active' ? '판매중' : '숨김'}</span></td>
+      <td style="font-size:12px;color:var(--t3);">${formatDate(p.created_at)}</td>
+      <td><button class="btn-sm btn-red" onclick="adminDeleteProduct('${p.id}')">🗑️</button></td>
+    </tr>
+  `).join('');
+}
+
+async function adminDeleteProduct(id) {
+  if (!confirm('이 상품을 삭제하시겠습니까?')) return;
+  await supabase.from('products').delete().eq('id', id);
+  showToast('🗑️ 상품이 삭제됐습니다.');
+  await loadAllProducts(); await loadStats();
+}
+
+async function loadAllOrders() {
+  const { data } = await supabase.from('orders')
+    .select('*, products(title), buyer:profiles!orders_buyer_id_fkey(name), seller:profiles!orders_seller_id_fkey(name)')
+    .order('created_at', { ascending: false });
+  const tbody = document.getElementById('allOrdersTbl');
+  if (!data?.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--t3);">주문 없음</td></tr>'; return; }
+  tbody.innerHTML = data.map(o => `
+    <tr>
+      <td style="font-size:11px;color:var(--t3);">${o.id.slice(0,8)}…</td>
+      <td>${o.buyer?.name || '—'}</td>
+      <td>${o.seller?.name || '—'}</td>
+      <td style="max-width:150px;">${o.products?.title || '—'}</td>
+      <td style="color:var(--gold);font-weight:700;">฿${Number(o.total_price).toLocaleString()}</td>
+      <td style="font-size:12px;color:var(--t3);">${formatDate(o.created_at)}</td>
+      <td><span class="badge ${statusBadge(o.status)}">${statusText(o.status)}</span></td>
+    </tr>
+  `).join('');
+}
+
+let activePage = 'overview';
+function showPage(pg, el) {
+  ['overview','sellers','buyers','products','orders'].forEach(p => {
+    document.getElementById('page-' + p).style.display = p === pg ? 'block' : 'none';
+  });
+  document.querySelectorAll('.sb-link').forEach(l => l.classList.remove('active'));
+  if (el) el.classList.add('active');
+}
+
+async function doLogout() { await supabase.auth.signOut(); window.location.href = '../login.html'; }
+
+function statusText(s) { return { pending:'대기중', confirmed:'확인됨', completed:'완료', cancelled:'취소' }[s] || s; }
+function statusBadge(s) { return { pending:'bg-yellow', confirmed:'bg-blue', completed:'bg-green', cancelled:'bg-red' }[s] || 'bg-gray'; }
+
+init();
+</script>
+</body>
+</html>

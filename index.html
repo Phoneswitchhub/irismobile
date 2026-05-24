@@ -2,9 +2,290 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>Iris Mobile Shop</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iris Mobile — Thailand's Premium Phone Marketplace</title>
+  <meta name="description" content="태국 프리미엄 중고 스마트폰 마켓. 검증된 판매자와 안전하게 거래하세요. iPhone, Samsung, Xiaomi.">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <h1>Coming Soon</h1>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">
+    <div class="nav-logo-icon">💎</div>
+    <span class="nav-logo-text">IRIS MOBILE</span>
+  </a>
+  <div class="nav-links">
+    <a href="shop.html" class="nav-a">🛍️ Shop</a>
+    <a href="#sellers" class="nav-a">👥 Sellers</a>
+    <span id="navUser" style="display:none;font-size:13px;color:var(--t2);font-weight:600;padding:0 4px;"></span>
+    <a href="login.html" id="btnLogin" class="btn-nav">🔑 Login</a>
+    <a href="#" id="btnDash" class="btn-nav" style="display:none;background:var(--gg);">📊 Dashboard</a>
+    <button id="btnLogout" class="btn-nav btn-nav-outline" style="display:none;">Logout</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div class="hero-content">
+    <div class="hero-badge">✨ &nbsp;Thailand No.1 Used Phone Marketplace</div>
+    <h1 class="hero-title">
+      Buy & Sell<br>
+      <span class="grad">iPhone &amp; Galaxy</span><br>
+      in Thailand
+    </h1>
+    <p class="hero-sub">
+      검증된 판매자들의 중고 스마트폰을 안전하게 구매하세요.<br>
+      전화번호로 간편하게 로그인하고 바로 거래를 시작하세요. 🇹🇭
+    </p>
+    <div class="hero-btns">
+      <a href="shop.html" class="btn btn-primary">🛍️ 지금 쇼핑하기</a>
+      <a href="login.html" class="btn btn-secondary">💼 판매자 등록</a>
+    </div>
+    <div class="stats-bar">
+      <div>
+        <div class="stat-num" id="sProducts">—</div>
+        <div class="stat-lbl">등록 상품</div>
+      </div>
+      <div>
+        <div class="stat-num" id="sSellers">—</div>
+        <div class="stat-lbl">활성 판매자</div>
+      </div>
+      <div>
+        <div class="stat-num" id="sOrders">—</div>
+        <div class="stat-lbl">성사된 거래</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SELLERS -->
+<section class="section" id="sellers">
+  <div class="sec-head">
+    <div class="sec-label">Our Team &amp; Partners</div>
+    <h2 class="sec-title">검증된 판매자</h2>
+    <p class="sec-desc">직접 검증한 매장과 직원들이 판매합니다. 안심하고 거래하세요.</p>
+  </div>
+  <div class="sellers-grid" id="sellersGrid">
+    <div class="empty" style="grid-column:1/-1;">
+      <div class="empty-ico">👥</div>
+      <div class="empty-ttl">판매자 로딩 중…</div>
+    </div>
+  </div>
+</section>
+
+<!-- PRODUCTS -->
+<section class="section section-alt">
+  <div class="sec-head">
+    <div class="sec-label">Latest Arrivals</div>
+    <h2 class="sec-title">최신 상품</h2>
+    <p class="sec-desc">매일 업데이트되는 새 스마트폰들을 만나보세요.</p>
+  </div>
+  <div class="cat-filter">
+    <button class="cat-btn active" onclick="filterCat(this,'all')">전체</button>
+    <button class="cat-btn" onclick="filterCat(this,'iPhone')">🍎 iPhone</button>
+    <button class="cat-btn" onclick="filterCat(this,'Samsung')">🌟 Samsung</button>
+    <button class="cat-btn" onclick="filterCat(this,'Xiaomi')">🔴 Xiaomi</button>
+    <button class="cat-btn" onclick="filterCat(this,'Other')">📦 기타</button>
+  </div>
+  <div class="products-grid" id="prodsGrid">
+    <div class="empty" style="grid-column:1/-1;">
+      <div class="empty-ico">📱</div>
+      <div class="empty-ttl">상품 로딩 중…</div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:44px;">
+    <a href="shop.html" class="btn btn-secondary">더 많은 상품 보기 →</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-logo">💎 IRIS MOBILE</div>
+  <div class="footer-sub">Thailand's Premium Used Phone Marketplace · Phoneswitchhub</div>
+  <div class="footer-copy">© 2025 Iris Mobile. All rights reserved.</div>
+</footer>
+
+<!-- ORDER MODAL -->
+<div class="modal-bg" id="orderModal">
+  <div class="modal">
+    <div class="modal-hd">
+      <span class="modal-title">🛍️ 구매 요청</span>
+      <button class="modal-x" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modalProductInfo" style="background:var(--card);border-radius:var(--r-sm);padding:14px;margin-bottom:20px;"></div>
+    <div class="form-group">
+      <label class="form-label">수량</label>
+      <input type="number" class="form-input" id="oQty" value="1" min="1" oninput="calcTotal()">
+    </div>
+    <div class="form-group">
+      <label class="form-label">요청사항 (선택) / หมายเหตุ</label>
+      <textarea class="form-textarea" id="oNotes" placeholder="색상, 용량, 기타 요청사항"></textarea>
+    </div>
+    <div style="background:var(--card);border-radius:var(--r-sm);padding:14px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="color:var(--t2);font-size:13px;">합계 / รวม</span>
+      <span style="font-family:'Outfit',sans-serif;font-size:24px;font-weight:900;color:var(--gold);" id="oTotal">฿0</span>
+    </div>
+    <button class="btn-submit" id="btnOrder" onclick="submitOrder()">✅ 구매 요청</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="globalToast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script>
+let products = [];
+let currentProd = null;
+
+async function init() {
+  // Auth state
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    if (p) {
+      document.getElementById('btnLogin').style.display = 'none';
+      document.getElementById('btnLogout').style.display = 'flex';
+      document.getElementById('navUser').style.display = 'inline';
+      document.getElementById('navUser').textContent = '👋 ' + p.name;
+      const dash = document.getElementById('btnDash');
+      dash.style.display = 'flex';
+      dash.href = p.role === 'admin' ? 'admin/dashboard.html' : 'seller/dashboard.html';
+    }
+  }
+
+  // Stats
+  const [p, s, o] = await Promise.all([
+    supabase.from('products').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'seller').eq('is_approved', true),
+    supabase.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'completed')
+  ]);
+  animNum('sProducts', p.count || 0);
+  animNum('sSellers', s.count || 0);
+  animNum('sOrders', o.count || 0);
+
+  // Sellers
+  const { data: sellers } = await supabase.from('profiles')
+    .select('id, name, store_name, profile_image, description')
+    .eq('role', 'seller').eq('is_approved', true).limit(8);
+
+  const sg = document.getElementById('sellersGrid');
+  if (!sellers || !sellers.length) {
+    sg.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-ico">👥</div><div class="empty-ttl">아직 등록된 판매자가 없습니다</div></div>';
+  } else {
+    sg.innerHTML = sellers.map(s => `
+      <div class="seller-card" onclick="location.href='shop.html?seller=${s.id}'">
+        <div class="s-avatar">${s.profile_image ? `<img src="${s.profile_image}">` : avatarEmoji(s.name)}</div>
+        <div class="s-name">${s.name}</div>
+        <div class="s-store">🏪 ${s.store_name || 'Iris Mobile'}</div>
+        <div class="s-desc">${s.description || '검증된 판매자입니다.'}</div>
+      </div>
+    `).join('');
+  }
+
+  // Products
+  await loadProducts('all');
+}
+
+async function loadProducts(cat) {
+  let q = supabase.from('products')
+    .select('id, title, description, price, images, category, seller_id, profiles(name, store_name)')
+    .eq('status', 'active').order('created_at', { ascending: false }).limit(8);
+  if (cat !== 'all') q = q.eq('category', cat);
+  const { data } = await q;
+  products = data || [];
+  renderProds(products);
+}
+
+function renderProds(list) {
+  const g = document.getElementById('prodsGrid');
+  if (!list.length) {
+    g.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-ico">📱</div><div class="empty-ttl">상품이 없습니다</div></div>';
+    return;
+  }
+  g.innerHTML = list.map(p => `
+    <div class="product-card">
+      <div class="p-img">
+        ${p.images?.[0] ? `<img src="${p.images[0]}" alt="${p.title}" loading="lazy">` : catEmoji(p.category)}
+        <div class="p-badge">${p.category || 'Mobile'}</div>
+      </div>
+      <div class="p-info">
+        <div class="p-seller">👤 ${p.profiles?.store_name || p.profiles?.name || '판매자'}</div>
+        <div class="p-title">${p.title}</div>
+        <div class="p-price">฿${Number(p.price).toLocaleString()} <small>THB</small></div>
+        <button class="btn-buy" onclick="openOrder('${p.id}')">🛒 구매하기</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterCat(el, cat) {
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  loadProducts(cat);
+}
+
+async function openOrder(id) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) { window.location.href = 'login.html'; return; }
+  currentProd = products.find(p => p.id === id);
+  if (!currentProd) return;
+  document.getElementById('modalProductInfo').innerHTML = `
+    <div style="font-weight:700;font-size:15px;margin-bottom:4px;">${currentProd.title}</div>
+    <div style="color:var(--gold);font-size:20px;font-weight:900;">฿${Number(currentProd.price).toLocaleString()}</div>
+    <div style="color:var(--t2);font-size:12px;margin-top:5px;">${currentProd.description || ''}</div>
+  `;
+  document.getElementById('oQty').value = 1;
+  document.getElementById('oNotes').value = '';
+  calcTotal();
+  document.getElementById('orderModal').classList.add('open');
+}
+
+function calcTotal() {
+  if (!currentProd) return;
+  const qty = parseInt(document.getElementById('oQty').value) || 1;
+  document.getElementById('oTotal').textContent = '฿' + (Number(currentProd.price) * qty).toLocaleString();
+}
+
+async function submitOrder() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || !currentProd) return;
+  setLoading('btnOrder', true, '처리 중...');
+  const qty = parseInt(document.getElementById('oQty').value) || 1;
+  const { error } = await supabase.from('orders').insert({
+    buyer_id: user.id,
+    seller_id: currentProd.seller_id,
+    product_id: currentProd.id,
+    quantity: qty,
+    total_price: Number(currentProd.price) * qty,
+    notes: document.getElementById('oNotes').value || null
+  });
+  setLoading('btnOrder', false);
+  if (error) { showToast('❌ 오류: ' + error.message, 'error'); return; }
+  closeModal();
+  showToast('✅ 구매 요청 완료! 판매자가 곧 연락드립니다.', 'success');
+}
+
+function closeModal() { document.getElementById('orderModal').classList.remove('open'); }
+
+document.getElementById('btnLogout').addEventListener('click', async () => {
+  await supabase.auth.signOut(); window.location.reload();
+});
+
+function animNum(id, target) {
+  const el = document.getElementById(id);
+  let n = 0; const step = Math.max(1, Math.ceil(target / 40));
+  const t = setInterval(() => { n = Math.min(n + step, target); el.textContent = n; if (n >= target) clearInterval(t); }, 25);
+}
+function avatarEmoji(name) { return ['👨','👩','🧑','👦','👧','🧔'][name ? name.charCodeAt(0) % 6 : 0]; }
+function catEmoji(c) { return { iPhone: '🍎', Samsung: '🌟', Xiaomi: '🔴', Other: '📦' }[c] || '📱'; }
+
+init();
+</script>
 </body>
 </html>

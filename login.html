@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>로그인 — Iris Mobile</title>
+  <meta name="description" content="Iris Mobile에 로그인하거나 회원가입하세요.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="orb orb-1" style="position:fixed;"></div>
+  <div class="orb orb-2" style="position:fixed;"></div>
+
+  <div class="auth-card">
+    <!-- Logo -->
+    <div class="auth-logo">
+      <div class="icon">💎</div>
+      <h1>IRIS MOBILE</h1>
+      <p>전화번호로 간편하게 시작하세요 🇹🇭</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="auth-tabs">
+      <button class="tab-btn active" id="tabA" onclick="switchTab('login')">🔑 로그인</button>
+      <button class="tab-btn" id="tabB" onclick="switchTab('reg')">📝 회원가입</button>
+    </div>
+
+    <!-- ===== LOGIN ===== -->
+    <div id="loginForm">
+      <div class="form-group">
+        <label class="form-label">전화번호 / เบอร์โทร</label>
+        <div class="phone-row">
+          <div class="cc">🇹🇭 +66</div>
+          <input type="tel" class="form-input" id="lPhone" placeholder="812345678" maxlength="10" inputmode="numeric">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">PIN 번호 (4자리) / PIN</label>
+        <div class="pin-row">
+          <input type="password" class="pin-box" id="l1" maxlength="1" inputmode="numeric">
+          <input type="password" class="pin-box" id="l2" maxlength="1" inputmode="numeric">
+          <input type="password" class="pin-box" id="l3" maxlength="1" inputmode="numeric">
+          <input type="password" class="pin-box" id="l4" maxlength="1" inputmode="numeric">
+        </div>
+      </div>
+      <div class="err" id="lErr"></div>
+      <button class="btn-submit" id="btnLogin" onclick="doLogin()">🔑 로그인</button>
+      <p style="text-align:center;margin-top:18px;font-size:13px;color:var(--t2);">
+        계정이 없으신가요? <span style="color:var(--purple-l);cursor:pointer;font-weight:700;" onclick="switchTab('reg')">회원가입</span>
+      </p>
+    </div>
+
+    <!-- ===== REGISTER ===== -->
+    <div id="regForm" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">이름 / ชื่อ</label>
+        <input type="text" class="form-input" id="rName" placeholder="홍길동 / สมชาย">
+      </div>
+      <div class="form-group">
+        <label class="form-label">전화번호 / เบอร์โทร</label>
+        <div class="phone-row">
+          <div class="cc">🇹🇭 +66</div>
+          <input type="tel" class="form-input" id="rPhone" placeholder="812345678" maxlength="10" inputmode="numeric">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">역할 선택 / เลือกบทบาท</label>
+        <div class="role-grid">
+          <div class="role-opt sel" id="rBuyer" onclick="pickRole('buyer')">
+            <div class="role-icon">🛍️</div>
+            <div class="role-name">구매자</div>
+            <div class="role-hint">물건을 구매합니다</div>
+          </div>
+          <div class="role-opt" id="rSeller" onclick="pickRole('seller')">
+            <div class="role-icon">💼</div>
+            <div class="role-name">판매자</div>
+            <div class="role-hint">물건을 판매합니다</div>
+          </div>
+        </div>
+      </div>
+      <div id="sellerExtra" style="display:none;">
+        <div class="form-group">
+          <label class="form-label">매장명 / ชื่อร้าน</label>
+          <input type="text" class="form-input" id="rStore" placeholder="예: Kim Mobile Shop">
+        </div>
+        <div class="form-group">
+          <label class="form-label">매장 소개 / แนะนำร้าน</label>
+          <textarea class="form-textarea" id="rDesc" placeholder="매장 소개를 간단히 작성해주세요"></textarea>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">PIN 번호 설정 (4자리) / ตั้ง PIN</label>
+        <div class="pin-row">
+          <input type="password" class="pin-box" id="r1" maxlength="1" inputmode="numeric">
+          <input type="password" class="pin-box" id="r2" maxlength="1" inputmode="numeric">
+          <input type="password" class="pin-box" id="r3" maxlength="1" inputmode="numeric">
+          <input type="password" class="pin-box" id="r4" maxlength="1" inputmode="numeric">
+        </div>
+      </div>
+      <div class="err" id="rErr"></div>
+      <div class="ok" id="rOk"></div>
+      <button class="btn-submit" id="btnReg" onclick="doRegister()">🚀 회원가입</button>
+      <p style="text-align:center;margin-top:18px;font-size:13px;color:var(--t2);">
+        이미 계정이 있으신가요? <span style="color:var(--purple-l);cursor:pointer;font-weight:700;" onclick="switchTab('login')">로그인</span>
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="globalToast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script>
+let role = 'buyer';
+
+// Already logged in?
+supabase.auth.getUser().then(({ data: { user } }) => { if (user) redirect(); });
+
+function switchTab(t) {
+  const isLogin = t === 'login';
+  document.getElementById('tabA').className = 'tab-btn' + (isLogin ? ' active' : '');
+  document.getElementById('tabB').className = 'tab-btn' + (!isLogin ? ' active' : '');
+  document.getElementById('loginForm').style.display = isLogin ? 'block' : 'none';
+  document.getElementById('regForm').style.display = isLogin ? 'none' : 'block';
+}
+
+function pickRole(r) {
+  role = r;
+  document.getElementById('rBuyer').className = 'role-opt' + (r === 'buyer' ? ' sel' : '');
+  document.getElementById('rSeller').className = 'role-opt' + (r === 'seller' ? ' sel' : '');
+  document.getElementById('sellerExtra').style.display = r === 'seller' ? 'block' : 'none';
+}
+
+// PIN auto-focus
+function setupPin(ids) {
+  ids.forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', () => { if (el.value && i < ids.length - 1) document.getElementById(ids[i+1]).focus(); });
+    el.addEventListener('keydown', e => { if (e.key === 'Backspace' && !el.value && i > 0) document.getElementById(ids[i-1]).focus(); });
+  });
+}
+setupPin(['l1','l2','l3','l4']);
+setupPin(['r1','r2','r3','r4']);
+
+function getPin(ids) { return ids.map(id => document.getElementById(id).value).join(''); }
+
+async function doLogin() {
+  const phone = document.getElementById('lPhone').value.replace(/\D/g,'');
+  const pin = getPin(['l1','l2','l3','l4']);
+  const errEl = document.getElementById('lErr');
+
+  if (phone.length < 8) { errEl.textContent = '전화번호를 올바르게 입력해주세요'; return; }
+  if (pin.length !== 4) { errEl.textContent = 'PIN 4자리를 입력해주세요'; return; }
+  errEl.textContent = '';
+
+  setLoading('btnLogin', true, '로그인 중...');
+  const { error } = await supabase.auth.signInWithPassword({
+    email: phoneToEmail(phone),
+    password: makePassword(pin, phone)
+  });
+  setLoading('btnLogin', false);
+  if (error) { errEl.textContent = '전화번호 또는 PIN이 올바르지 않습니다.'; return; }
+  await redirect();
+}
+
+async function doRegister() {
+  const name = document.getElementById('rName').value.trim();
+  const phone = document.getElementById('rPhone').value.replace(/\D/g,'');
+  const pin = getPin(['r1','r2','r3','r4']);
+  const store = document.getElementById('rStore').value.trim();
+  const desc = document.getElementById('rDesc').value.trim();
+  const errEl = document.getElementById('rErr');
+  const okEl = document.getElementById('rOk');
+
+  errEl.textContent = ''; okEl.textContent = '';
+  if (!name) { errEl.textContent = '이름을 입력해주세요'; return; }
+  if (phone.length < 8) { errEl.textContent = '전화번호를 올바르게 입력해주세요'; return; }
+  if (pin.length !== 4) { errEl.textContent = 'PIN 4자리를 설정해주세요'; return; }
+  if (role === 'seller' && !store) { errEl.textContent = '매장명을 입력해주세요'; return; }
+
+  setLoading('btnReg', true, '가입 중...');
+
+  const isAdmin = ADMIN_PHONE && phone === ADMIN_PHONE;
+  const { data, error } = await supabase.auth.signUp({
+    email: phoneToEmail(phone),
+    password: makePassword(pin, phone)
+  });
+
+  if (error) {
+    setLoading('btnReg', false);
+    errEl.textContent = error.message.includes('already') ? '이미 등록된 전화번호입니다.' : error.message;
+    return;
+  }
+
+  const { error: pe } = await supabase.from('profiles').insert({
+    id: data.user.id,
+    phone, name,
+    role: isAdmin ? 'admin' : role,
+    store_name: store || null,
+    description: desc || null,
+    is_approved: role === 'buyer' || isAdmin
+  });
+
+  setLoading('btnReg', false);
+  if (pe) { errEl.textContent = '오류: ' + pe.message; return; }
+
+  if (role === 'seller' && !isAdmin) {
+    okEl.textContent = '✅ 판매자 등록 완료! 관리자 승인 후 활성화됩니다.';
+    setTimeout(() => { window.location.href = 'index.html'; }, 3000);
+  } else {
+    await redirect();
+  }
+}
+
+async function redirect() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  if (!p) { window.location.href = 'index.html'; return; }
+  if (p.role === 'admin') window.location.href = 'admin/dashboard.html';
+  else if (p.role === 'seller') window.location.href = 'seller/dashboard.html';
+  else window.location.href = 'index.html';
+}
+</script>
+</body>
+</html>
