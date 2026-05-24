@@ -3,127 +3,176 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>로그인 — Iris Mobile</title>
-  <meta name="description" content="Iris Mobile에 로그인하거나 회원가입하세요.">
+  <title>로그인 — Phone Switch Hub</title>
+  <meta name="description" content="Phone Switch Hub에 로그인하거나 회원가입하세요.">
   <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-<div class="auth-wrap">
-  <div class="orb orb-1" style="position:fixed;"></div>
-  <div class="orb orb-2" style="position:fixed;"></div>
 
-  <div class="auth-card">
-    <!-- Logo -->
-    <div class="auth-logo">
-      <div class="icon">💎</div>
-      <h1>IRIS MOBILE</h1>
-      <p>전화번호로 간편하게 시작하세요 🇹🇭</p>
+<div class="app-shell" style="padding-bottom:20px;">
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a href="index.html" class="nav-logo">
+      <div class="nav-logo-icon">💎</div>
+      <span class="nav-logo-text" data-i18n="app_title">PHONE SWITCH HUB</span>
+    </a>
+    <div class="nav-links">
+      <select id="langSelect" class="lang-select" onchange="changeLanguage(this.value)">
+        <option value="th">🇹🇭 TH</option>
+        <option value="mm">🇲🇲 MM</option>
+        <option value="ko">🇰🇷 KO</option>
+      </select>
     </div>
+  </nav>
 
-    <!-- Tabs -->
-    <div class="auth-tabs">
-      <button class="tab-btn active" id="tabA" onclick="switchTab('login')">🔑 로그인</button>
-      <button class="tab-btn" id="tabB" onclick="switchTab('reg')">📝 회원가입</button>
-    </div>
+  <div class="auth-wrap" style="min-height:calc(100vh - 88px); display:flex; align-items:center; justify-content:center; padding:16px;">
+    <div class="auth-card" style="margin:0; width:100%; border:none; background:transparent; box-shadow:none; padding:16px;">
+      <!-- Logo -->
+      <div class="auth-logo">
+        <div class="icon">💎</div>
+        <h1 data-i18n="app_title">IRIS MOBILE</h1>
+        <p data-i18n="hero_badge">전화번호로 간편하게 시작하세요 🇹🇭</p>
+      </div>
 
-    <!-- ===== LOGIN ===== -->
-    <div id="loginForm">
-      <div class="form-group">
-        <label class="form-label">전화번호 / เบอร์โทร</label>
-        <div class="phone-row">
-          <div class="cc">🇹🇭 +66</div>
-          <input type="tel" class="form-input" id="lPhone" placeholder="812345678" maxlength="10" inputmode="numeric">
-        </div>
+      <!-- Tabs -->
+      <div class="auth-tabs">
+        <button class="tab-btn active" id="tabA" onclick="switchForm('login')" data-i18n="login">🔑 로그인</button>
+        <button class="tab-btn" id="tabB" onclick="switchForm('reg')" data-i18n="tab_mypage">📝 회원가입</button>
       </div>
-      <div class="form-group">
-        <label class="form-label">PIN 번호 (4자리) / PIN</label>
-        <div class="pin-row">
-          <input type="password" class="pin-box" id="l1" maxlength="1" inputmode="numeric">
-          <input type="password" class="pin-box" id="l2" maxlength="1" inputmode="numeric">
-          <input type="password" class="pin-box" id="l3" maxlength="1" inputmode="numeric">
-          <input type="password" class="pin-box" id="l4" maxlength="1" inputmode="numeric">
-        </div>
-      </div>
-      <div class="err" id="lErr"></div>
-      <button class="btn-submit" id="btnLogin" onclick="doLogin()">🔑 로그인</button>
-      <p style="text-align:center;margin-top:18px;font-size:13px;color:var(--t2);">
-        계정이 없으신가요? <span style="color:var(--purple-l);cursor:pointer;font-weight:700;" onclick="switchTab('reg')">회원가입</span>
-      </p>
-    </div>
 
-    <!-- ===== REGISTER ===== -->
-    <div id="regForm" style="display:none;">
-      <div class="form-group">
-        <label class="form-label">이름 / ชื่อ</label>
-        <input type="text" class="form-input" id="rName" placeholder="홍길동 / สมชาย">
-      </div>
-      <div class="form-group">
-        <label class="form-label">전화번호 / เบอร์โทร</label>
-        <div class="phone-row">
-          <div class="cc">🇹🇭 +66</div>
-          <input type="tel" class="form-input" id="rPhone" placeholder="812345678" maxlength="10" inputmode="numeric">
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">역할 선택 / เลือกบทบาท</label>
-        <div class="role-grid">
-          <div class="role-opt sel" id="rBuyer" onclick="pickRole('buyer')">
-            <div class="role-icon">🛍️</div>
-            <div class="role-name">구매자</div>
-            <div class="role-hint">물건을 구매합니다</div>
-          </div>
-          <div class="role-opt" id="rSeller" onclick="pickRole('seller')">
-            <div class="role-icon">💼</div>
-            <div class="role-name">판매자</div>
-            <div class="role-hint">물건을 판매합니다</div>
+      <!-- ===== LOGIN ===== -->
+      <div id="loginForm">
+        <div class="form-group">
+          <label class="form-label" data-i18n="product_location">전화번호 / เบอร์โทร</label>
+          <div class="phone-row">
+            <div class="cc">🇹🇭 +66</div>
+            <input type="tel" class="form-input" id="lPhone" placeholder="812345678" maxlength="10" inputmode="numeric">
           </div>
         </div>
-      </div>
-      <div id="sellerExtra" style="display:none;">
         <div class="form-group">
-          <label class="form-label">매장명 / ชื่อร้าน</label>
-          <input type="text" class="form-input" id="rStore" placeholder="예: Kim Mobile Shop">
+          <label class="form-label">PIN 번호 (4자리) / PIN</label>
+          <div class="pin-row">
+            <input type="password" class="pin-box" id="l1" maxlength="1" inputmode="numeric">
+            <input type="password" class="pin-box" id="l2" maxlength="1" inputmode="numeric">
+            <input type="password" class="pin-box" id="l3" maxlength="1" inputmode="numeric">
+            <input type="password" class="pin-box" id="l4" maxlength="1" inputmode="numeric">
+          </div>
+        </div>
+        <div class="err" id="lErr" style="margin-bottom:12px;"></div>
+        <button class="btn-submit" id="btnLogin" onclick="doLogin()" data-i18n="login">🔑 로그인</button>
+        <p style="text-align:center;margin-top:18px;font-size:13px;color:var(--t2);">
+          계정이 없으신가요? <span style="color:var(--purple-l);cursor:pointer;font-weight:700;" onclick="switchForm('reg')">회원가입</span>
+        </p>
+      </div>
+
+      <!-- ===== REGISTER ===== -->
+      <div id="regForm" style="display:none;">
+        <div class="form-group">
+          <label class="form-label">이름 / ชื่อ</label>
+          <input type="text" class="form-input" id="rName" placeholder="홍길동 / สมชาย">
         </div>
         <div class="form-group">
-          <label class="form-label">매장 소개 / แนะนำร้าน</label>
-          <textarea class="form-textarea" id="rDesc" placeholder="매장 소개를 간단히 작성해주세요"></textarea>
+          <label class="form-label" data-i18n="product_location">전화번호 / เบอร์โทร</label>
+          <div class="phone-row">
+            <div class="cc">🇹🇭 +66</div>
+            <input type="tel" class="form-input" id="rPhone" placeholder="812345678" maxlength="10" inputmode="numeric">
+          </div>
         </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">PIN 번호 설정 (4자리) / ตั้ง PIN</label>
-        <div class="pin-row">
-          <input type="password" class="pin-box" id="r1" maxlength="1" inputmode="numeric">
-          <input type="password" class="pin-box" id="r2" maxlength="1" inputmode="numeric">
-          <input type="password" class="pin-box" id="r3" maxlength="1" inputmode="numeric">
-          <input type="password" class="pin-box" id="r4" maxlength="1" inputmode="numeric">
+        <div class="form-group">
+          <label class="form-label">역할 선택 / เลือกบทบาท</label>
+          <div class="role-grid">
+            <div class="role-opt sel" id="rBuyer" onclick="pickRole('buyer')">
+              <div class="role-icon">🛍️</div>
+              <div class="role-name">구매자</div>
+              <div class="role-hint">물건을 구매합니다</div>
+            </div>
+            <div class="role-opt" id="rSeller" onclick="pickRole('seller')">
+              <div class="role-icon">💼</div>
+              <div class="role-name">판매자</div>
+              <div class="role-hint">물건을 판매합니다</div>
+            </div>
+          </div>
         </div>
+        
+        <div id="sellerExtra" style="display:none;">
+          <div class="form-group">
+            <label class="form-label">매장명 / ชื่อร้าน</label>
+            <input type="text" class="form-input" id="rStore" placeholder="예: Kim Mobile Shop">
+          </div>
+          <div class="form-group">
+            <label class="form-label">매장 소속 지역 (주) / พื้นที่ร้านค้า</label>
+            <select class="form-input" id="rProvince">
+              <option value="Bangkok">Bangkok (방콕)</option>
+              <option value="Chiang Mai">Chiang Mai (치앙마이)</option>
+              <option value="Chonburi">Chonburi (촌부리)</option>
+              <option value="Phuket">Phuket (푸켓)</option>
+              <option value="Samut Prakan">Samut Prakan (사뭇프라칸)</option>
+              <option value="Nonthaburi">Nonthaburi (논타부리)</option>
+              <option value="Pathum Thani">Pathum Thani (빠ทุม타니)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">매장 상세 주소 / ที่อยู่ร้านค้า</label>
+            <textarea class="form-textarea" id="rAddress" placeholder="상세 주소를 기재해주세요"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">구글맵 GPS 좌표 (선택) / พิกัด Google Maps</label>
+            <input type="text" class="form-input" id="rCoords" placeholder="예: 13.7563, 100.5018">
+          </div>
+          <div class="form-group">
+            <label class="form-label">매장 로고 이미지 (선택) / โลโก้ร้านค้า</label>
+            <input type="file" id="rLogo" accept="image/*" class="form-input" style="padding: 10px;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">수수료 정산 및 결제 방식 / วิธีรับเงิน</label>
+            <select class="form-input" id="rPayout">
+              <option value="parent_payment">플랫폼 전체 수금 후 정산 (Parent Payment)</option>
+              <option value="cod_commission">캐쉬온딜리버리(COD) 직접 거래 후 수수료 송금 (COD &amp; Commission)</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">PIN 번호 설정 (4자리) / ตั้ง PIN</label>
+          <div class="pin-row">
+            <input type="password" class="pin-box" id="r1" maxlength="1" inputmode="numeric">
+            <input type="password" class="pin-box" id="r2" maxlength="1" inputmode="numeric">
+            <input type="password" class="pin-box" id="r3" maxlength="1" inputmode="numeric">
+            <input type="password" class="pin-box" id="r4" maxlength="1" inputmode="numeric">
+          </div>
+        </div>
+        <div class="err" id="rErr" style="margin-bottom:12px;"></div>
+        <div class="ok" id="rOk" style="margin-bottom:12px;"></div>
+        <button class="btn-submit" id="btnReg" onclick="doRegister()">🚀 회원가입</button>
+        <p style="text-align:center;margin-top:18px;font-size:13px;color:var(--t2);">
+          이미 계정이 있으신가요? <span style="color:var(--purple-l);cursor:pointer;font-weight:700;" onclick="switchForm('login')">로그인</span>
+        </p>
       </div>
-      <div class="err" id="rErr"></div>
-      <div class="ok" id="rOk"></div>
-      <button class="btn-submit" id="btnReg" onclick="doRegister()">🚀 회원가입</button>
-      <p style="text-align:center;margin-top:18px;font-size:13px;color:var(--t2);">
-        이미 계정이 있으신가요? <span style="color:var(--purple-l);cursor:pointer;font-weight:700;" onclick="switchTab('login')">로그인</span>
-      </p>
     </div>
   </div>
 </div>
 
 <div class="toast" id="globalToast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/i18n.js"></script>
 <script src="js/config.js"></script>
 <script>
 let role = 'buyer';
 
+// Run translations immediately
+if (window.applyTranslations) applyTranslations();
+
 // Already logged in?
 supabase.auth.getUser().then(({ data: { user } }) => { if (user) redirect(); });
 
-function switchTab(t) {
+function switchForm(t) {
   const isLogin = t === 'login';
   document.getElementById('tabA').className = 'tab-btn' + (isLogin ? ' active' : '');
   document.getElementById('tabB').className = 'tab-btn' + (!isLogin ? ' active' : '');
   document.getElementById('loginForm').style.display = isLogin ? 'block' : 'none';
   document.getElementById('regForm').style.display = isLogin ? 'none' : 'block';
+  applyTranslations();
 }
 
 function pickRole(r) {
@@ -170,7 +219,11 @@ async function doRegister() {
   const phone = document.getElementById('rPhone').value.replace(/\D/g,'');
   const pin = getPin(['r1','r2','r3','r4']);
   const store = document.getElementById('rStore').value.trim();
-  const desc = document.getElementById('rDesc').value.trim();
+  const province = document.getElementById('rProvince').value;
+  const address = document.getElementById('rAddress').value.trim();
+  const coords = document.getElementById('rCoords').value.trim();
+  const payout = document.getElementById('rPayout').value;
+  
   const errEl = document.getElementById('rErr');
   const okEl = document.getElementById('rOk');
 
@@ -178,7 +231,10 @@ async function doRegister() {
   if (!name) { errEl.textContent = '이름을 입력해주세요'; return; }
   if (phone.length < 8) { errEl.textContent = '전화번호를 올바르게 입력해주세요'; return; }
   if (pin.length !== 4) { errEl.textContent = 'PIN 4자리를 설정해주세요'; return; }
-  if (role === 'seller' && !store) { errEl.textContent = '매장명을 입력해주세요'; return; }
+  if (role === 'seller') {
+    if (!store) { errEl.textContent = '매장명을 입력해주세요'; return; }
+    if (!address) { errEl.textContent = '상세 주소를 입력해주세요'; return; }
+  }
 
   setLoading('btnReg', true, '가입 중...');
 
@@ -194,14 +250,42 @@ async function doRegister() {
     return;
   }
 
-  const { error: pe } = await supabase.from('profiles').insert({
+  // Logo upload for sellers
+  let logoUrl = null;
+  if (role === 'seller') {
+    const file = document.getElementById('rLogo').files[0];
+    if (file) {
+      const ext = file.name.split('.').pop();
+      const path = `avatars/${data.user.id}_logo.${ext}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+      if (!upErr) {
+        const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
+        logoUrl = urlData.publicUrl;
+      }
+    }
+  }
+
+  // Insert profile with extended fields for sellers
+  const profileData = {
     id: data.user.id,
     phone, name,
     role: isAdmin ? 'admin' : role,
     store_name: store || null,
-    description: desc || null,
+    profile_image: logoUrl,
     is_approved: role === 'buyer' || isAdmin
-  });
+  };
+
+  if (role === 'seller') {
+    profileData.partner_type = 'partner'; // Newly registered partner shop
+    profileData.location_province = province;
+    profileData.location_address = address;
+    profileData.location_coords = coords || null;
+    profileData.payout_method = payout;
+    profileData.commission_rate = 10.00; // default 10%
+    profileData.description = '검증된 협력사 매장';
+  }
+
+  const { error: pe } = await supabase.from('profiles').insert(profileData);
 
   setLoading('btnReg', false);
   if (pe) { errEl.textContent = '오류: ' + pe.message; return; }
@@ -223,6 +307,10 @@ async function redirect() {
   else if (p.role === 'seller') window.location.href = 'seller/dashboard.html';
   else window.location.href = 'index.html';
 }
+
+window.addEventListener('languageChanged', () => {
+  applyTranslations();
+});
 </script>
 </body>
 </html>

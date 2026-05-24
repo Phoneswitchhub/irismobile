@@ -14,7 +14,7 @@
     <div class="sb-head">
       <a href="../index.html" class="nav-logo">
         <div class="nav-logo-icon">💎</div>
-        <span class="nav-logo-text">IRIS MOBILE</span>
+        <span class="nav-logo-text">PHONE SWITCH HUB</span>
       </a>
     </div>
     <nav class="sb-nav">
@@ -23,10 +23,9 @@
       <button class="sb-link" onclick="showPage('sellers',this)"><span class="ico">💼</span> 판매자 관리</button>
       <button class="sb-link" onclick="showPage('buyers',this)"><span class="ico">👥</span> 구매자 관리</button>
       <button class="sb-link" onclick="showPage('products',this)"><span class="ico">📱</span> 전체 상품</button>
-      <button class="sb-link" onclick="showPage('orders',this)"><span class="ico">📦</span> 전체 주문</button>
+      <button class="sb-link" onclick="showPage('orders',this)"><span class="ico">📦</span> 전체 주문/정산</button>
       <div class="sb-sec-lbl">바로가기</div>
       <a class="sb-link" href="../index.html"><span class="ico">🏠</span> 메인 홈</a>
-      <a class="sb-link" href="../shop.html"><span class="ico">🛍️</span> 쇼핑몰</a>
     </nav>
     <div class="sb-foot">
       <div class="sb-user">
@@ -75,7 +74,7 @@
         </div>
 
         <!-- Pending sellers alert -->
-        <div id="pendingAlert" style="display:none;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);border-radius:var(--r);padding:18px;margin-bottom:24px;display:flex;align-items:center;gap:12px;">
+        <div id="pendingAlert" style="display:none;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);border-radius:var(--r);padding:18px;margin-bottom:24px;align-items:center;gap:12px;">
           <span style="font-size:24px;">⚠️</span>
           <div>
             <div style="font-weight:700;margin-bottom:4px;">판매자 승인 대기 중</div>
@@ -87,8 +86,20 @@
           <h3 style="font-family:'Outfit',sans-serif;font-weight:700;margin-bottom:18px;">최근 주문 현황</h3>
           <div class="tbl-wrap">
             <table class="tbl">
-              <thead><tr><th>구매자</th><th>판매자</th><th>상품</th><th>금액</th><th>날짜</th><th>상태</th></tr></thead>
-              <tbody id="recentOrdersTbl"><tr><td colspan="6" style="text-align:center;padding:30px;color:var(--t3);">로딩 중…</td></tr></tbody>
+              <thead>
+                <tr>
+                  <th>구매자</th>
+                  <th>판매자</th>
+                  <th>상품</th>
+                  <th>금액</th>
+                  <th>결제/수수료</th>
+                  <th>날짜</th>
+                  <th>상태</th>
+                </tr>
+              </thead>
+              <tbody id="recentOrdersTbl">
+                <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--t3);">로딩 중…</td></tr>
+              </tbody>
             </table>
           </div>
         </div>
@@ -109,16 +120,40 @@
         <h3 style="font-family:'Outfit',sans-serif;font-weight:700;margin-bottom:14px;">⏳ 승인 대기</h3>
         <div class="tbl-wrap" style="margin-bottom:28px;">
           <table class="tbl">
-            <thead><tr><th>이름</th><th>전화번호</th><th>매장명</th><th>소개</th><th>가입일</th><th>처리</th></tr></thead>
-            <tbody id="pendingSellers"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--t3);">로딩 중…</td></tr></tbody>
+            <thead>
+              <tr>
+                <th>이름</th>
+                <th>전화번호</th>
+                <th>매장명/구분</th>
+                <th>지역/주소</th>
+                <th>가입일</th>
+                <th>처리</th>
+              </tr>
+            </thead>
+            <tbody id="pendingSellers">
+              <tr><td colspan="6" style="text-align:center;padding:24px;color:var(--t3);">로딩 중…</td></tr>
+            </tbody>
           </table>
         </div>
+        
         <!-- Approved -->
-        <h3 style="font-family:'Outfit',sans-serif;font-weight:700;margin-bottom:14px;">✅ 승인된 판매자</h3>
+        <h3 style="font-family:'Outfit',sans-serif;font-weight:700;margin-bottom:14px;">✅ 승인된 판매자 (직영/협력사)</h3>
         <div class="tbl-wrap">
           <table class="tbl">
-            <thead><tr><th>이름</th><th>전화번호</th><th>매장명</th><th>상품수</th><th>가입일</th><th>처리</th></tr></thead>
-            <tbody id="approvedSellers"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--t3);">로딩 중…</td></tr></tbody>
+            <thead>
+              <tr>
+                <th>매장 정보</th>
+                <th>담당자/연락처</th>
+                <th>파트너 구분</th>
+                <th>지역/주소</th>
+                <th>정산방식/수수료율</th>
+                <th>가입일</th>
+                <th>처리</th>
+              </tr>
+            </thead>
+            <tbody id="approvedSellers">
+              <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--t3);">로딩 중…</td></tr>
+            </tbody>
           </table>
         </div>
       </div>
@@ -143,27 +178,105 @@
       <div class="main-body">
         <div class="tbl-wrap">
           <table class="tbl">
-            <thead><tr><th>상품명</th><th>판매자</th><th>카테고리</th><th>가격</th><th>재고</th><th>상태</th><th>등록일</th><th>처리</th></tr></thead>
-            <tbody id="allProductsTbl"><tr><td colspan="8" style="text-align:center;padding:30px;color:var(--t3);">로딩 중…</td></tr></tbody>
+            <thead><tr><th>상품명</th><th>등급</th><th>판매자</th><th>카테고리</th><th>가격</th><th>재고</th><th>상태</th><th>등록일</th><th>처리</th></tr></thead>
+            <tbody id="allProductsTbl"><tr><td colspan="9" style="text-align:center;padding:30px;color:var(--t3);">로딩 중…</td></tr></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- ===== ORDERS ===== -->
+    <!-- ===== ORDERS & SETTLEMENTS ===== -->
     <div id="page-orders" style="display:none;">
-      <div class="main-hd"><h1>📦 전체 주문</h1></div>
+      <div class="main-hd"><h1>📦 전체 주문 및 수수료 정산</h1></div>
       <div class="main-body">
-        <div class="tbl-wrap">
-          <table class="tbl">
-            <thead><tr><th>주문번호</th><th>구매자</th><th>판매자</th><th>상품</th><th>금액</th><th>날짜</th><th>상태</th></tr></thead>
-            <tbody id="allOrdersTbl"><tr><td colspan="7" style="text-align:center;padding:30px;color:var(--t3);">로딩 중…</td></tr></tbody>
-          </table>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>주문번호</th>
+                  <th>구매자/배송지</th>
+                  <th>판매자(정산처)</th>
+                  <th>상품/수량</th>
+                  <th>총금액</th>
+                  <th>결제방식/수수료</th>
+                  <th>정산상태</th>
+                  <th>날짜</th>
+                  <th>주문상태</th>
+                  <th>정산처리</th>
+                </tr>
+              </thead>
+              <tbody id="allOrdersTbl">
+                <tr><td colspan="10" style="text-align:center;padding:30px;color:var(--t3);">로딩 중…</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
 
   </main>
+</div>
+
+<!-- PARTNER CONFIG MODAL -->
+<div class="modal-bg" id="partnerModal">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-hd">
+      <span class="modal-title">🏪 판매 파트너 설정</span>
+      <button class="modal-x" onclick="closePartnerModal()">✕</button>
+    </div>
+    <div>
+      <input type="hidden" id="confSellerId">
+      <div class="form-group">
+        <label class="form-label">매장명</label>
+        <input type="text" class="form-input" id="confStoreName" disabled style="opacity:0.7;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">파트너 구분</label>
+        <select class="form-input" id="confPartnerType">
+          <option value="subsidiary">본사 직영점 (자회사)</option>
+          <option value="partner">외부 입점 대리점 (협력사)</option>
+        </select>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+        <div class="form-group">
+          <label class="form-label">수수료율 (%)</label>
+          <input type="number" class="form-input" id="confCommRate" step="0.1" value="10.0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">정산 방식</label>
+          <select class="form-input" id="confPayoutMethod">
+            <option value="parent_payment">플랫폼 직접 수금 후 정산</option>
+            <option value="cod_commission">COD 배송후 협력사에서 송금</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">매장 소속 지역 (Province)</label>
+        <select class="form-input" id="confProvince">
+          <option value="Bangkok">Bangkok</option>
+          <option value="Chiang Mai">Chiang Mai</option>
+          <option value="Chonburi">Chonburi</option>
+          <option value="Phuket">Phuket</option>
+          <option value="Samut Prakan">Samut Prakan</option>
+          <option value="Nonthaburi">Nonthaburi</option>
+          <option value="Pathum Thani">Pathum Thani</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">매장 주소</label>
+        <textarea class="form-textarea" id="confAddress"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">지도 GPS 좌표</label>
+        <input type="text" class="form-input" id="confCoords" placeholder="예: 13.7563, 100.5018">
+      </div>
+    </div>
+    <div style="display:flex; gap:12px; margin-top:16px;">
+      <button class="btn-submit" onclick="savePartnerConfig()" style="flex:1;">💾 설정 저장</button>
+      <button class="btn-sm btn-red" onclick="closePartnerModal()" style="padding:14px 20px; border-radius:var(--r);">취소</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="globalToast"></div>
@@ -176,9 +289,14 @@ async function init() {
   if (!user) { window.location.href = '../login.html'; return; }
   const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
   if (!p || p.role !== 'admin') { window.location.href = '../index.html'; return; }
+  
   document.getElementById('adminName').textContent = p.name;
   document.getElementById('adminDate').textContent = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
 
+  await refreshAll();
+}
+
+async function refreshAll() {
   await Promise.all([loadStats(), loadRecentOrders(), loadSellers(), loadBuyers(), loadAllProducts(), loadAllOrders()]);
 }
 
@@ -195,29 +313,45 @@ async function loadStats() {
   document.getElementById('aSellers').textContent = sellers.count || 0;
   document.getElementById('aProds').textContent = prods.count || 0;
   document.getElementById('aOrders').textContent = orders.count || 0;
+  
   const total = (revenue.data || []).reduce((s, o) => s + Number(o.total_price), 0);
   document.getElementById('aRevenue').textContent = total.toLocaleString();
+  
   const pc = pending.count || 0;
   document.getElementById('aPending').textContent = pc;
-  if (pc > 0) document.getElementById('pendingAlert').style.display = 'flex';
+  if (pc > 0) {
+    document.getElementById('pendingAlert').style.display = 'flex';
+  } else {
+    document.getElementById('pendingAlert').style.display = 'none';
+  }
 }
 
 async function loadRecentOrders() {
   const { data } = await supabase.from('orders')
-    .select('*, products(title), buyer:profiles!orders_buyer_id_fkey(name), seller:profiles!orders_seller_id_fkey(name)')
+    .select('*, products(title), buyer:profiles!orders_buyer_id_fkey(name), seller:profiles!orders_seller_id_fkey(name, store_name)')
     .order('created_at', { ascending: false }).limit(8);
   const tbody = document.getElementById('recentOrdersTbl');
-  if (!data?.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--t3);">주문 없음</td></tr>'; return; }
-  tbody.innerHTML = data.map(o => `
-    <tr>
-      <td>${o.buyer?.name || '—'}</td>
-      <td>${o.seller?.name || '—'}</td>
-      <td>${o.products?.title || '—'}</td>
-      <td style="color:var(--gold);font-weight:700;">฿${Number(o.total_price).toLocaleString()}</td>
-      <td style="font-size:12px;color:var(--t3);">${formatDate(o.created_at)}</td>
-      <td><span class="badge ${statusBadge(o.status)}">${statusText(o.status)}</span></td>
-    </tr>
-  `).join('');
+  if (!data?.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--t3);">주문 없음</td></tr>'; return; }
+  
+  tbody.innerHTML = data.map(o => {
+    const buyer = o.buyer?.name || '—';
+    const seller = o.seller?.store_name || o.seller?.name || '—';
+    const isCOD = o.payment_method === 'cod';
+    const payMethodText = isCOD ? '<span style="color:var(--red);">COD (현금)</span>' : '<span style="color:var(--green);">온라인 (카드)</span>';
+    const comm = o.commission_amount ? `฿${Number(o.commission_amount).toLocaleString()}` : '฿0';
+
+    return `
+      <tr>
+        <td>${buyer}</td>
+        <td>${seller}</td>
+        <td>${o.products?.title || '—'}</td>
+        <td style="color:var(--gold);font-weight:700;">฿${Number(o.total_price).toLocaleString()}</td>
+        <td style="font-size:12px;">${payMethodText}<br><small style="color:var(--t2);">수수료: ${comm}</small></td>
+        <td style="font-size:12px;color:var(--t3);">${formatDate(o.created_at)}</td>
+        <td><span class="badge ${statusBadge(o.status)}">${statusText(o.status)}</span></td>
+      </tr>
+    `;
+  }).join('');
 }
 
 async function loadSellers() {
@@ -228,53 +362,123 @@ async function loadSellers() {
   document.getElementById('approvedCount').textContent = `승인 ${approved?.length || 0}`;
 
   const pb = document.getElementById('pendingSellers');
-  if (!pending?.length) { pb.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--t3);">대기 중인 판매자 없음 ✅</td></tr>'; }
-  else pb.innerHTML = pending.map(s => `
-    <tr>
-      <td style="font-weight:600;color:var(--t1);">${s.name}</td>
-      <td>+66 ${s.phone}</td>
-      <td>${s.store_name || '—'}</td>
-      <td style="font-size:12px;color:var(--t2);max-width:160px;">${s.description || '—'}</td>
-      <td style="font-size:12px;color:var(--t3);">${formatDate(s.created_at)}</td>
-      <td style="display:flex;gap:6px;">
-        <button class="btn-sm btn-green" onclick="approveSeller('${s.id}')">✅ 승인</button>
-        <button class="btn-sm btn-red" onclick="rejectSeller('${s.id}')">❌ 거절</button>
-      </td>
-    </tr>
-  `).join('');
+  if (!pending?.length) { 
+    pb.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--t3);">대기 중인 판매자 없음 ✅</td></tr>'; 
+  } else {
+    pb.innerHTML = pending.map(s => {
+      const typeText = s.partner_type === 'subsidiary' ? '직영 자회사' : '협력사';
+      const address = s.location_address ? `📍 ${s.location_province}: ${s.location_address}` : '정보 없음';
+      return `
+        <tr>
+          <td style="font-weight:600;color:var(--t1);">${s.name}</td>
+          <td>+66 ${s.phone}</td>
+          <td><b>${s.store_name || '—'}</b><br><span style="font-size:11px;color:var(--t2);">${typeText}</span></td>
+          <td style="font-size:11px;color:var(--t2);max-width:180px;">${address}</td>
+          <td style="font-size:12px;color:var(--t3);">${formatDate(s.created_at)}</td>
+          <td style="display:flex;gap:6px;">
+            <button class="btn-sm btn-green" onclick="approveSeller('${s.id}')">✅ 승인</button>
+            <button class="btn-sm btn-red" onclick="rejectSeller('${s.id}')">❌ 거절</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
 
   const ab = document.getElementById('approvedSellers');
-  if (!approved?.length) { ab.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--t3);">없음</td></tr>'; }
-  else ab.innerHTML = approved.map(s => `
-    <tr>
-      <td style="font-weight:600;color:var(--t1);">${s.name}</td>
-      <td>+66 ${s.phone}</td>
-      <td>${s.store_name || '—'}</td>
-      <td>—</td>
-      <td style="font-size:12px;color:var(--t3);">${formatDate(s.created_at)}</td>
-      <td><button class="btn-sm btn-red" onclick="suspendSeller('${s.id}')">🚫 정지</button></td>
-    </tr>
-  `).join('');
+  if (!approved?.length) { 
+    ab.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--t3);">없음</td></tr>'; 
+  } else {
+    ab.innerHTML = approved.map(s => {
+      const typeBadge = s.partner_type === 'subsidiary' ? '<span class="badge bg-blue">직영 자회사</span>' : '<span class="badge bg-purple">입점 협력사</span>';
+      const address = s.location_address ? `📍 ${s.location_province}: ${s.location_address.slice(0,18)}…` : '정보 없음';
+      const payoutText = s.payout_method === 'cod_commission' ? 'COD 및 수수료 수금' : '본사 직접정산';
+      const rate = s.commission_rate ? `${Number(s.commission_rate)}%` : '10.0%';
+
+      return `
+        <tr>
+          <td><div style="font-weight:600;color:var(--t1);">${s.store_name || '—'}</div><div style="font-size:11px;color:var(--t3);">${s.description || ''}</div></td>
+          <td><div style="font-weight:500;">${s.name}</div><div style="font-size:11px;color:var(--t3);">+66 ${s.phone}</div></td>
+          <td>${typeBadge}</td>
+          <td style="font-size:11px;color:var(--t2);">${address}</td>
+          <td><div style="font-weight:600;color:var(--gold);">${rate}</div><div style="font-size:10px;color:var(--t2);">${payoutText}</div></td>
+          <td style="font-size:12px;color:var(--t3);">${formatDate(s.created_at)}</td>
+          <td>
+            <button class="btn-sm btn-purple" onclick="openPartnerConfig('${s.id}')">⚙️ 설정</button>
+            <button class="btn-sm btn-red" style="margin-left:4px;" onclick="suspendSeller('${s.id}')">🚫 정지</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
 }
 
 async function approveSeller(id) {
   await supabase.from('profiles').update({ is_approved: true }).eq('id', id);
   showToast('✅ 판매자가 승인됐습니다!', 'success');
-  await Promise.all([loadStats(), loadSellers()]);
+  await refreshAll();
 }
 
 async function rejectSeller(id) {
   if (!confirm('거절하면 계정이 비활성화됩니다. 계속하시겠습니까?')) return;
   await supabase.from('profiles').update({ role: 'buyer' }).eq('id', id);
   showToast('❌ 판매자가 거절됐습니다.', 'error');
-  await loadSellers();
+  await refreshAll();
 }
 
 async function suspendSeller(id) {
   if (!confirm('이 판매자를 정지하시겠습니까?')) return;
   await supabase.from('profiles').update({ is_approved: false }).eq('id', id);
   showToast('🚫 판매자가 정지됐습니다.', 'error');
-  await loadSellers();
+  await refreshAll();
+}
+
+// Open partner config modal
+async function openPartnerConfig(id) {
+  const { data: s } = await supabase.from('profiles').select('*').eq('id', id).single();
+  if (!s) return;
+  
+  document.getElementById('confSellerId').value = s.id;
+  document.getElementById('confStoreName').value = s.store_name || s.name;
+  document.getElementById('confPartnerType').value = s.partner_type || 'partner';
+  document.getElementById('confCommRate').value = s.commission_rate || 10.0;
+  document.getElementById('confPayoutMethod').value = s.payout_method || 'parent_payment';
+  document.getElementById('confProvince').value = s.location_province || 'Bangkok';
+  document.getElementById('confAddress').value = s.location_address || '';
+  document.getElementById('confCoords').value = s.location_coords || '';
+  
+  document.getElementById('partnerModal').classList.add('open');
+}
+
+function closePartnerModal() {
+  document.getElementById('partnerModal').classList.remove('open');
+}
+
+async function savePartnerConfig() {
+  const id = document.getElementById('confSellerId').value;
+  const partnerType = document.getElementById('confPartnerType').value;
+  const rate = Number(document.getElementById('confCommRate').value);
+  const payout = document.getElementById('confPayoutMethod').value;
+  const province = document.getElementById('confProvince').value;
+  const address = document.getElementById('confAddress').value.trim();
+  const coords = document.getElementById('confCoords').value.trim();
+  
+  const { error } = await supabase.from('profiles').update({
+    partner_type: partnerType,
+    commission_rate: rate,
+    payout_method: payout,
+    location_province: province,
+    location_address: address,
+    location_coords: coords || null
+  }).eq('id', id);
+  
+  if (error) {
+    showToast('❌ 설정 저장 실패: ' + error.message, 'error');
+    return;
+  }
+  
+  showToast('✅ 파트너 설정이 저장되었습니다.', 'success');
+  closePartnerModal();
+  await refreshAll();
 }
 
 async function loadBuyers() {
@@ -286,7 +490,7 @@ async function loadBuyers() {
       <td style="font-weight:600;color:var(--t1);">${b.name}</td>
       <td>+66 ${b.phone}</td>
       <td style="font-size:12px;color:var(--t3);">${formatDate(b.created_at)}</td>
-      <td>—</td>
+      <td style="font-size:11px;color:var(--t2);max-width:180px;white-space:normal;">🏠 ${b.location_address || '배송지 정보 없음'}</td>
       <td><button class="btn-sm btn-red" onclick="deleteUser('${b.id}')">🗑️ 삭제</button></td>
     </tr>
   `).join('');
@@ -296,25 +500,31 @@ async function deleteUser(id) {
   if (!confirm('정말 삭제하시겠습니까?')) return;
   await supabase.from('profiles').delete().eq('id', id);
   showToast('🗑️ 회원이 삭제됐습니다.');
-  await loadBuyers(); await loadStats();
+  await refreshAll();
 }
 
 async function loadAllProducts() {
-  const { data } = await supabase.from('products').select('*, profiles(name)').order('created_at', { ascending: false });
+  const { data } = await supabase.from('products').select('*, profiles(name, store_name)').order('created_at', { ascending: false });
   const tbody = document.getElementById('allProductsTbl');
-  if (!data?.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--t3);">상품 없음</td></tr>'; return; }
-  tbody.innerHTML = data.map(p => `
-    <tr>
-      <td style="font-weight:600;color:var(--t1);max-width:180px;">${p.title}</td>
-      <td>${p.profiles?.name || '—'}</td>
-      <td><span class="badge bg-purple">${p.category}</span></td>
-      <td style="color:var(--gold);font-weight:700;">฿${Number(p.price).toLocaleString()}</td>
-      <td>${p.stock}</td>
-      <td><span class="badge ${p.status === 'active' ? 'bg-green' : 'bg-gray'}">${p.status === 'active' ? '판매중' : '숨김'}</span></td>
-      <td style="font-size:12px;color:var(--t3);">${formatDate(p.created_at)}</td>
-      <td><button class="btn-sm btn-red" onclick="adminDeleteProduct('${p.id}')">🗑️</button></td>
-    </tr>
-  `).join('');
+  if (!data?.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--t3);">상품 없음</td></tr>'; return; }
+  tbody.innerHTML = data.map(p => {
+    const store = p.profiles?.store_name || p.profiles?.name || '—';
+    const condition = p.condition || 'Used S';
+    
+    return `
+      <tr>
+        <td style="font-weight:600;color:var(--t1);max-width:180px;">${p.title}</td>
+        <td><span class="badge bg-purple">${condition}</span></td>
+        <td>${store}</td>
+        <td><span class="badge bg-gray">${p.category}</span></td>
+        <td style="color:var(--gold);font-weight:700;">฿${Number(p.price).toLocaleString()}</td>
+        <td>${p.stock}</td>
+        <td><span class="badge ${p.status === 'active' ? 'bg-green' : 'bg-gray'}">${p.status === 'active' ? '판매중' : '숨김'}</span></td>
+        <td style="font-size:12px;color:var(--t3);">${formatDate(p.created_at)}</td>
+        <td><button class="btn-sm btn-red" onclick="adminDeleteProduct('${p.id}')">🗑️</button></td>
+      </tr>
+    `;
+  }).join('');
 }
 
 async function adminDeleteProduct(id) {
@@ -326,21 +536,68 @@ async function adminDeleteProduct(id) {
 
 async function loadAllOrders() {
   const { data } = await supabase.from('orders')
-    .select('*, products(title), buyer:profiles!orders_buyer_id_fkey(name), seller:profiles!orders_seller_id_fkey(name)')
+    .select('*, products(title), buyer:profiles!orders_buyer_id_fkey(name, phone, location_address), seller:profiles!orders_seller_id_fkey(name, store_name, partner_type, payout_method)')
     .order('created_at', { ascending: false });
   const tbody = document.getElementById('allOrdersTbl');
-  if (!data?.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--t3);">주문 없음</td></tr>'; return; }
-  tbody.innerHTML = data.map(o => `
-    <tr>
-      <td style="font-size:11px;color:var(--t3);">${o.id.slice(0,8)}…</td>
-      <td>${o.buyer?.name || '—'}</td>
-      <td>${o.seller?.name || '—'}</td>
-      <td style="max-width:150px;">${o.products?.title || '—'}</td>
-      <td style="color:var(--gold);font-weight:700;">฿${Number(o.total_price).toLocaleString()}</td>
-      <td style="font-size:12px;color:var(--t3);">${formatDate(o.created_at)}</td>
-      <td><span class="badge ${statusBadge(o.status)}">${statusText(o.status)}</span></td>
-    </tr>
-  `).join('');
+  if (!data?.length) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--t3);">주문 없음</td></tr>'; return; }
+  
+  tbody.innerHTML = data.map(o => {
+    const buyerName = o.buyer?.name || '—';
+    const buyerPhone = o.buyer?.phone ? '+66 ' + o.buyer.phone : '';
+    const delivery = o.delivery_address || '주소 정보 없음';
+    
+    const store = o.seller?.store_name || o.seller?.name || '—';
+    const pType = o.seller?.partner_type === 'subsidiary' ? '직영' : '협력';
+    
+    const isCOD = o.payment_method === 'cod';
+    const paymentText = isCOD ? '<span class="badge bg-red">COD (현장결제)</span>' : '<span class="badge bg-green">온라인 송금</span>';
+    const comm = o.commission_amount ? `฿${Number(o.commission_amount).toLocaleString()}` : '฿0';
+    
+    const payoutStatusText = o.payout_status === 'completed' 
+      ? '<span class="badge bg-green">정산완료</span>' 
+      : '<span class="badge bg-yellow">정산대기</span>';
+
+    return `
+      <tr>
+        <td style="font-size:11px;color:var(--t3);">${o.id.slice(0,8)}…</td>
+        <td>
+          <div style="font-weight:600;">${buyerName}</div>
+          <div style="font-size:11px;color:var(--t2);">${buyerPhone}</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:2px;max-width:150px;white-space:normal;line-height:1.2;">🏠 ${delivery}</div>
+        </td>
+        <td>
+          <div style="font-weight:600;">${store}</div>
+          <span style="font-size:10px;color:var(--t2);">(${pType})</span>
+        </td>
+        <td>
+          <div style="font-weight:500;font-size:12px;">${o.products?.title || '—'}</div>
+          <div style="font-size:11px;color:var(--t3);">${o.quantity} 개</div>
+        </td>
+        <td style="color:var(--gold);font-weight:700;">฿${Number(o.total_price).toLocaleString()}</td>
+        <td>
+          <div>${paymentText}</div>
+          <div style="font-size:11px;color:var(--t2);margin-top:2px;">수수료: <b>${comm}</b></div>
+        </td>
+        <td>${payoutStatusText}</td>
+        <td style="font-size:12px;color:var(--t3);">${formatDate(o.created_at)}</td>
+        <td><span class="badge ${statusBadge(o.status)}">${statusText(o.status)}</span></td>
+        <td>
+          ${o.payout_status !== 'completed' ? `<button class="btn-sm btn-green" onclick="completePayout('${o.id}')">정산처리</button>` : '—'}
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function completePayout(orderId) {
+  if (!confirm('해당 건의 정산을 완료 상태로 표시하시겠습니까? (수수료 입금 또는 파트너 지급 완료)')) return;
+  const { error } = await supabase.from('orders').update({ payout_status: 'completed' }).eq('id', orderId);
+  if (error) {
+    showToast('❌ 정산 처리 실패: ' + error.message, 'error');
+    return;
+  }
+  showToast('✅ 정산이 완료되었습니다!', 'success');
+  await refreshAll();
 }
 
 let activePage = 'overview';

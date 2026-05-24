@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>판매자 대시보드 — Iris Mobile</title>
+  <title>판매자 대시보드 — Phone Switch Hub</title>
   <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
@@ -14,7 +14,7 @@
     <div class="sb-head">
       <a href="../index.html" class="nav-logo">
         <div class="nav-logo-icon">💎</div>
-        <span class="nav-logo-text">IRIS MOBILE</span>
+        <span class="nav-logo-text">PHONE SWITCH HUB</span>
       </a>
     </div>
     <nav class="sb-nav">
@@ -25,14 +25,13 @@
       <button class="sb-link" onclick="showPage('profile')"><span class="ico">👤</span> 프로필</button>
       <div class="sb-sec-lbl">바로가기</div>
       <a class="sb-link" href="../index.html"><span class="ico">🏠</span> 메인 홈</a>
-      <a class="sb-link" href="../shop.html"><span class="ico">🛍️</span> 쇼핑몰</a>
     </nav>
     <div class="sb-foot">
       <div class="sb-user">
         <div class="sb-avatar" id="sbAvatar">💼</div>
         <div>
           <div class="sb-uname" id="sbName">로딩중…</div>
-          <div class="sb-urole">판매자</div>
+          <div class="sb-urole" id="sbPartnerType">판매자</div>
         </div>
       </div>
       <button class="btn-nav btn-nav-outline" style="width:100%;margin-top:12px;justify-content:center;" onclick="doLogout()">🚪 로그아웃</button>
@@ -49,6 +48,29 @@
         <span id="hd-date" style="color:var(--t2);font-size:13px;"></span>
       </div>
       <div class="main-body">
+        
+        <!-- Seller Config Info Header -->
+        <div class="card" style="margin-bottom: 24px; background: rgba(139, 92, 246, 0.08); border-color: var(--border2); display: flex; gap: 20px; flex-wrap: wrap; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 13px; color: var(--purple-l); font-weight: 700;">🏪 매장 정산 구조 정보</div>
+            <div style="font-size: 20px; font-weight: 900; margin-top: 4px;" id="overviewStoreName">—</div>
+          </div>
+          <div style="display: flex; gap: 24px;">
+            <div>
+              <div style="font-size: 11px; color: var(--t2);">수수료율</div>
+              <div style="font-size: 16px; font-weight: 800; color: var(--gold);" id="overviewCommRate">—</div>
+            </div>
+            <div>
+              <div style="font-size: 11px; color: var(--t2);">기본 거래 정산 방식</div>
+              <div style="font-size: 16px; font-weight: 800; color: var(--cyan);" id="overviewPayoutMethod">—</div>
+            </div>
+            <div>
+              <div style="font-size: 11px; color: var(--t2);">소속 지역</div>
+              <div style="font-size: 16px; font-weight: 800; color: var(--t1);" id="overviewProvince">—</div>
+            </div>
+          </div>
+        </div>
+
         <div class="stat-grid">
           <div class="stat-card">
             <div class="sc-icon" style="background:rgba(139,92,246,.15);">📱</div>
@@ -68,7 +90,7 @@
           <div class="stat-card">
             <div class="sc-icon" style="background:rgba(34,211,238,.15);">💰</div>
             <div class="sc-val" id="sc4">—</div>
-            <div class="sc-lbl">총 매출 (฿)</div>
+            <div class="sc-lbl">누적 매출 (฿)</div>
           </div>
         </div>
 
@@ -78,8 +100,20 @@
           </div>
           <div class="tbl-wrap">
             <table class="tbl">
-              <thead><tr><th>구매자</th><th>상품</th><th>금액</th><th>날짜</th><th>상태</th><th>처리</th></tr></thead>
-              <tbody id="recentOrders"><tr><td colspan="6" style="text-align:center;padding:30px;color:var(--t3);">로딩 중…</td></tr></tbody>
+              <thead>
+                <tr>
+                  <th>구매자/배송지</th>
+                  <th>상품/상태</th>
+                  <th>금액/수량</th>
+                  <th>결제/수수료</th>
+                  <th>날짜</th>
+                  <th>주문상태</th>
+                  <th>처리</th>
+                </tr>
+              </thead>
+              <tbody id="recentOrders">
+                <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--t3);">로딩 중…</td></tr>
+              </tbody>
             </table>
           </div>
         </div>
@@ -89,7 +123,7 @@
     <!-- ===== PRODUCTS PAGE ===== -->
     <div id="page-products" style="display:none;">
       <div class="main-hd">
-        <h1>📱 내 상품</h1>
+        <h1>📱 내 상품 관리</h1>
         <button class="btn-nav" onclick="openAddProduct()">➕ 상품 등록</button>
       </div>
       <div class="main-body">
@@ -101,13 +135,26 @@
 
     <!-- ===== ORDERS PAGE ===== -->
     <div id="page-orders" style="display:none;">
-      <div class="main-hd"><h1>📦 주문 내역</h1></div>
+      <div class="main-hd"><h1>📦 전체 주문 내역</h1></div>
       <div class="main-body">
         <div class="card">
           <div class="tbl-wrap">
             <table class="tbl">
-              <thead><tr><th>주문번호</th><th>구매자</th><th>상품</th><th>수량</th><th>금액</th><th>요청</th><th>날짜</th><th>상태</th><th>처리</th></tr></thead>
-              <tbody id="allOrders"><tr><td colspan="9" style="text-align:center;padding:30px;color:var(--t3);">로딩 중…</td></tr></tbody>
+              <thead>
+                <tr>
+                  <th>주문번호</th>
+                  <th>구매자/배송지</th>
+                  <th>상품/상태</th>
+                  <th>금액/수량</th>
+                  <th>결제/수수료</th>
+                  <th>날짜</th>
+                  <th>주문상태</th>
+                  <th>처리</th>
+                </tr>
+              </thead>
+              <tbody id="allOrders">
+                <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--t3);">로딩 중…</td></tr>
+              </tbody>
             </table>
           </div>
         </div>
@@ -116,9 +163,9 @@
 
     <!-- ===== PROFILE PAGE ===== -->
     <div id="page-profile" style="display:none;">
-      <div class="main-hd"><h1>👤 프로필 설정</h1></div>
+      <div class="main-hd"><h1>👤 프로필 및 매장 설정</h1></div>
       <div class="main-body">
-        <div class="card" style="max-width:540px;">
+        <div class="card" style="max-width:560px;">
           <div style="text-align:center;margin-bottom:28px;">
             <div class="s-avatar" style="width:90px;height:90px;font-size:38px;margin:0 auto 12px;" id="profAvatarPreview">💼</div>
             <label style="cursor:pointer;">
@@ -126,9 +173,35 @@
               <input type="file" id="profImg" accept="image/*" style="display:none;" onchange="previewAvatar(this)">
             </label>
           </div>
-          <div class="form-group"><label class="form-label">이름</label><input type="text" class="form-input" id="profName"></div>
+          <div class="form-group"><label class="form-label">담당자명</label><input type="text" class="form-input" id="profName"></div>
           <div class="form-group"><label class="form-label">전화번호</label><input type="text" class="form-input" id="profPhone" disabled style="opacity:.6;"></div>
           <div class="form-group"><label class="form-label">매장명</label><input type="text" class="form-input" id="profStore"></div>
+          
+          <div class="form-group">
+            <label class="form-label">매장 지역 (Province)</label>
+            <select class="form-input" id="profProvince">
+              <option value="Bangkok">Bangkok</option>
+              <option value="Chiang Mai">Chiang Mai</option>
+              <option value="Chonburi">Chonburi</option>
+              <option value="Phuket">Phuket</option>
+              <option value="Samut Prakan">Samut Prakan</option>
+              <option value="Nonthaburi">Nonthaburi</option>
+              <option value="Pathum Thani">Pathum Thani</option>
+            </select>
+          </div>
+          
+          <div class="form-group"><label class="form-label">매장 상세 주소</label><textarea class="form-textarea" id="profAddress"></textarea></div>
+          <div class="form-group"><label class="form-label">매장 구글맵 좌표 (위도, 경도)</label><input type="text" class="form-input" id="profCoords" placeholder="예: 13.7563, 100.5018"></div>
+          
+          <div class="form-group">
+            <label class="form-label">수수료 정산 및 결제 방식 (기본)</label>
+            <select class="form-input" id="profPayout" disabled style="opacity:.7; background:rgba(0,0,0,0.1);">
+              <option value="parent_payment">플랫폼 전체 수금 후 정산 (Parent Payment)</option>
+              <option value="cod_commission">캐쉬온딜리버리(COD) 직접 거래 후 수수료 송금 (COD &amp; Commission)</option>
+            </select>
+            <span style="font-size:11px; color:var(--t3); margin-top:4px; display:block;">* 정산 방식 변경은 모회사 관리자(Phone Switch Hub)에게 요청해야 합니다.</span>
+          </div>
+
           <div class="form-group"><label class="form-label">매장 소개</label><textarea class="form-textarea" id="profDesc"></textarea></div>
           <button class="btn-submit" id="btnSaveProfile" onclick="saveProfile()">💾 저장하기</button>
         </div>
@@ -148,6 +221,7 @@
     <div style="overflow-y:auto;max-height:70vh;">
       <input type="hidden" id="editProductId">
       <div class="form-group"><label class="form-label">상품명 *</label><input type="text" class="form-input" id="pTitle" placeholder="예: iPhone 15 Pro 128GB Space Black"></div>
+      
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
         <div class="form-group">
           <label class="form-label">가격 (฿) *</label>
@@ -163,8 +237,25 @@
           </select>
         </div>
       </div>
-      <div class="form-group"><label class="form-label">재고 수량</label><input type="number" class="form-input" id="pStock" value="1" min="0"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div class="form-group">
+          <label class="form-label">기기 등급 (Condition) *</label>
+          <select class="form-select" id="pCondition">
+            <option value="New">🍎 새상품 (New)</option>
+            <option value="Used S">⭐ S급 중고 (Used S)</option>
+            <option value="Used A">✨ A급 중고 (Used A)</option>
+            <option value="Used B">👍 B급 중고 (Used B)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">재고 수량 *</label>
+          <input type="number" class="form-input" id="pStock" value="1" min="0">
+        </div>
+      </div>
+
       <div class="form-group"><label class="form-label">상품 설명</label><textarea class="form-textarea" id="pDesc" placeholder="상품 상태, 구성품, 특이사항 등을 입력하세요"></textarea></div>
+      
       <div class="form-group">
         <label class="form-label">상품 사진 (최대 3장)</label>
         <div class="img-upload" onclick="document.getElementById('pImgInput').click()">
@@ -205,14 +296,35 @@ async function init() {
   }
 
   myProfile = p;
-  document.getElementById('sbName').textContent = p.name;
+  
+  // Set sidebar name and type
+  document.getElementById('sbName').textContent = p.store_name || p.name;
+  const pTypeMap = { subsidiary: 'Iris 직영점', partner: '공식협력사' };
+  document.getElementById('sbPartnerType').textContent = pTypeMap[p.partner_type] || '판매 파트너';
+  
+  // Date
   document.getElementById('hd-date').textContent = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  // Render header config info
+  document.getElementById('overviewStoreName').textContent = p.store_name || p.name;
+  document.getElementById('overviewCommRate').textContent = (p.commission_rate || 10.00) + '%';
+  document.getElementById('overviewPayoutMethod').textContent = p.payout_method === 'cod_commission' ? 'COD 및 수수료 수금' : '본사 직접정산';
+  document.getElementById('overviewProvince').textContent = p.location_province || 'Bangkok';
 
   // Fill profile form
   document.getElementById('profName').value = p.name;
   document.getElementById('profPhone').value = '+66 ' + p.phone;
   document.getElementById('profStore').value = p.store_name || '';
+  document.getElementById('profProvince').value = p.location_province || 'Bangkok';
+  document.getElementById('profAddress').value = p.location_address || '';
+  document.getElementById('profCoords').value = p.location_coords || '';
+  document.getElementById('profPayout').value = p.payout_method || 'parent_payment';
   document.getElementById('profDesc').value = p.description || '';
+  
+  if (p.profile_image) {
+    document.getElementById('profAvatarPreview').innerHTML = `<img src="${p.profile_image}" style="width:100%;height:100%;object-fit:cover;">`;
+    document.getElementById('sbAvatar').innerHTML = `<img src="${p.profile_image}" style="width:100%;height:100%;object-fit:cover;">`;
+  }
 
   await loadStats();
   await loadRecentOrders();
@@ -237,38 +349,73 @@ async function loadStats() {
 
 async function loadRecentOrders() {
   const { data } = await supabase.from('orders')
-    .select('*, products(title), profiles!orders_buyer_id_fkey(name, phone)')
+    .select('*, products(title, condition), profiles!orders_buyer_id_fkey(name, phone)')
     .eq('seller_id', myProfile.id).order('created_at', { ascending: false }).limit(5);
-  renderOrderTable('recentOrders', data || [], true);
+  renderOrderTable('recentOrders', data || [], false);
 }
 
 async function loadAllOrders() {
   const { data } = await supabase.from('orders')
-    .select('*, products(title), profiles!orders_buyer_id_fkey(name, phone)')
+    .select('*, products(title, condition), profiles!orders_buyer_id_fkey(name, phone)')
     .eq('seller_id', myProfile.id).order('created_at', { ascending: false });
   renderOrderTable('allOrders', data || [], true);
 }
 
-function renderOrderTable(tbodyId, orders, showFull) {
+function renderOrderTable(tbodyId, orders, isAllPage) {
   const tbody = document.getElementById(tbodyId);
-  if (!orders.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--t3);">주문이 없습니다</td></tr>'; return; }
-  tbody.innerHTML = orders.map(o => `
-    <tr>
-      ${showFull ? `<td style="font-size:11px;color:var(--t3);">${o.id.slice(0,8)}…</td>` : ''}
-      <td><div style="font-weight:600;color:var(--t1);">${o.profiles?.name || '—'}</div><div style="font-size:11px;color:var(--t3);">${o.profiles?.phone ? '+66'+o.profiles.phone : ''}</div></td>
-      <td>${o.products?.title || '—'}</td>
-      ${showFull ? `<td>${o.quantity}</td>` : ''}
-      <td style="color:var(--gold);font-weight:700;">฿${Number(o.total_price).toLocaleString()}</td>
-      ${showFull ? `<td style="max-width:120px;font-size:12px;">${o.notes || '—'}</td>` : ''}
-      <td style="font-size:12px;color:var(--t3);">${formatDate(o.created_at)}</td>
-      <td><span class="badge ${statusBadge(o.status)}">${statusText(o.status)}</span></td>
-      <td>
-        ${o.status === 'pending' ? `<button class="btn-sm btn-green" onclick="updateOrder('${o.id}','confirmed')">확인</button>` : ''}
-        ${o.status === 'confirmed' ? `<button class="btn-sm btn-purple" onclick="updateOrder('${o.id}','completed')">완료</button>` : ''}
-        ${o.status === 'pending' ? `<button class="btn-sm btn-red" style="margin-left:4px;" onclick="updateOrder('${o.id}','cancelled')">취소</button>` : ''}
-      </td>
-    </tr>
-  `).join('');
+  if (!orders.length) { 
+    const colSpan = isAllPage ? 8 : 7;
+    tbody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align:center;padding:30px;color:var(--t3);">주문이 없습니다</td></tr>`; 
+    return; 
+  }
+  
+  tbody.innerHTML = orders.map(o => {
+    // Delivery address and buyer info
+    const buyerName = o.profiles?.name || '—';
+    const buyerPhone = o.profiles?.phone ? '+66 ' + o.profiles.phone : '—';
+    const deliveryAddr = o.delivery_address || '주소 정보 없음';
+    
+    // Product details
+    const prodTitle = o.products?.title || '—';
+    const condition = o.products?.condition || 'Used S';
+    
+    // Payout and commission status
+    const isCOD = o.payment_method === 'cod';
+    const payBadge = isCOD ? '<span class="badge bg-red" style="margin-top:4px;">COD (배송후 수금)</span>' : '<span class="badge bg-green" style="margin-top:4px;">온라인 에스크로</span>';
+    const comm = o.commission_amount ? `฿${Number(o.commission_amount).toLocaleString()}` : '฿0';
+    const payoutText = o.payout_status === 'completed' ? '<span style="color:var(--green);">정산완료</span>' : '<span style="color:var(--red);">정산대기</span>';
+
+    return `
+      <tr>
+        ${isAllPage ? `<td style="font-size:11px;color:var(--t3);">${o.id.slice(0,8)}…</td>` : ''}
+        <td>
+          <div style="font-weight:600;color:var(--t1);">${buyerName}</div>
+          <div style="font-size:11px;color:var(--t2);">${buyerPhone}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:4px;max-width:160px;white-space:normal;line-height:1.3;">🏠 ${deliveryAddr}</div>
+        </td>
+        <td>
+          <div style="font-weight:600;">${prodTitle}</div>
+          <span class="badge bg-purple" style="font-size:10px;margin-top:4px;">${condition}</span>
+        </td>
+        <td>
+          <div style="color:var(--gold);font-weight:700;">฿${Number(o.total_price).toLocaleString()}</div>
+          <div style="font-size:11px;color:var(--t2);">${o.quantity} 개</div>
+        </td>
+        <td>
+          <div>${payBadge}</div>
+          <div style="font-size:11px;color:var(--t2);margin-top:4px;">수수료: <b>${comm}</b></div>
+          <div style="font-size:11px;margin-top:2px;">상태: ${payoutText}</div>
+        </td>
+        <td style="font-size:12px;color:var(--t3);">${formatDate(o.created_at)}</td>
+        <td><span class="badge ${statusBadge(o.status)}">${statusText(o.status)}</span></td>
+        <td>
+          ${o.status === 'pending' ? `<button class="btn-sm btn-green" onclick="updateOrder('${o.id}','confirmed')">확인</button>` : ''}
+          ${o.status === 'confirmed' ? `<button class="btn-sm btn-purple" onclick="updateOrder('${o.id}','completed')">배송완료</button>` : ''}
+          ${o.status === 'pending' ? `<button class="btn-sm btn-red" style="margin-top:4px;" onclick="updateOrder('${o.id}','cancelled')">취소</button>` : ''}
+        </td>
+      </tr>
+    `;
+  }).join('');
 }
 
 async function updateOrder(id, status) {
@@ -285,26 +432,34 @@ async function loadMyProducts() {
     grid.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="empty-ico">📱</div><div class="empty-ttl">등록된 상품이 없습니다</div><div class="empty-txt">상품을 등록해보세요!</div></div>';
     return;
   }
-  grid.innerHTML = data.map(p => `
-    <div class="product-card">
-      <div class="p-img">
-        ${p.images?.[0] ? `<img src="${p.images[0]}" alt="${p.title}" loading="lazy">` : { iPhone:'🍎', Samsung:'🌟', Xiaomi:'🔴' }[p.category] || '📱'}
-        <div class="p-badge">${p.category || 'Mobile'}</div>
-        <div style="position:absolute;top:10px;right:10px;"><span class="badge ${p.status === 'active' ? 'bg-green' : 'bg-gray'}">${p.status === 'active' ? '판매중' : '숨김'}</span></div>
-      </div>
-      <div class="p-info">
-        <div class="p-title">${p.title}</div>
-        <div class="p-price">฿${Number(p.price).toLocaleString()} <small>재고: ${p.stock}개</small></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn-sm btn-purple" onclick="editProduct('${p.id}')">✏️ 수정</button>
-          <button class="btn-sm ${p.status === 'active' ? 'btn-red' : 'btn-green'}" onclick="toggleStatus('${p.id}','${p.status}')">
-            ${p.status === 'active' ? '🙈 숨기기' : '👁️ 공개'}
-          </button>
-          <button class="btn-sm btn-red" onclick="deleteProduct('${p.id}')">🗑️</button>
+  grid.innerHTML = data.map(p => {
+    const conditionText = p.condition || 'Used S';
+    
+    return `
+      <div class="product-card">
+        <div class="p-img">
+          ${p.images?.[0] ? `<img src="${p.images[0]}" alt="${p.title}" loading="lazy">` : { iPhone:'🍎', Samsung:'🌟', Xiaomi:'🔴' }[p.category] || '📱'}
+          <div class="p-badge">${p.category || 'Mobile'}</div>
+          <div style="position:absolute;top:10px;right:10px;"><span class="badge ${p.status === 'active' ? 'bg-green' : 'bg-gray'}">${p.status === 'active' ? '판매중' : '숨김'}</span></div>
+        </div>
+        <div class="p-info">
+          <div class="meta-row">
+            <span class="badge bg-purple" style="font-size:10px;">등급: ${conditionText}</span>
+            <span style="font-size:11px;color:var(--t2);">재고: <b>${p.stock}</b>개</span>
+          </div>
+          <div class="p-title" style="margin-top:6px;">${p.title}</div>
+          <div class="p-price">฿${Number(p.price).toLocaleString()} <small>THB</small></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+            <button class="btn-sm btn-purple" onclick="editProduct('${p.id}')">✏️ 수정</button>
+            <button class="btn-sm ${p.status === 'active' ? 'btn-red' : 'btn-green'}" onclick="toggleStatus('${p.id}','${p.status}')">
+              ${p.status === 'active' ? '🙈 숨기기' : '👁️ 공개'}
+            </button>
+            <button class="btn-sm btn-red" onclick="deleteProduct('${p.id}')">🗑️</button>
+          </div>
         </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 function openAddProduct() {
@@ -315,6 +470,7 @@ function openAddProduct() {
   document.getElementById('pTitle').value = '';
   document.getElementById('pPrice').value = '';
   document.getElementById('pCat').value = 'iPhone';
+  document.getElementById('pCondition').value = 'Used S';
   document.getElementById('pStock').value = '1';
   document.getElementById('pDesc').value = '';
   document.getElementById('imgPreviews').innerHTML = '';
@@ -332,7 +488,8 @@ async function editProduct(id) {
   document.getElementById('pTitle').value = p.title;
   document.getElementById('pPrice').value = p.price;
   document.getElementById('pCat').value = p.category || 'iPhone';
-  document.getElementById('pStock').value = p.stock;
+  document.getElementById('pCondition').value = p.condition || 'Used S';
+  document.getElementById('pStock').value = p.stock || 1;
   document.getElementById('pDesc').value = p.description || '';
   document.getElementById('imgPreviews').innerHTML = '';
   document.getElementById('existingImages').innerHTML = (p.images || []).map((url, i) =>
@@ -365,6 +522,7 @@ async function saveProduct() {
   const title = document.getElementById('pTitle').value.trim();
   const price = document.getElementById('pPrice').value;
   const cat = document.getElementById('pCat').value;
+  const cond = document.getElementById('pCondition').value;
   const stock = document.getElementById('pStock').value;
   const desc = document.getElementById('pDesc').value.trim();
   if (!title || !price) { showToast('❌ 상품명과 가격은 필수입니다.', 'error'); return; }
@@ -383,7 +541,7 @@ async function saveProduct() {
     }
   }
 
-  const payload = { title, price: Number(price), category: cat, stock: Number(stock), description: desc, images: imageUrls };
+  const payload = { title, price: Number(price), category: cat, condition: cond, stock: Number(stock), description: desc, images: imageUrls };
   let error;
   if (editingProduct) {
     ({ error } = await supabase.from('products').update(payload).eq('id', editingProduct.id));
@@ -416,8 +574,12 @@ async function deleteProduct(id) {
 async function saveProfile() {
   const name = document.getElementById('profName').value.trim();
   const store = document.getElementById('profStore').value.trim();
+  const prov = document.getElementById('profProvince').value;
+  const address = document.getElementById('profAddress').value.trim();
+  const coords = document.getElementById('profCoords').value.trim();
   const desc = document.getElementById('profDesc').value.trim();
   if (!name) { showToast('❌ 이름을 입력해주세요.', 'error'); return; }
+  if (!store) { showToast('❌ 매장명을 입력해주세요.', 'error'); return; }
 
   setLoading('btnSaveProfile', true, '저장 중…');
 
@@ -430,11 +592,38 @@ async function saveProfile() {
     profileImage = data.publicUrl;
   }
 
-  const { error } = await supabase.from('profiles').update({ name, store_name: store, description: desc, profile_image: profileImage }).eq('id', myProfile.id);
+  const { error } = await supabase.from('profiles').update({
+    name,
+    store_name: store,
+    location_province: prov,
+    location_address: address,
+    location_coords: coords || null,
+    description: desc,
+    profile_image: profileImage
+  }).eq('id', myProfile.id);
+
   setLoading('btnSaveProfile', false);
   if (error) { showToast('❌ 오류: ' + error.message, 'error'); return; }
   showToast('✅ 프로필이 저장됐습니다!', 'success');
-  document.getElementById('sbName').textContent = name;
+  
+  // Refresh local memory and navbar text
+  myProfile.name = name;
+  myProfile.store_name = store;
+  myProfile.location_province = prov;
+  myProfile.location_address = address;
+  myProfile.location_coords = coords || null;
+  myProfile.description = desc;
+  myProfile.profile_image = profileImage;
+  
+  document.getElementById('sbName').textContent = store;
+  if (profileImage) {
+    document.getElementById('profAvatarPreview').innerHTML = `<img src="${profileImage}" style="width:100%;height:100%;object-fit:cover;">`;
+    document.getElementById('sbAvatar').innerHTML = `<img src="${profileImage}" style="width:100%;height:100%;object-fit:cover;">`;
+  }
+  
+  // Update overview details
+  document.getElementById('overviewStoreName').textContent = store;
+  document.getElementById('overviewProvince').textContent = prov;
 }
 
 function previewAvatar(input) {
@@ -458,7 +647,7 @@ function showPage(pg) {
 
 async function doLogout() { await supabase.auth.signOut(); window.location.href = '../login.html'; }
 
-function statusText(s) { return { pending:'대기중', confirmed:'확인됨', completed:'완료', cancelled:'취소' }[s] || s; }
+function statusText(s) { return { pending:'대기중', confirmed:'확인됨', completed:'배송완료', cancelled:'취소' }[s] || s; }
 function statusBadge(s) { return { pending:'bg-yellow', confirmed:'bg-blue', completed:'bg-green', cancelled:'bg-red' }[s] || 'bg-gray'; }
 
 init();

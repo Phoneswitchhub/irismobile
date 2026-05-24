@@ -4,7 +4,7 @@ const SUPABASE_KEY = 'sb_publishable_WoOZ0hIKP7EV8_l5FKUuyw_awLAvP0Q';
 
 // 관리자 전화번호 (본인 전화번호 입력 - 숫자만, 국가코드 제외)
 // 예: 태국 번호 0812345678 -> '0812345678'
-const ADMIN_PHONE = '0645386331'; // ← 여기에 본인 전화번호 입력!
+const ADMIN_PHONE = ''; // ← 여기에 본인 전화번호 입력!
 
 // Supabase 클라이언트 생성
 const { createClient } = window.supabase;
@@ -12,7 +12,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // 전화번호 → 이메일 변환 (내부 인증용)
 function phoneToEmail(phone) {
-  return `${phone.replace(/\D/g, '')}@irismobile.app`;
+  return `${phone.replace(/\D/g, '')}@phoneswitchhub.app`;
 }
 
 // PIN + 전화번호 → 비밀번호 생성
@@ -28,7 +28,9 @@ function formatPrice(n) {
 // 날짜 포맷
 function formatDate(str) {
   const d = new Date(str);
-  return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
+  const langMap = { ko: 'ko-KR', th: 'th-TH', mm: 'my-MM' };
+  const targetLang = langMap[window.currentLang || 'th'] || 'th-TH';
+  return d.toLocaleDateString(targetLang, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 // 토스트 메시지
