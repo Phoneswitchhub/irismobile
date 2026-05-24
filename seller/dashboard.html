@@ -513,11 +513,19 @@ function openAddProduct() {
   document.getElementById('prodModal').classList.add('open');
 }
 
-async function editProduct(id) {
-  const { data: p } = await supabase.from('products').select('*').eq('id', id).single();
-  if (!p) return;
-  editingProduct = p;
-  newImageFiles = [];
+async function editProduct(id, useExisting = false) {
+  let p;
+  if (useExisting && editingProduct && editingProduct.id === id) {
+    p = editingProduct;
+  } else {
+    const { data } = await supabase.from('products').select('*').eq('id', id).single();
+    if (!data) return;
+    p = data;
+    editingProduct = p;
+    newImageFiles = [];
+    removedImages = [];
+  }
+  
   document.getElementById('editProductId').value = p.id;
   document.getElementById('prodModalTitle').textContent = '✏️ 상품 수정';
   document.getElementById('pTitle').value = p.title;
@@ -530,7 +538,7 @@ async function editProduct(id) {
   document.getElementById('existingImages').innerHTML = (p.images || []).map((url, i) =>
     `<div style="position:relative;display:inline-block;margin-right:8px;margin-top:8px;">
       <img src="${url}" class="prev-img" style="width:60px; height:60px;">
-      <button onclick="removeExistingImg(${i})" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--red);color:#fff;border:none;cursor:pointer;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center;">✕</button>
+      <button onclick="event.stopPropagation(); removeExistingImg(${i})" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--red);color:#fff;border:none;cursor:pointer;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center;">✕</button>
      </div>`
   ).join('');
   document.getElementById('prodModal').classList.add('open');
@@ -538,7 +546,11 @@ async function editProduct(id) {
 
 let removedImages = [];
 function removeExistingImg(i) {
-  if (editingProduct) { removedImages.push(editingProduct.images[i]); editingProduct.images.splice(i, 1); editProduct(editingProduct.id); }
+  if (editingProduct) { 
+    removedImages.push(editingProduct.images[i]); 
+    editingProduct.images.splice(i, 1); 
+    editProduct(editingProduct.id, true); 
+  }
 }
 
 function previewImages(input) {
@@ -567,9 +579,9 @@ async function saveProduct() {
   // Upload new images
   let imageUrls = editingProduct ? [...(editingProduct.images || [])] : [];
   for (const file of newImageFiles) {
-    const ext = file.name.split('.').pop();
-    const path = `${myProfile.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error: upErr } = await supabase.storage.from('products').upload(path, file);
+    const compressedFile = await resizeAndCompressImage(file);
+    const path = `${myProfile.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+    const { error: upErr } = await supabase.storage.from('products').upload(path, compressedFile);
     if (!upErr) {
       const { data: urlData } = supabase.storage.from('products').getPublicUrl(path);
       imageUrls.push(urlData.publicUrl);
@@ -580,6 +592,16 @@ async function saveProduct() {
   let error;
   if (editingProduct) {
     ({ error } = await supabase.from('products').update(payload).eq('id', editingProduct.id));
+    if (!error && removedImages.length > 0) {
+      const pathsToDelete = removedImages.map(url => {
+        const parts = url.split('/products/');
+        return parts.length > 1 ? parts[1] : null;
+      }).filter(Boolean);
+      if (pathsToDelete.length > 0) {
+        await supabase.storage.from('products').remove(pathsToDelete);
+      }
+      removedImages = [];
+    }
   } else {
     ({ error } = await supabase.from('products').insert({ ...payload, seller_id: myProfile.id }));
   }
@@ -624,8 +646,9 @@ async function saveProfile() {
   let profileImage = myProfile.profile_image;
   const file = document.getElementById('profImg').files[0];
   if (file) {
-    const path = `avatars/${myProfile.id}.${file.name.split('.').pop()}`;
-    await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+    const compressedFile = await resizeAndCompressImage(file);
+    const path = `avatars/${myProfile.id}.jpg`;
+    await supabase.storage.from('avatars').upload(path, compressedFile, { upsert: true });
     const { data } = supabase.storage.from('avatars').getPublicUrl(path);
     profileImage = data.publicUrl;
   }

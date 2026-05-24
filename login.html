@@ -344,9 +344,9 @@ async function doRegister() {
     if (role === 'seller') {
       const file = document.getElementById('rLogo').files[0];
       if (file) {
-        const ext = file.name.split('.').pop();
-        const path = `avatars/${userId}_logo.${ext}`;
-        const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+        const compressedFile = await resizeAndCompressImage(file);
+        const path = `avatars/${userId}_logo.jpg`;
+        const { error: upErr } = await supabase.storage.from('avatars').upload(path, compressedFile, { upsert: true });
         if (!upErr) {
           const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
           logoUrl = urlData.publicUrl;

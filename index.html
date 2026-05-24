@@ -250,6 +250,77 @@
   </div>
 </div>
 
+<!-- PRODUCT DETAIL MODAL -->
+<div class="modal-bg" id="detailModal">
+  <div class="modal" style="max-width:440px; padding:0; overflow:hidden; border-radius:22px;">
+    <!-- Modal Header with close button overlaying -->
+    <div style="position:relative; width:100%;">
+      <button class="modal-x" onclick="closeDetailModal()" style="position:absolute; top:12px; right:12px; z-index:10; background:rgba(0,0,0,0.6); border:none; color:#fff; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer;">✕</button>
+      
+      <!-- Image Slideshow (Carousel) -->
+      <div class="detail-carousel-container" style="width:100%; height:240px; background:var(--bg2); position:relative; overflow:hidden;">
+        <div id="detailCarouselSlides" style="display:flex; width:100%; height:100%; transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);">
+          <!-- Slides loaded dynamically -->
+        </div>
+        <!-- Left/Right Indicator buttons -->
+        <button id="detailPrevBtn" onclick="moveCarousel(-1)" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); background:rgba(0,0,0,0.5); border:none; color:#fff; width:30px; height:30px; border-radius:50%; display:none; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; z-index:6;">◀</button>
+        <button id="detailNextBtn" onclick="moveCarousel(1)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:rgba(0,0,0,0.5); border:none; color:#fff; width:30px; height:30px; border-radius:50%; display:none; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; z-index:6;">▶</button>
+        <!-- Page dots -->
+        <div id="detailCarouselDots" style="position:absolute; bottom:10px; left:50%; transform:translateX(-50%); display:flex; gap:6px; z-index:5;">
+          <!-- Dots loaded dynamically -->
+        </div>
+      </div>
+    </div>
+    
+    <!-- Product Content Body -->
+    <div style="padding:16px 20px; overflow-y:auto; max-height:45vh; text-align:left;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <span class="badge bg-purple" id="detailCat">—</span>
+        <span class="badge bg-green" id="detailCondition">—</span>
+      </div>
+      
+      <h2 id="detailTitle" style="font-size:18px; font-weight:800; line-height:1.3; margin-bottom:8px; color:var(--t1);">—</h2>
+      <div id="detailPrice" style="font-family:'Outfit',sans-serif; font-size:22px; font-weight:900; color:var(--gold); margin-bottom:12px;">฿0</div>
+      
+      <div style="border-top:1px solid var(--border); padding-top:12px; margin-bottom:12px;">
+        <h4 style="font-size:11px; color:var(--t3); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">설명 / Description</h4>
+        <p id="detailDesc" style="font-size:12px; color:var(--t2); line-height:1.6; white-space:pre-wrap;">설명이 없습니다.</p>
+      </div>
+      
+      <div style="border-top:1px solid var(--border); padding-top:12px; margin-bottom:4px;">
+        <h4 style="font-size:11px; color:var(--t3); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">판매 매장 정보 / Shop Info</h4>
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:10px; padding:10px 12px; display:flex; flex-direction:column; gap:4px; font-size:12px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div class="s-avatar" id="detailStoreAvatar" style="width:22px; height:22px; font-size:11px; margin:0;">🏪</div>
+            <strong id="detailStoreName" style="color:var(--t1);">—</strong>
+          </div>
+          <div id="detailStoreLoc" style="color:var(--t2); font-size:11px; margin-top:2px;">📍 —</div>
+          <div id="detailStoreAddress" style="color:var(--t3); font-size:11px; line-height:1.3;">🏡 —</div>
+          <div id="detailMapLink" style="margin-top:2px;"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Buy Button at bottom -->
+    <div style="padding:14px 20px; border-top:1px solid var(--border); background:rgba(13,18,37,0.5);">
+      <button class="btn-submit" id="btnDetailBuy" onclick="triggerDetailBuy()" style="margin:0; width:100%;">🛒 구매 요청하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMAGE LIGHTBOX / ZOOM MODAL -->
+<div class="modal-bg" id="lightboxModal" onclick="closeLightbox()" style="z-index: 9999; background: rgba(0,0,0,0.95); backdrop-filter: blur(10px);">
+  <button onclick="event.stopPropagation(); closeLightbox();" style="position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.1); border: none; color: #fff; font-size: 20px; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10000;">✕</button>
+  
+  <!-- Left / Right Navigation Arrows in Lightbox -->
+  <button id="lightboxPrevBtn" onclick="event.stopPropagation(); moveLightbox(-1);" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.15); border: none; color: #fff; font-size: 18px; width: 46px; height: 46px; border-radius: 50%; display: none; align-items: center; justify-content: center; cursor: pointer; z-index: 10000; font-weight: bold; border: 1px solid rgba(255,255,255,0.15);">◀</button>
+  <button id="lightboxNextBtn" onclick="event.stopPropagation(); moveLightbox(1);" style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.15); border: none; color: #fff; font-size: 18px; width: 46px; height: 46px; border-radius: 50%; display: none; align-items: center; justify-content: center; cursor: pointer; z-index: 10000; font-weight: bold; border: 1px solid rgba(255,255,255,0.15);">▶</button>
+  
+  <div style="width: 100%; max-width: 480px; height: 100%; display: flex; align-items: center; justify-content: center; padding: 20px;">
+    <img id="lightboxImg" src="" style="max-width: 100%; max-height: 85vh; object-fit: contain; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); transform: scale(0.9); transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);">
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="globalToast"></div>
 
@@ -447,7 +518,7 @@ function renderProds(list, elementId) {
     const conditionText = t('condition_' + (p.condition ? p.condition.toLowerCase().replace(' ', '') : 's'));
     
     return `
-      <div class="product-card">
+      <div class="product-card" onclick="openProductDetail('${p.id}')">
         <div class="p-img">
           ${p.images?.[0] ? `<img src="${p.images[0]}" alt="${p.title}" loading="lazy">` : catEmoji(p.category)}
           <div class="p-badge">${p.category || 'Mobile'}</div>
@@ -463,7 +534,7 @@ function renderProds(list, elementId) {
             <span style="color:var(--t2);">${t('search_stock')}: ${p.stock || 1}</span>
           </div>
           <div class="p-price">฿${Number(p.price).toLocaleString()} <small>THB</small></div>
-          <button class="btn-buy" onclick="openOrder('${p.id}')">${t('btn_buy')}</button>
+          <button class="btn-buy" onclick="event.stopPropagation(); openOrder('${p.id}')">${t('btn_buy')}</button>
         </div>
       </div>
     `;
@@ -667,6 +738,169 @@ window.addEventListener('languageChanged', (e) => {
   renderProds(products, 'prodsGrid');
   triggerSearch();
 });
+
+// === PRODUCT DETAIL MODAL & CAROUSEL LOGIC ===
+let currentCarouselIndex = 0;
+let carouselImages = [];
+
+async function openProductDetail(prodId) {
+  let p = products.find(prod => prod.id === prodId);
+  if (!p) {
+    const { data } = await supabase.from('products')
+      .select('id, title, description, price, images, category, seller_id, condition, stock, status, profiles(name, store_name, partner_type, location_province, location_district, location_address, location_coords, profile_image)')
+      .eq('id', prodId).single();
+    p = data;
+  }
+  if (!p) return;
+  
+  currentProd = p;
+  
+  document.getElementById('detailTitle').textContent = p.title;
+  document.getElementById('detailPrice').innerHTML = `฿${Number(p.price).toLocaleString()} <small style="font-size:12px;color:var(--t2);font-weight:500;">THB</small>`;
+  document.getElementById('detailCat').textContent = p.category || 'Mobile';
+  
+  const conditionText = t('condition_' + (p.condition ? p.condition.toLowerCase().replace(' ', '') : 's'));
+  document.getElementById('detailCondition').textContent = `⭐ ${conditionText}`;
+  document.getElementById('detailDesc').textContent = p.description || '상세 설명이 없습니다.';
+  
+  // Seller info
+  const storeName = p.profiles?.store_name || p.profiles?.name || '판매자';
+  document.getElementById('detailStoreName').textContent = storeName;
+  
+  const logoHtml = p.profiles?.profile_image ? `<img src="${p.profiles.profile_image}">` : avatarEmoji(storeName);
+  document.getElementById('detailStoreAvatar').innerHTML = logoHtml;
+  
+  const province = p.profiles?.location_province || 'Bangkok';
+  const districtText = p.profiles?.location_district ? ` - ${p.profiles.location_district}` : '';
+  document.getElementById('detailStoreLoc').textContent = `📍 ${province}${districtText}`;
+  document.getElementById('detailStoreAddress').textContent = `🏡 ${p.profiles?.location_address || '상세 주소 정보 없음'}`;
+  
+  const mapLinkContainer = document.getElementById('detailMapLink');
+  if (p.profiles?.location_coords) {
+    mapLinkContainer.innerHTML = `<a href="https://maps.google.com/?q=${p.profiles.location_coords}" target="_blank" class="badge bg-blue" style="font-weight:700; font-size:10px; padding:4px 8px; display:inline-block; margin-top:4px;">🗺️ 지도에서 위치 보기</a>`;
+  } else {
+    mapLinkContainer.innerHTML = '';
+  }
+
+  // Load images
+  carouselImages = p.images && p.images.length ? p.images : [];
+  currentCarouselIndex = 0;
+  
+  const slidesContainer = document.getElementById('detailCarouselSlides');
+  const dotsContainer = document.getElementById('detailCarouselDots');
+  
+  if (carouselImages.length > 0) {
+    slidesContainer.innerHTML = carouselImages.map(url => `
+      <div style="min-width:100%; width:100%; height:100%; display:flex; align-items:center; justify-content:center; cursor:zoom-in;" onclick="openLightbox('${url}')">
+        <img src="${url}" style="width:100%; height:100%; object-fit:cover;">
+      </div>
+    `).join('');
+    
+    if (carouselImages.length > 1) {
+      document.getElementById('detailPrevBtn').style.display = 'flex';
+      document.getElementById('detailNextBtn').style.display = 'flex';
+      dotsContainer.innerHTML = carouselImages.map((_, idx) => `
+        <div class="carousel-dot" onclick="setCarouselIndex(${idx})" style="width:6px; height:6px; border-radius:50%; background:${idx === 0 ? 'var(--purple-l)' : 'rgba(255,255,255,0.4)'}; cursor:pointer; transition:var(--ease);"></div>
+      `).join('');
+    } else {
+      document.getElementById('detailPrevBtn').style.display = 'none';
+      document.getElementById('detailNextBtn').style.display = 'none';
+      dotsContainer.innerHTML = '';
+    }
+  } else {
+    slidesContainer.innerHTML = `
+      <div style="min-width:100%; width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:72px; background:var(--bg2);">
+        ${catEmoji(p.category)}
+      </div>
+    `;
+    document.getElementById('detailPrevBtn').style.display = 'none';
+    document.getElementById('detailNextBtn').style.display = 'none';
+    dotsContainer.innerHTML = '';
+  }
+  
+  updateCarouselPosition();
+  document.getElementById('detailModal').classList.add('open');
+}
+
+function closeDetailModal() {
+  document.getElementById('detailModal').classList.remove('open');
+}
+
+function moveCarousel(direction) {
+  if (!carouselImages.length) return;
+  currentCarouselIndex = (currentCarouselIndex + direction + carouselImages.length) % carouselImages.length;
+  updateCarouselPosition();
+}
+
+function setCarouselIndex(idx) {
+  currentCarouselIndex = idx;
+  updateCarouselPosition();
+}
+
+function updateCarouselPosition() {
+  const slidesContainer = document.getElementById('detailCarouselSlides');
+  slidesContainer.style.transform = `translateX(-${currentCarouselIndex * 100}%)`;
+  
+  const dots = document.querySelectorAll('#detailCarouselDots .carousel-dot');
+  dots.forEach((dot, idx) => {
+    dot.style.background = idx === currentCarouselIndex ? 'var(--purple-l)' : 'rgba(255,255,255,0.4)';
+  });
+}
+
+function triggerDetailBuy() {
+  closeDetailModal();
+  if (currentProd) {
+    openOrder(currentProd.id);
+  }
+}
+
+// === LIGHTBOX FUNCTIONALITY ===
+function openLightbox(url) {
+  const modal = document.getElementById('lightboxModal');
+  const img = document.getElementById('lightboxImg');
+  img.src = url;
+  
+  const idx = carouselImages.indexOf(url);
+  if (idx !== -1) {
+    currentCarouselIndex = idx;
+  }
+  
+  const prevBtn = document.getElementById('lightboxPrevBtn');
+  const nextBtn = document.getElementById('lightboxNextBtn');
+  if (carouselImages.length > 1) {
+    prevBtn.style.display = 'flex';
+    nextBtn.style.display = 'flex';
+  } else {
+    prevBtn.style.display = 'none';
+    nextBtn.style.display = 'none';
+  }
+  
+  modal.classList.add('open');
+  setTimeout(() => {
+    img.style.transform = 'scale(1)';
+  }, 10);
+}
+
+function closeLightbox() {
+  const modal = document.getElementById('lightboxModal');
+  const img = document.getElementById('lightboxImg');
+  img.style.transform = 'scale(0.9)';
+  modal.classList.remove('open');
+}
+
+function moveLightbox(direction) {
+  if (!carouselImages.length) return;
+  currentCarouselIndex = (currentCarouselIndex + direction + carouselImages.length) % carouselImages.length;
+  
+  const img = document.getElementById('lightboxImg');
+  img.style.transform = 'scale(0.95)';
+  setTimeout(() => {
+    img.src = carouselImages[currentCarouselIndex];
+    img.style.transform = 'scale(1)';
+  }, 100);
+  
+  updateCarouselPosition();
+}
 
 init();
 </script>
