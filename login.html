@@ -249,7 +249,7 @@ async function doLogin() {
     await redirect();
   } catch (err) {
     setLoading('btnLogin', false);
-    errEl.textContent = '네트워크 오류가 발생했습니다. (현지 CORS 보안 제약 또는 네트워크 상태 확인)';
+    errEl.textContent = '오류 발생: ' + (err.message || err.toString());
     console.error(err);
   }
 }
@@ -338,7 +338,7 @@ async function doRegister() {
     }
   } catch (err) {
     setLoading('btnReg', false);
-    errEl.textContent = '네트워크 오류가 발생했습니다. (현지 CORS 보안 제약 또는 네트워크 상태 확인)';
+    errEl.textContent = '오류 발생: ' + (err.message || err.toString());
     console.error(err);
   }
 }

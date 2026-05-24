@@ -4,7 +4,7 @@ const TRANSLATIONS = {
   ko: {
     app_title: "폰스위치허브",
     parent_company: "폰스위치허브 플랫폼",
-    hero_badge: "✨ 태국 1위 중고 스마트폰 O2O 직거래 허브",
+    hero_badge: "✨ 태국 1위 중고 스마트폰 온·오프라인 직거래 허브",
     hero_title: "태국 최저가<br><span class='grad'>스마트폰 직거래</span>",
     hero_sub: "본사 직영점(아이리스 모바일) 및 전국 인증 대리점의 실재고 상품을 안전하게 구매하세요. 태국 전지역 배송 및 캐쉬온딜리버리(COD) 지원!",
     btn_shop_now: "🛍️ 지금 쇼핑하기",
