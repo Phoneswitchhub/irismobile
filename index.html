@@ -266,53 +266,62 @@ async function init() {
   // 1. Language initialized by i18n.js
   applyTranslations();
 
-  // 2. Auth state
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-    if (p) {
-      // Setup My Page
-      document.getElementById('myPageGuest').style.display = 'none';
-      document.getElementById('myPageUser').style.display = 'block';
-      document.getElementById('myPageAvatar').innerHTML = p.profile_image ? `<img src="${p.profile_image}">` : avatarEmoji(p.name);
-      document.getElementById('myPageName').textContent = p.name;
-      document.getElementById('myPagePhone').textContent = '📞 ' + p.phone;
-      
-      const roleMap = { admin: '관리자 / Admin', seller: '판매자 / Seller', buyer: '구매자 / Buyer' };
-      document.getElementById('myPageRoleBadge').textContent = roleMap[p.role] || p.role;
-      
-      const dash = document.getElementById('btnMyPageDash');
-      if (p.role === 'buyer') {
-        dash.style.display = 'none'; // Buyers don't need a seller dashboard
-      } else {
-        dash.href = p.role === 'admin' ? 'admin/dashboard.html' : 'seller/dashboard.html';
+  try {
+    // 2. Auth state
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+      if (p) {
+        // Setup My Page
+        document.getElementById('myPageGuest').style.display = 'none';
+        document.getElementById('myPageUser').style.display = 'block';
+        document.getElementById('myPageAvatar').innerHTML = p.profile_image ? `<img src="${p.profile_image}">` : avatarEmoji(p.name);
+        document.getElementById('myPageName').textContent = p.name;
+        document.getElementById('myPagePhone').textContent = '📞 ' + p.phone;
+        
+        const roleMap = { admin: '관리자 / Admin', seller: '판매자 / Seller', buyer: '구매자 / Buyer' };
+        document.getElementById('myPageRoleBadge').textContent = roleMap[p.role] || p.role;
+        
+        const dash = document.getElementById('btnMyPageDash');
+        if (p.role === 'buyer') {
+          dash.style.display = 'none'; // Buyers don't need a seller dashboard
+        } else {
+          dash.href = p.role === 'admin' ? 'admin/dashboard.html' : 'seller/dashboard.html';
+        }
       }
     }
+
+    // 3. Stats
+    const [pCount, sCount, oCount] = await Promise.all([
+      supabase.from('products').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'seller').eq('is_approved', true),
+      supabase.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'completed')
+    ]);
+    animNum('sProducts', pCount.count || 0);
+    animNum('sSellers', sCount.count || 0);
+    animNum('sOrders', oCount.count || 0);
+
+    // 4. Load Shops
+    const { data: profilesList } = await supabase.from('profiles')
+      .select('id, name, store_name, profile_image, description, partner_type, location_province, location_address, location_coords, commission_rate, payout_method')
+      .eq('role', 'seller')
+      .eq('is_approved', true);
+    
+    shops = profilesList || [];
+    renderShopLogoList(shops);
+    renderShopsListView(shops);
+    populateLocationFilter(shops);
+
+    // 5. Products
+    await loadProducts('all');
+  } catch (err) {
+    console.warn("Supabase initialization skipped or failed (likely local file:// protocol limits):", err);
+    // Render empty states for local preview
+    renderShopLogoList([]);
+    renderShopsListView([]);
+    populateLocationFilter([]);
+    renderProds([], 'prodsGrid');
   }
-
-  // 3. Stats
-  const [pCount, sCount, oCount] = await Promise.all([
-    supabase.from('products').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'seller').eq('is_approved', true),
-    supabase.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'completed')
-  ]);
-  animNum('sProducts', pCount.count || 0);
-  animNum('sSellers', sCount.count || 0);
-  animNum('sOrders', oCount.count || 0);
-
-  // 4. Load Shops
-  const { data: profilesList } = await supabase.from('profiles')
-    .select('id, name, store_name, profile_image, description, partner_type, location_province, location_address, location_coords, commission_rate, payout_method')
-    .eq('role', 'seller')
-    .eq('is_approved', true);
-  
-  shops = profilesList || [];
-  renderShopLogoList(shops);
-  renderShopsListView(shops);
-  populateLocationFilter(shops);
-
-  // 5. Products
-  await loadProducts('all');
 }
 
 // Render horizontal shop logos

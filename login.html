@@ -160,11 +160,23 @@
 <script>
 let role = 'buyer';
 
-// Run translations immediately
-if (window.applyTranslations) applyTranslations();
+// Run translations immediately safely
+try {
+  if (window.applyTranslations) applyTranslations();
+} catch (e) {
+  console.error("Translation init failed:", e);
+}
 
-// Already logged in?
-supabase.auth.getUser().then(({ data: { user } }) => { if (user) redirect(); });
+// Already logged in check (CORS/file protocol safe)
+try {
+  if (typeof supabase !== 'undefined' && supabase.auth) {
+    supabase.auth.getUser()
+      .then(({ data }) => { if (data && data.user) redirect(); })
+      .catch(err => console.warn("Supabase getUser failed:", err));
+  }
+} catch (e) {
+  console.warn("Supabase auth check skipped:", e);
+}
 
 function switchForm(t) {
   const isLogin = t === 'login';
