@@ -4,7 +4,7 @@ const SUPABASE_KEY = 'sb_publishable_WoOZ0hIKP7EV8_l5FKUuyw_awLAvP0Q';
 
 // 관리자 전화번호 (본인 전화번호 입력 - 숫자만, 국가코드 제외)
 // 예: 태국 번호 0812345678 -> '0812345678'
-const ADMIN_PHONE = ''; // ← 여기에 본인 전화번호 입력!
+const ADMIN_PHONE = '0645386331'; // ← 여기에 본인 전화번호 입력!
 
 // Supabase 클라이언트 생성
 const { createClient } = window.supabase;
