@@ -241,6 +241,43 @@ function setupPin(ids) {
 setupPin(['l1','l2','l3','l4']);
 setupPin(['r1','r2','r3','r4']);
 
+// Auto-focus first PIN field when phone number reaches 10 digits
+const lPhone = document.getElementById('lPhone');
+if (lPhone) {
+  lPhone.addEventListener('input', () => {
+    const val = lPhone.value.replace(/\D/g, '');
+    if (val.length >= 10) {
+      const firstPin = document.getElementById('l1');
+      if (firstPin) firstPin.focus();
+    }
+  });
+}
+const rPhone = document.getElementById('rPhone');
+if (rPhone) {
+  rPhone.addEventListener('input', () => {
+    const val = rPhone.value.replace(/\D/g, '');
+    if (val.length >= 10) {
+      const firstPin = document.getElementById('r1');
+      if (firstPin) firstPin.focus();
+    }
+  });
+}
+
+// Auto-submit login form when the 4th PIN digit is entered
+const l4 = document.getElementById('l4');
+if (l4) {
+  l4.addEventListener('input', () => {
+    if (l4.value.length >= 1) {
+      setTimeout(() => {
+        const pin = getPin(['l1','l2','l3','l4']);
+        if (pin.length === 4) {
+          doLogin();
+        }
+      }, 80); // Small delay to let the 4th bullet render for better UX
+    }
+  });
+}
+
 function getPin(ids) { return ids.map(id => document.getElementById(id).value).join(''); }
 
 async function doLogin() {
