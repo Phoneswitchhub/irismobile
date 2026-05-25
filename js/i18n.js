@@ -18,6 +18,7 @@ const TRANSLATIONS = {
     tab_search: "검색",
     tab_shops: "직영/대리점",
     tab_mypage: "내 정보",
+    my_orders_title: "내 주문 내역 (My Orders)",
 
     // Search Page
     search_placeholder: "모델명 검색 (예: iPhone 15)...",
@@ -253,6 +254,7 @@ const TRANSLATIONS = {
     tab_search: "ค้นหา",
     tab_shops: "สาขา/ตัวแทน",
     tab_mypage: "โปรไฟล์",
+    my_orders_title: "รายการสั่งซื้อของฉัน (My Orders)",
 
     // Search Page
     search_placeholder: "ค้นหารุ่นโทรศัพท์ (เช่น iPhone 15)...",
@@ -488,6 +490,7 @@ const TRANSLATIONS = {
     tab_search: "ရှာဖွေရန်",
     tab_shops: "ဆိုင်ခွဲ/ကိုယ်စားလှယ်များ",
     tab_mypage: "ကျွန်ုပ်၏ပရိုဖိုင်",
+    my_orders_title: "ကျွန်ုပ်၏ အော်ဒါများ (My Orders)",
 
     // Search Page
     search_placeholder: "ဖုန်းအမျိုးအစား ရှာရန် (ဥပမာ- iPhone 15)...",

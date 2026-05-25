@@ -180,6 +180,16 @@
           </button>
         </div>
         
+        <!-- Buyer Orders List -->
+        <div style="margin-top:28px; border-top:1px solid var(--border); padding-top:20px;">
+          <h4 style="font-size:14px; font-weight:700; margin-bottom:14px; color:var(--gold); display:flex; align-items:center; gap:6px;">
+            🛍️ <span data-i18n="my_orders_title">내 주문 내역 (My Orders)</span>
+          </h4>
+          <div id="myOrdersList" style="display:flex; flex-direction:column; gap:10px;">
+            <div class="empty" style="padding:20px 0; font-size:12px; color:var(--t3);" data-i18n="no_orders">주문한 내역이 없습니다.</div>
+          </div>
+        </div>
+        
         <!-- Buyer Inquiries List -->
         <div style="margin-top:28px; border-top:1px solid var(--border); padding-top:20px;">
           <h4 style="font-size:14px; font-weight:700; margin-bottom:14px; color:var(--purple-l); display:flex; align-items:center; gap:6px;">
@@ -401,6 +411,7 @@ async function init() {
           dash.href = p.role === 'admin' ? 'admin/dashboard.html' : 'seller/dashboard.html';
         }
         await loadMyInquiries(); // 내 문의 내역 로드
+        await loadMyOrders(); // 내 주문 내역 로드
       } else {
         // 프로필이 없는 경우 (인증은 되었으나 프로필 생성이 실패한 비정상 세션)
         console.warn("User has active auth session but no profile exists. Redirecting to complete registration...");
@@ -746,9 +757,19 @@ async function submitOrder() {
   
   // Update buyer's address in profiles so they don't have to retype next time
   await supabase.from('profiles').update({ location_address: addr }).eq('id', user.id);
+
+  // Deduct stock and update status in DB
+  const currentStock = currentProd.stock !== undefined && currentProd.stock !== null ? currentProd.stock : 1;
+  const newStock = Math.max(0, currentStock - qty);
+  const newStatus = newStock <= 0 ? 'sold' : 'active';
+  await supabase.from('products').update({ stock: newStock, status: newStatus }).eq('id', currentProd.id);
   
   closeModal();
   showToast(t('success_order'), 'success');
+  
+  // Reload product lists and order history
+  await loadProducts('all');
+  await loadMyOrders();
 }
 
 function closeModal() {
@@ -1208,6 +1229,78 @@ function scrollToBottom(id) {
   }
 }
 
+async function loadMyOrders() {
+  const container = document.getElementById('myOrdersList');
+  if (!container) return;
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  
+  try {
+    const { data: orders, error } = await supabase.from('orders')
+      .select('*, products(title, images, price), seller:profiles!orders_seller_id_fkey(store_name, phone)')
+      .eq('buyer_id', user.id)
+      .order('created_at', { ascending: false });
+      
+    if (error) throw error;
+    
+    if (!orders || orders.length === 0) {
+      container.innerHTML = `<div class="empty" style="padding:20px 0; font-size:12px; color:var(--t3);" data-i18n="no_orders">${t('no_orders')}</div>`;
+      return;
+    }
+    
+    container.innerHTML = orders.map(o => {
+      const prod = o.products || {};
+      const seller = o.seller || {};
+      const imgUrl = prod.images?.[0] || '';
+      const prodTitle = prod.title || t('product_inquiry');
+      
+      const statusMap = {
+        pending: t('status_pending'),
+        confirmed: t('status_confirmed'),
+        completed: t('status_completed'),
+        cancelled: t('status_cancelled')
+      };
+      const statusText = statusMap[o.status] || o.status || t('status_pending');
+      
+      let statusColor = 'var(--purple-l)';
+      if (o.status === 'completed') statusColor = 'var(--green)';
+      if (o.status === 'cancelled') statusColor = 'var(--red)';
+      if (o.status === 'confirmed') statusColor = 'var(--blue)';
+
+      const dateStr = new Date(o.created_at).toLocaleDateString();
+      const paymentText = o.payment_method === 'cod' ? t('order_pay_cod') : t('order_pay_online');
+
+      return `
+        <div class="card" style="padding:14px; border-radius:12px; background:rgba(255,255,255,0.02); border:1px solid var(--border); display:flex; flex-direction:column; gap:10px; text-align:left;">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
+            <span style="font-size:11px; color:var(--t3); font-family:\'Outfit\',sans-serif;">${dateStr}</span>
+            <span style="font-size:11px; font-weight:700; color:${statusColor}; background:rgba(255,255,255,0.03); padding:3px 8px; border-radius:6px; border:1px solid ${statusColor};">${statusText}</span>
+          </div>
+          <div style="display:flex; gap:12px; align-items:center;">
+            <div style="width:50px; height:50px; border-radius:8px; overflow:hidden; background:rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              ${imgUrl ? `<img src="${imgUrl}" style="width:100%; height:100%; object-fit:cover;">` : '📱'}
+            </div>
+            <div style="flex:1;">
+              <div style="font-weight:700; font-size:13px; color:var(--t1);">${prodTitle}</div>
+              <div style="font-size:11px; color:var(--t2); margin-top:2px;">🏪 ${seller.store_name || t('role_seller')} | 📦 ${o.quantity} ${t('order_qty_suffix') || '개'}</div>
+              <div style="font-size:12px; font-weight:700; color:var(--gold); margin-top:4px;">฿${Number(o.total_price).toLocaleString()}</div>
+            </div>
+          </div>
+          <div style="background:rgba(255,255,255,0.01); border-radius:8px; padding:10px; font-size:11px; color:var(--t2); display:flex; flex-direction:column; gap:4px; border:1px solid rgba(255,255,255,0.02); text-align:left;">
+            <div><strong>📍 ${t('order_address')}:</strong> ${o.delivery_address}</div>
+            <div><strong>💳 ${t('order_payment')}:</strong> ${paymentText}</div>
+            ${o.notes ? `<div><strong>📝 ${t('order_notes')}:</strong> ${o.notes}</div>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error("Error loading orders:", err);
+    container.innerHTML = `<div class="empty" style="padding:20px 0; font-size:12px; color:var(--t3);">${t('error_occurred')}</div>`;
+  }
+}
+
 async function loadMyInquiries() {
   const container = document.getElementById('myInquiriesList');
   if (!container) return;
@@ -1292,8 +1385,9 @@ window.addEventListener('languageChanged', async () => {
     triggerSearch();
   }
   const { data: { user } } = await supabase.auth.getUser();
-  if (user && typeof loadMyInquiries === 'function') {
-    await loadMyInquiries();
+  if (user) {
+    if (typeof loadMyInquiries === 'function') await loadMyInquiries();
+    if (typeof loadMyOrders === 'function') await loadMyOrders();
   }
 });
 
