@@ -1123,6 +1123,21 @@ async function updateChatsTabBadge() {
   }
 }
 
+window.addEventListener('languageChanged', async () => {
+  const locales = { ko: 'ko-KR', th: 'th-TH', mm: 'en-US' };
+  const dateEl = document.getElementById('hd-date');
+  if (dateEl) {
+    dateEl.textContent = new Date().toLocaleDateString(locales[currentLang] || 'th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+  }
+  if (myProfile) {
+    await loadStats();
+    await loadRecentOrders();
+    await loadAllOrders();
+    await loadMyProducts();
+    await loadChatRooms();
+  }
+});
+
 init();
 </script>
 </body>
