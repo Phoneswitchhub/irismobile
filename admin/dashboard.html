@@ -407,6 +407,7 @@ async function loadSellers() {
           <td style="font-size:12px;color:var(--t3);">${formatDate(s.created_at)}</td>
           <td>
             <button class="btn-sm btn-purple" onclick="openPartnerConfig('${s.id}')">⚙️ 설정</button>
+            <button class="btn-sm btn-green" style="margin-left:4px;" onclick="initiatePinReset('${s.id}', '${s.phone}')">🔑 PIN</button>
             <button class="btn-sm btn-red" style="margin-left:4px;" onclick="suspendSeller('${s.id}')">🚫 정지</button>
           </td>
         </tr>
@@ -520,7 +521,10 @@ async function loadBuyers() {
       <td>+66 ${b.phone}</td>
       <td style="font-size:12px;color:var(--t3);">${formatDate(b.created_at)}</td>
       <td style="font-size:11px;color:var(--t2);max-width:180px;white-space:normal;">🏠 ${b.location_address || '배송지 정보 없음'}</td>
-      <td><button class="btn-sm btn-red" onclick="deleteUser('${b.id}')">🗑️ 삭제</button></td>
+      <td>
+        <button class="btn-sm btn-green" onclick="initiatePinReset('${b.id}', '${b.phone}')">🔑 PIN</button>
+        <button class="btn-sm btn-red" style="margin-left:4px;" onclick="deleteUser('${b.id}')">🗑️ 삭제</button>
+      </td>
     </tr>
   `).join('');
 }
@@ -534,6 +538,29 @@ async function deleteUser(id) {
   }
   showToast('🗑️ 회원이 삭제됐습니다.');
   await refreshAll();
+}
+
+async function initiatePinReset(userId, phone) {
+  const newPin = prompt(`해당 회원의 새로운 4자리 PIN 번호를 입력하세요 (예: 1234):`);
+  if (newPin === null) return; // 취소
+  
+  if (!/^\d{4}$/.test(newPin)) {
+    showToast('⚠️ PIN 번호는 반드시 숫자 4자리여야 합니다.', 'error');
+    return;
+  }
+  
+  const { data, error } = await supabase.rpc('reset_user_pin', {
+    user_id: userId,
+    user_phone: phone,
+    new_pin: newPin
+  });
+  
+  if (error) {
+    showToast('❌ PIN 초기화 실패: ' + error.message, 'error');
+    return;
+  }
+  
+  showToast('🔑 PIN 번호가 성공적으로 초기화되었습니다!', 'success');
 }
 
 async function loadAllProducts() {

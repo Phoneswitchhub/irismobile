@@ -210,6 +210,17 @@
         <div class="form-group"><label class="form-label">매장 상세 주소</label><textarea class="form-textarea" id="profAddress"></textarea></div>
         <div class="form-group"><label class="form-label">매장 구글맵 좌표 (위도, 경도)</label><input type="text" class="form-input" id="profCoords" placeholder="예: 13.7563, 100.5018"></div>
         
+        <div class="form-group" style="background: rgba(139, 92, 246, 0.05); border: 1px dashed var(--border2); padding: 14px; border-radius: var(--r-sm);">
+          <label class="form-label" style="color:var(--purple-l); font-weight: 700;">🔔 라인 알림 연동 (LINE User ID)</label>
+          <input type="text" class="form-input" id="profLineUserId" placeholder="예: U1234567890abcdef1234567890abcdef" style="margin-bottom:8px;">
+          <div style="font-size:10px; color:var(--t2); line-height:1.4;">
+            본사 공식 계정 친구 추가 후, 본인의 <b>LINE User ID</b>를 입력하시면 고객 문의 시 실시간으로 라인 메시지 알림을 받으실 수 있습니다.
+            <div style="margin-top:6px; font-weight:700;">
+              🔗 공식 계정 친구 추가용 라인 ID: <span style="color:var(--cyan);">@phoneswitchhub</span> (가칭)
+            </div>
+          </div>
+        </div>
+        
         <div class="form-group">
           <label class="form-label">수수료 정산 및 결제 방식 (기본)</label>
           <select class="form-input" id="profPayout" disabled style="opacity:.7; background:rgba(0,0,0,0.1);">
@@ -225,6 +236,42 @@
     </div>
   </div>
 
+  <!-- ==================== VIEW 5: CHATS ==================== -->
+  <div id="page-chats" class="view-section" style="display:none;">
+    <div class="main-hd">
+      <h1>💬 고객 문의 채팅</h1>
+    </div>
+    <div class="main-body" style="padding: 16px;">
+      <!-- Active Chat List & Detail container (splits on desktop, toggles on mobile) -->
+      <div id="sellerChatContainer" style="display:flex; flex-direction:column; height:calc(100vh - 210px); gap:12px; position:relative; overflow:hidden;">
+        
+        <!-- Chat Room List Panel -->
+        <div id="chatRoomsPanel" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px;">
+          <div class="empty" style="padding:40px 0;"><div class="empty-ico">💬</div><div class="empty-ttl">채팅방이 없습니다.</div></div>
+        </div>
+        
+        <!-- Active Chat Message Panel (Hidden by default, slides up on select) -->
+        <div id="chatDetailPanel" style="position:absolute; inset:0; background:var(--bg); display:none; flex-direction:column; z-index:50;">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--border); background:var(--bg2);">
+            <button onclick="closeActiveChatPanel()" style="background:transparent; border:none; color:var(--purple-l); font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:4px;">◀ 목록</button>
+            <span id="activeChatTitle" style="font-weight:700; font-size:13px; color:var(--t1);">—</span>
+            <div style="width:40px;"></div> <!-- balance spacer -->
+          </div>
+          <!-- Messages Box -->
+          <div id="sellerChatMessagesBody" style="flex:1; padding:16px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; background:var(--bg2);">
+            <!-- Messages load dynamically -->
+          </div>
+          <!-- Send Input -->
+          <div style="padding:10px 12px; border-top:1px solid var(--border); background:rgba(13,18,37,0.9); display:flex; gap:8px; align-items:center;">
+            <input type="text" id="sellerChatInput" placeholder="답장을 입력하세요..." style="flex:1; padding:10px 12px; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:10px; color:var(--t1); font-size:12px; outline:none;" onkeydown="if(event.key==='Enter') sendSellerChatMessage()">
+            <button onclick="sendSellerChatMessage()" style="padding:10px 14px; background:var(--gp); border:none; border-radius:10px; color:#fff; font-weight:700; font-size:12px; cursor:pointer;">전송</button>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+  </div>
+
   <!-- BOTTOM TAB BAR -->
   <div class="tab-bar">
     <div class="tab-item active" id="tab-overview" onclick="showPage('overview', this)">
@@ -234,6 +281,10 @@
     <div class="tab-item" id="tab-products" onclick="showPage('products', this)">
       <span class="tab-item-icon">📱</span>
       <span>내 상품</span>
+    </div>
+    <div class="tab-item" id="tab-chats" onclick="showPage('chats', this)">
+      <span class="tab-item-icon">💬</span>
+      <span>문의 채팅</span>
     </div>
     <div class="tab-item" id="tab-orders" onclick="showPage('orders', this)">
       <span class="tab-item-icon">📦</span>
@@ -357,6 +408,7 @@ async function init() {
   document.getElementById('profCoords').value = p.location_coords || '';
   document.getElementById('profPayout').value = p.payout_method || 'parent_payment';
   document.getElementById('profDesc').value = p.description || '';
+  document.getElementById('profLineUserId').value = p.line_user_id || '';
   
   if (p.profile_image) {
     document.getElementById('profAvatarPreview').innerHTML = `<img src="${p.profile_image}" style="width:100%;height:100%;object-fit:cover;">`;
@@ -659,6 +711,7 @@ async function saveProfile() {
   const address = document.getElementById('profAddress').value.trim();
   const coords = document.getElementById('profCoords').value.trim();
   const desc = document.getElementById('profDesc').value.trim();
+  const lineUserId = document.getElementById('profLineUserId').value.trim();
   if (!name) { showToast('❌ 이름을 입력해주세요.', 'error'); return; }
   if (!store) { showToast('❌ 매장명을 입력해주세요.', 'error'); return; }
   if (!prov) { showToast('❌ 지역(주)을 선택해주세요.', 'error'); return; }
@@ -684,7 +737,8 @@ async function saveProfile() {
     location_address: address,
     location_coords: coords || null,
     description: desc,
-    profile_image: profileImage
+    profile_image: profileImage,
+    line_user_id: lineUserId
   }).eq('id', myProfile.id);
 
   setLoading('btnSaveProfile', false);
@@ -701,6 +755,7 @@ async function saveProfile() {
   myProfile.location_coords = coords || null;
   myProfile.description = desc;
   myProfile.profile_image = profileImage;
+  myProfile.line_user_id = lineUserId;
   
   if (profileImage) {
     document.getElementById('profAvatarPreview').innerHTML = `<img src="${profileImage}" style="width:100%;height:100%;object-fit:cover;">`;
@@ -723,7 +778,7 @@ function previewAvatar(input) {
 function closeProdModal() { document.getElementById('prodModal').classList.remove('open'); }
 
 function showPage(pg, el) {
-  ['overview','products','orders','profile'].forEach(p => {
+  ['overview','products','orders','profile','chats'].forEach(p => {
     const elPage = document.getElementById('page-' + p);
     if (elPage) {
       if (p === pg) {
@@ -736,6 +791,10 @@ function showPage(pg, el) {
     }
   });
   
+  if (pg === 'chats') {
+    loadChatRooms();
+  }
+  
   document.querySelectorAll('.tab-item').forEach(l => l.classList.remove('active'));
   if (el) {
     el.classList.add('active');
@@ -744,6 +803,186 @@ function showPage(pg, el) {
     if (targetTab) targetTab.classList.add('active');
   }
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// === SELLER CHAT SYSTEM FUNCTIONS ===
+let activeSellerRoomId = null;
+let sellerChatSub = null;
+
+async function loadChatRooms() {
+  const panel = document.getElementById('chatRoomsPanel');
+  panel.innerHTML = '<div class="empty">채팅방 목록을 로딩 중...</div>';
+  
+  try {
+    const { data: rooms, error } = await supabase.from('chat_rooms')
+      .select('*, products(title), buyer:profiles!chat_rooms_buyer_id_fkey(name, profile_image)')
+      .eq('seller_id', myProfile.id)
+      .order('updated_at', { ascending: false });
+      
+    if (error) throw error;
+    
+    if (!rooms || rooms.length === 0) {
+      panel.innerHTML = '<div class="empty"><div class="empty-ico">💬</div><div class="empty-ttl">문의가 없습니다.</div></div>';
+      return;
+    }
+    
+    panel.innerHTML = rooms.map(r => {
+      const buyerName = r.buyer?.name || '구매자';
+      const prodTitle = r.products?.title || '상품 문의';
+      const avatar = r.buyer?.profile_image 
+        ? `<img src="${r.buyer.profile_image}" style="width:100%;height:100%;object-fit:cover;">` 
+        : ['👨','👩','🧑','👦','👧','🧔'][buyerName.charCodeAt(0) % 6];
+        
+      return `
+        <div class="card" onclick="openSellerChat('${r.id}', '${buyerName}')" style="display:flex; align-items:center; gap:12px; cursor:pointer; padding:12px 14px;">
+          <div class="s-avatar" style="width:40px; height:40px; margin:0; font-size:18px;">${avatar}</div>
+          <div style="flex:1;">
+            <div style="font-weight:700; font-size:13px; color:var(--t1);">${buyerName}</div>
+            <div style="font-size:11px; color:var(--t2); margin-top:2px;">📱 ${prodTitle}</div>
+          </div>
+          <span style="color:var(--purple-l); font-size:11px; font-weight:700;">대화하기 ▶</span>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    panel.innerHTML = '<div class="empty">채팅 목록 불러오기 실패</div>';
+  }
+}
+
+async function openSellerChat(roomId, buyerName) {
+  activeSellerRoomId = roomId;
+  document.getElementById('activeChatTitle').textContent = buyerName;
+  document.getElementById('chatDetailPanel').style.display = 'flex';
+  document.getElementById('sellerChatInput').value = '';
+  
+  await loadSellerMessages(roomId);
+  subscribeToSellerMessages(roomId);
+}
+
+async function loadSellerMessages(roomId) {
+  const container = document.getElementById('sellerChatMessagesBody');
+  container.innerHTML = '<div class="empty">대화 내용을 로딩 중...</div>';
+  
+  try {
+    const { data: msgs, error } = await supabase.from('chat_messages')
+      .select('*')
+      .eq('room_id', roomId)
+      .order('created_at', { ascending: true });
+      
+    if (error) throw error;
+    
+    if (!msgs || msgs.length === 0) {
+      container.innerHTML = '<div class="empty">대화 시작입니다. 문의 답변을 남겨보세요!</div>';
+      return;
+    }
+    
+    container.innerHTML = msgs.map(m => renderSellerMessageRow(m, myProfile.id)).join('');
+    scrollToBottom('sellerChatMessagesBody');
+  } catch (err) {
+    container.innerHTML = '<div class="empty">대화 불러오기 실패</div>';
+  }
+}
+
+function renderSellerMessageRow(msg, currentUserId) {
+  const isMine = msg.sender_id === currentUserId;
+  const align = isMine ? 'align-self: flex-end; align-items: flex-end;' : 'align-self: flex-start; align-items: flex-start;';
+  const bg = isMine ? 'background: var(--gp); color: #fff; border-bottom-right-radius: 4px;' : 'background: rgba(255,255,255,0.08); color: var(--t1); border-bottom-left-radius: 4px;';
+  const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  
+  return `
+    <div style="display: flex; flex-direction: column; max-width: 75%; ${align}">
+      <div style="${bg} padding: 10px 14px; border-radius: 16px; font-size: 13px; line-height: 1.4; word-break: break-all;">
+        ${msg.message}
+      </div>
+      <span style="font-size: 10px; color: var(--t3); margin-top: 3px; padding: 0 4px;">${time}</span>
+    </div>
+  `;
+}
+
+function subscribeToSellerMessages(roomId) {
+  if (sellerChatSub) {
+    supabase.removeChannel(sellerChatSub);
+  }
+  
+  sellerChatSub = supabase.channel(`s_room_${roomId}`)
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'chat_messages',
+      filter: `room_id=eq.${roomId}`
+    }, async (payload) => {
+      const container = document.getElementById('sellerChatMessagesBody');
+      
+      const emptyEl = container.querySelector('.empty');
+      if (emptyEl) emptyEl.remove();
+      
+      const div = document.createElement('div');
+      div.style.display = 'flex';
+      div.style.flexDirection = 'column';
+      div.style.maxWidth = '75%';
+      
+      const isMine = payload.new.sender_id === myProfile.id;
+      div.style.alignSelf = isMine ? 'flex-end' : 'flex-start';
+      div.style.alignItems = isMine ? 'flex-end' : 'flex-start';
+      
+      const bg = isMine ? 'background: var(--gp); color: #fff; border-bottom-right-radius: 4px;' : 'background: rgba(255,255,255,0.08); color: var(--t1); border-bottom-left-radius: 4px;';
+      const time = new Date(payload.new.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      div.innerHTML = `
+        <div style="${bg} padding: 10px 14px; border-radius: 16px; font-size: 13px; line-height: 1.4; word-break: break-all;">
+          ${payload.new.message}
+        </div>
+        <span style="font-size: 10px; color: var(--t3); margin-top: 3px; padding: 0 4px;">${time}</span>
+      `;
+      
+      container.appendChild(div);
+      scrollToBottom('sellerChatMessagesBody');
+    })
+    .subscribe();
+}
+
+async function sendSellerChatMessage() {
+  const input = document.getElementById('sellerChatInput');
+  const text = input.value.trim();
+  if (!text || !activeSellerRoomId) return;
+  
+  // 직거래 우회 방지 필터링 실행
+  const filtered = filterBypassKeywords(text);
+  
+  try {
+    const { error } = await supabase.from('chat_messages').insert({
+      room_id: activeSellerRoomId,
+      sender_id: myProfile.id,
+      message: filtered
+    });
+    
+    if (error) throw error;
+    
+    input.value = '';
+    
+    if (text !== filtered) {
+      showToast('⚠️ 직거래 방지를 위해 연락처/계좌 정보가 필터링되었습니다.', 'error');
+    }
+  } catch (err) {
+    showToast('메시지 전송 실패: ' + err.message, 'error');
+  }
+}
+
+function closeActiveChatPanel() {
+  document.getElementById('chatDetailPanel').style.display = 'none';
+  if (sellerChatSub) {
+    supabase.removeChannel(sellerChatSub);
+    sellerChatSub = null;
+  }
+  activeSellerRoomId = null;
+  loadChatRooms();
+}
+
+function scrollToBottom(id) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.scrollTop = el.scrollHeight;
+  }
 }
 
 async function doLogout() { await supabase.auth.signOut(); window.location.href = '../login.html'; }

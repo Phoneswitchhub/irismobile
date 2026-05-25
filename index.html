@@ -310,8 +310,9 @@
     </div>
     
     <!-- Buy Button at bottom -->
-    <div style="padding:14px 20px; border-top:1px solid var(--border); background:rgba(13,18,37,0.5);">
-      <button class="btn-submit" id="btnDetailBuy" onclick="triggerDetailBuy()" style="margin:0; width:100%;">🛒 구매 요청하기</button>
+    <div style="padding:14px 20px; border-top:1px solid var(--border); background:rgba(13,18,37,0.5); display:flex; gap:10px;">
+      <button class="btn-submit" id="btnDetailChat" onclick="openChatFromDetail()" style="margin:0; flex:1; background:var(--gg);">💬 문의하기</button>
+      <button class="btn-submit" id="btnDetailBuy" onclick="triggerDetailBuy()" style="margin:0; flex:1.2;">🛒 구매 요청하기</button>
     </div>
   </div>
 </div>
@@ -326,6 +327,25 @@
   
   <div style="width: 100%; max-width: 480px; height: 100%; display: flex; align-items: center; justify-content: center; padding: 20px;">
     <img id="lightboxImg" src="" style="max-width: 100%; max-height: 85vh; object-fit: contain; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); transform: scale(0.9); transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);">
+  </div>
+</div>
+
+<!-- CHAT MODAL -->
+<div class="modal-bg" id="chatModal">
+  <div class="modal" style="max-width:440px; padding:0; overflow:hidden; border-radius:22px; height:80vh; display:flex; flex-direction:column;">
+    <div class="modal-hd" style="padding:16px 20px; border-bottom:1px solid var(--border); margin:0;">
+      <span class="modal-title" id="chatModalTitle">💬 1:1 문의하기</span>
+      <button class="modal-x" onclick="closeChatModal()">✕</button>
+    </div>
+    <!-- Messages Body -->
+    <div id="chatMessagesBody" style="flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; background:var(--bg2);">
+      <div class="empty" style="padding:20px 0;">대화를 시작하세요.</div>
+    </div>
+    <!-- Send Input -->
+    <div style="padding:12px 16px; border-top:1px solid var(--border); background:rgba(13,18,37,0.8); display:flex; gap:8px; align-items:center;">
+      <input type="text" id="chatInput" placeholder="메시지를 입력하세요..." style="flex:1; padding:12px 14px; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:12px; color:var(--t1); font-size:13px; outline:none;" onkeydown="if(event.key==='Enter') sendChatMessage()">
+      <button onclick="sendChatMessage()" style="padding:12px 16px; background:var(--gp); border:none; border-radius:12px; color:#fff; font-weight:700; font-size:13px; cursor:pointer;">전송</button>
+    </div>
   </div>
 </div>
 
@@ -919,6 +939,204 @@ function moveLightbox(direction) {
   }, 100);
   
   updateCarouselPosition();
+}
+
+// === CHAT SYSTEM FUNCTIONALITY ===
+let currentChatRoomId = null;
+let chatSubscription = null;
+
+async function openChatFromDetail() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    window.location.href = 'login.html';
+    return;
+  }
+  
+  if (!currentProd) return;
+  
+  if (user.id === currentProd.seller_id) {
+    showToast('⚠️ 본인이 등록한 상품에는 문의할 수 없습니다.', 'error');
+    return;
+  }
+  
+  setLoading('btnDetailChat', true, '연결 중...');
+  try {
+    // 1. 기존 채팅방이 있는지 확인
+    let { data: room, error } = await supabase.from('chat_rooms')
+      .select('id')
+      .eq('buyer_id', user.id)
+      .eq('seller_id', currentProd.seller_id)
+      .eq('product_id', currentProd.id)
+      .maybeSingle();
+      
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+    
+    let roomId = room?.id;
+    
+    // 2. 채팅방이 없으면 새로 생성
+    if (!roomId) {
+      const { data: newRoom, error: createErr } = await supabase.from('chat_rooms')
+        .insert({
+          buyer_id: user.id,
+          seller_id: currentProd.seller_id,
+          product_id: currentProd.id
+        })
+        .select('id')
+        .single();
+        
+      if (createErr) throw createErr;
+      roomId = newRoom.id;
+    }
+    
+    currentChatRoomId = roomId;
+    closeDetailModal();
+    
+    // 대화 상대자 이름으로 타이틀 변경
+    const storeName = currentProd.profiles?.store_name || currentProd.profiles?.name || '판매자';
+    document.getElementById('chatModalTitle').textContent = `💬 ${storeName} 님과 대화`;
+    
+    // 모달 띄우고 데이터 로드
+    document.getElementById('chatModal').classList.add('open');
+    document.getElementById('chatInput').value = '';
+    
+    await loadChatMessages(roomId);
+    subscribeToChatMessages(roomId);
+  } catch (err) {
+    console.error(err);
+    showToast('채팅방 연결 오류: ' + err.message, 'error');
+  } finally {
+    setLoading('btnDetailChat', false);
+  }
+}
+
+async function loadChatMessages(roomId) {
+  const container = document.getElementById('chatMessagesBody');
+  container.innerHTML = '<div class="empty">대화 내용을 로딩 중...</div>';
+  
+  try {
+    const { data: msgs, error } = await supabase.from('chat_messages')
+      .select('*')
+      .eq('room_id', roomId)
+      .order('created_at', { ascending: true });
+      
+    if (error) throw error;
+    
+    if (!msgs || msgs.length === 0) {
+      container.innerHTML = '<div class="empty">대화 시작입니다. 문의 내용을 남겨보세요!</div>';
+      return;
+    }
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    container.innerHTML = msgs.map(m => renderMessageRow(m, user.id)).join('');
+    scrollToBottom('chatMessagesBody');
+  } catch (err) {
+    container.innerHTML = '<div class="empty">대화 불러오기 실패</div>';
+  }
+}
+
+function renderMessageRow(msg, currentUserId) {
+  const isMine = msg.sender_id === currentUserId;
+  const align = isMine ? 'align-self: flex-end; align-items: flex-end;' : 'align-self: flex-start; align-items: flex-start;';
+  const bg = isMine ? 'background: var(--gp); color: #fff; border-bottom-right-radius: 4px;' : 'background: rgba(255,255,255,0.08); color: var(--t1); border-bottom-left-radius: 4px;';
+  const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  
+  return `
+    <div style="display: flex; flex-direction: column; max-width: 75%; ${align}">
+      <div style="${bg} padding: 10px 14px; border-radius: 16px; font-size: 13px; line-height: 1.4; word-break: break-all;">
+        ${msg.message}
+      </div>
+      <span style="font-size: 10px; color: var(--t3); margin-top: 3px; padding: 0 4px;">${time}</span>
+    </div>
+  `;
+}
+
+function subscribeToChatMessages(roomId) {
+  if (chatSubscription) {
+    supabase.removeChannel(chatSubscription);
+  }
+  
+  chatSubscription = supabase.channel(`room_${roomId}`)
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'chat_messages',
+      filter: `room_id=eq.${roomId}`
+    }, async (payload) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const container = document.getElementById('chatMessagesBody');
+      
+      // 만약 기존에 empty 안내문구가 있었다면 제거
+      const emptyEl = container.querySelector('.empty');
+      if (emptyEl) emptyEl.remove();
+      
+      const div = document.createElement('div');
+      div.style.display = 'flex';
+      div.style.flexDirection = 'column';
+      div.style.maxWidth = '75%';
+      
+      const isMine = payload.new.sender_id === user.id;
+      div.style.alignSelf = isMine ? 'flex-end' : 'flex-start';
+      div.style.alignItems = isMine ? 'flex-end' : 'flex-start';
+      
+      const bg = isMine ? 'background: var(--gp); color: #fff; border-bottom-right-radius: 4px;' : 'background: rgba(255,255,255,0.08); color: var(--t1); border-bottom-left-radius: 4px;';
+      const time = new Date(payload.new.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      div.innerHTML = `
+        <div style="${bg} padding: 10px 14px; border-radius: 16px; font-size: 13px; line-height: 1.4; word-break: break-all;">
+          ${payload.new.message}
+        </div>
+        <span style="font-size: 10px; color: var(--t3); margin-top: 3px; padding: 0 4px;">${time}</span>
+      `;
+      
+      container.appendChild(div);
+      scrollToBottom('chatMessagesBody');
+    })
+    .subscribe();
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text || !currentChatRoomId) return;
+  
+  // 직거래 우회 방지 필터링 실행
+  const filtered = filterBypassKeywords(text);
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from('chat_messages').insert({
+      room_id: currentChatRoomId,
+      sender_id: user.id,
+      message: filtered
+    });
+    
+    if (error) throw error;
+    
+    input.value = '';
+    
+    if (text !== filtered) {
+      showToast('⚠️ 직거래 방지를 위해 연락처/계좌 정보가 필터링되었습니다.', 'error');
+    }
+  } catch (err) {
+    showToast('메시지 전송 실패: ' + err.message, 'error');
+  }
+}
+
+function closeChatModal() {
+  document.getElementById('chatModal').classList.remove('open');
+  if (chatSubscription) {
+    supabase.removeChannel(chatSubscription);
+    chatSubscription = null;
+  }
+}
+
+function scrollToBottom(id) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.scrollTop = el.scrollHeight;
+  }
 }
 
 init();

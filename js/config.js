@@ -13,6 +13,27 @@ function phoneToEmail(phone) {
   return `${phone.replace(/\D/g, '')}@phoneswitchhub.app`;
 }
 
+// 직거래 우회 방지용 연락처 필터링 함수
+function filterBypassKeywords(text) {
+  if (!text) return "";
+  
+  // 1. 전화번호 패턴 (태국 번호 9-10자리, 대시나 공백 포함 대응)
+  const phoneRegex = /(?:\+?66|0)[1-9]\d{1,2}[-.\s]?\d{3,4}[-.\s]?\d{3,4}/g;
+  
+  // 2. 라인 ID 및 SNS 정보 공유 패턴 (Line, 라인, @아이디, ID: xxx 등)
+  const lineRegex = /(?:line\s*(?:id|아이디|아이디)?|라인\s*(?:아이디|id)?|아이디\s*라인|@)\s*[:=]?\s*([a-zA-Z0-9_.-]{3,30})/gi;
+  
+  // 3. 계좌번호 패턴 (3-1-5-1 등 일반적인 은행 계좌 패턴 대응)
+  const bankRegex = /\b\d{3}[-.]?\d{1}[-.]?\d{5}[-.]?\d{1}\b|\b\d{3}[-.]?\d{3}[-.]?\d{3}[-.]?\d{1}\b/g;
+  
+  let filtered = text;
+  filtered = filtered.replace(phoneRegex, "[연락처 필터링됨 / Phone Blocked]");
+  filtered = filtered.replace(lineRegex, "[라인 정보 필터링됨 / LINE Blocked]");
+  filtered = filtered.replace(bankRegex, "[계좌번호 필터링됨 / Account Blocked]");
+  
+  return filtered;
+}
+
 // PIN + 전화번호 → 비밀번호 생성
 function makePassword(pin, phone) {
   return `iris_${pin}_${phone.replace(/\D/g, '')}`;
