@@ -1,0 +1,210 @@
+index.html:7: <meta name="description" content="태국 프리미엄 중고 스마트폰 마켓. 검증된 판매자와 안전하게 거래하세요.">
+index.html:44: 검증된 판매자들의 중고 스마트폰을 안전하게 구매하세요.
+index.html:47: <button onclick="switchTab('search')" class="btn btn-primary" data-i18n="btn_shop_now">🛍️ 지금 쇼핑하기</button>
+index.html:52: <div class="stat-lbl" data-i18n="stat_products">등록 상품</div>
+index.html:56: <div class="stat-lbl" data-i18n="stat_sellers">활성 판매자</div>
+index.html:60: <div class="stat-lbl" data-i18n="stat_orders">성사된 거래</div>
+index.html:69: <div class="sec-label" data-i18n="shops_title">우리 매장 &amp; 협력사</div>
+index.html:73: <div class="empty" style="padding:10px;" data-i18n="loading">로딩 중...</div>
+index.html:80: <h2 class="sec-title" data-i18n="all_categories">최신 상품</h2>
+index.html:83: <button class="cat-btn active" data-i18n="all_categories" onclick="filterCat(this,'all')">전체</button>
+index.html:87: <button class="cat-btn" data-i18n="all_categories" onclick="filterCat(this,'Other')">기타</button>
+index.html:92: <div class="empty-ttl" data-i18n="loading">상품 로딩 중…</div>
+index.html:102: <h2 class="sec-title" data-i18n="tab_search">검색</h2>
+index.html:107: <input type="text" class="search-in" id="searchKeyword" data-i18n="search_placeholder" placeholder="모델명 검색..." oninput="triggerSearch()">
+index.html:110: <span style="font-size:12px; color:var(--t2); font-weight:700; min-width:60px;" data-i18n="search_location_label">지역 필터:</span>
+index.html:113: <option value="all" data-i18n="search_all_locations">전체 지역</option>
+index.html:117: <span style="font-size:12px; color:var(--t2); font-weight:700; min-width:60px;">예산 범위:</span>
+index.html:119: <input type="number" class="form-input" id="searchMinPrice" placeholder="최소 가격" style="flex:1; padding:8px 10px; font-size:12px;" oninput="triggerSearch()">
+index.html:121: <input type="number" class="form-input" id="searchMaxPrice" placeholder="최대 가격" style="flex:1; padding:8px 10px; font-size:12px;" oninput="triggerSearch()">
+index.html:129: <div class="empty-ttl" data-i18n="search_placeholder">검색어를 입력해보세요</div>
+index.html:139: <h2 class="sec-title" data-i18n="shops_title">자회사 및 파트너 매장</h2>
+index.html:140: <p class="sec-desc" data-i18n="shops_desc">안심하고 거래할 수 있는 공식 인증 매장들입니다.</p>
+index.html:152: <h2 class="sec-title" data-i18n="tab_mypage">내 정보</h2>
+index.html:157: <h3 style="font-size:18px; margin-bottom:8px;" data-i18n="login_required_title">로그인이 필요합니다</h3>
+index.html:158: <p style="font-size:13px; color:var(--t2); margin-bottom:24px;" data-i18n="login_required_desc">휴대폰 번호로 3초 만에 로그인하고 거래를 시작하세요.</p>
+index.html:159: <a href="login.html" class="btn btn-primary" style="width:100%; justify-content:center;" data-i18n="login_or_register">로그인 / 회원가입</a>
+index.html:175: 📊 <span data-i18n="dashboard">대시보드 바로가기</span>
+index.html:178: 🚪 <span data-i18n="logout">로그아웃</span>
+index.html:185: 💬 <span data-i18n="my_inquiries_title">내 문의 내역 (My Inquiries)</span>
+index.html:188: <div class="empty" style="padding:20px 0; font-size:12px; color:var(--t3);" data-i18n="no_inquiries">문의한 내역이 없습니다.</div>
+index.html:206: <span data-i18n="tab_shop">쇼핑</span>
+index.html:210: <span data-i18n="tab_search">검색</span>
+index.html:214: <span data-i18n="tab_shops">매장들</span>
+index.html:218: <span data-i18n="tab_mypage">내 정보</span>
+index.html:227: <span class="modal-title" data-i18n="order_title">🛍️ 구매 요청</span>
+index.html:233: <label class="form-label" data-i18n="order_qty">수량</label>
+index.html:238: <label class="form-label" data-i18n="order_payment">결제 수단 선택</label>
+index.html:242: <div class="pay-opt-label" data-i18n="order_pay_online">온라인 송금 (본사 에스크로)</div>
+index.html:246: <div class="pay-opt-label" data-i18n="order_pay_cod">캐쉬온딜리버리 (COD 현장결제)</div>
+index.html:252: <label class="form-label" data-i18n="order_address">배송 주소</label>
+index.html:253: <textarea class="form-textarea" id="oAddress" data-i18n="order_address_placeholder" placeholder="배송 받으실 주소를 입력해주세요." required></textarea>
+index.html:257: <label class="form-label" data-i18n="order_notes">요청사항 (선택)</label>
+index.html:258: <textarea class="form-textarea" id="oNotes" data-i18n="order_notes_placeholder" placeholder="색상, 용량, 기타 요청사항"></textarea>
+index.html:262: <span style="color:var(--t2);font-size:13px;" data-i18n="order_total">합계</span>
+index.html:266: <button class="btn-submit" id="btnOrder" onclick="submitOrder()" data-i18n="btn_submit_order">✅ 주문 요청하기</button>
+index.html:303: <h4 style="font-size:11px; color:var(--t3); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;" data-i18n="detail_desc_title">설명 / Description</h4>
+index.html:304: <p id="detailDesc" style="font-size:12px; color:var(--t2); line-height:1.6; white-space:pre-wrap;"><span data-i18n="detail_no_desc">설명이 없습니다.</span></p>
+index.html:308: <h4 style="font-size:11px; color:var(--t3); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;" data-i18n="detail_shop_info_title">판매 매장 정보 / Shop Info</h4>
+index.html:323: <button class="btn-submit" id="btnDetailChat" onclick="openChatFromDetail()" style="margin:0; flex:1; background:var(--gg);" data-i18n="btn_chat">💬 문의하기</button>
+index.html:324: <button class="btn-submit" id="btnDetailBuy" onclick="triggerDetailBuy()" style="margin:0; flex:1.2;" data-i18n="btn_submit_order">🛒 구매 요청하기</button>
+index.html:346: <span class="modal-title" id="chatModalTitle" data-i18n="chat_title">💬 1:1 문의하기</span>
+index.html:351: <div class="empty" style="padding:20px 0;" data-i18n="chat_start">대화를 시작하세요.</div>
+index.html:357: <input type="text" id="chatInput" data-i18n="chat_input_placeholder" placeholder="메시지를 입력하세요..." style="flex:1; padding:12px 14px; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:12px; color:var(--t1); font-size:13px; outline:none;" onkeydown="if(event.key==='Enter') sendChatMessage()">
+index.html:358: <button onclick="sendChatMessage()" id="chatSendBtn" style="padding:12px 16px; background:var(--gp); border:none; border-radius:12px; color:#fff; font-weight:700; font-size:13px; cursor:pointer;" data-i18n="chat_send">전송</button>
+index.html:392: const roleMap = { admin: '관리자 / Admin', seller: '판매자 / Seller', buyer: '구매자 / Buyer' };
+index.html:401: await loadMyInquiries(); // 내 문의 내역 로드
+index.html:403: // 프로필이 없는 경우 (인증은 되었으나 프로필 생성이 실패한 비정상 세션)
+index.html:447: container.innerHTML = '<div class="empty" style="padding:10px;">매장이 없습니다.</div>';
+index.html:484: container.innerHTML = '<div class="empty"><div class="empty-ico">🏪</div><div class="empty-ttl">등록된 매장이 없습니다.</div></div>';
+index.html:508: <div style="font-size:12px; color:var(--t2); line-height:1.5;">${s.description || '검증된 파트너 매장입니다.'}</div>
+index.html:510: <span>🏡 ${s.location_address || '상세 주소 정보 없음'}</span>
+index.html:549: g.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="empty-ico">📱</div><div class="empty-ttl">상품이 없습니다</div></div>';
+index.html:553: const storeName = p.profiles?.store_name || p.profiles?.name || '판매자';
+index.html:614: grid.innerHTML = `<div class="empty" style="grid-column:1/-1;"><div class="empty-ico">🔍</div><div class="empty-ttl">검색 조건에 맞는 상품이 없습니다</div></div>`;
+index.html:686: const storeName = currentProd.profiles?.store_name || currentProd.profiles?.name || '판매자';
+index.html:714: showToast('⚠️ 배송 주소를 입력해주세요.', 'error');
+index.html:818: const storeName = p.profiles?.store_name || p.profiles?.name || '판매자';
+index.html:827: document.getElementById('detailStoreAddress').textContent = `🏡 ${p.profiles?.location_address || '상세 주소 정보 없음'}`;
+index.html:831: mapLinkContainer.innerHTML = `<a href="https://maps.google.com/?q=${p.profiles.location_coords}" target="_blank" class="badge bg-blue" style="font-weight:700; font-size:10px; padding:4px 8px; display:inline-block; margin-top:4px;">🗺️ 지도에서 위치 보기</a>`;
+index.html:976: // 1. 기존 채팅방이 있는지 확인
+index.html:990: // 2. 채팅방이 없으면 새로 생성
+index.html:1009: // 대화 상대자 이름으로 타이틀 변경
+index.html:1010: const storeName = currentProd.profiles?.store_name || currentProd.profiles?.name || '판매자';
+index.html:1013: // 모달 띄우고 데이터 로드
+index.html:1021: showToast('채팅방 연결 오류: ' + err.message, 'error');
+index.html:1095: // 만약 기존에 empty 안내문구가 있었다면 제거
+index.html:1111: // 직거래 우회 방지 필터링 실행
+index.html:1128: showToast('⚠️ 직거래 방지를 위해 연락처/계좌 정보가 필터링되었습니다.', 'error');
+index.html:1131: showToast('메시지 전송 실패: ' + err.message, 'error');
+index.html:1143: showToast('⚠️ 이미지 또는 동영상 파일만 전송할 수 있습니다.', 'error');
+index.html:1150: showToast(`⚠️ 파일 용량이 너무 큽니다. (최대 ${isVideo ? '15MB' : '5MB'} 제한)`, 'error');
+index.html:1159: if (!user) throw new Error('로그인이 필요합니다.');
+index.html:1199: loadMyInquiries(); // 대화 닫을 때 목록 갱신
+index.html:1230: const sellerName = r.seller?.store_name || r.seller?.name || '판매자';
+index.html:1231: const prodTitle = r.products?.title || '상품 문의';
+login.html:6: <title data-i18n="login">로그인</title>
+login.html:41: <p data-i18n="login_subtitle">전화번호로 간편하게 시작하세요 🇹🇭</p>
+login.html:46: <button class="tab-btn active" id="tabA" onclick="switchForm('login')" data-i18n="login">🔑 로그인</button>
+login.html:47: <button class="tab-btn" id="tabB" onclick="switchForm('reg')" data-i18n="register">📝 회원가입</button>
+login.html:53: <label class="form-label" data-i18n="phone_number">전화번호 / เบอร์โทร</label>
+login.html:60: <label class="form-label" data-i18n="login_pin_label">PIN 번호 (4자리) / PIN</label>
+login.html:69: <button class="btn-submit" id="btnLogin" onclick="doLogin()" data-i18n="login">🔑 로그인</button>
+login.html:71: <span data-i18n="no_account">계정이 없으신가요?</span> <span style="color:var(--purple-l);cursor:pointer;font-weight:700;" onclick="switchForm('reg')" data-i18n="register">회원가입</span>
+login.html:78: <label class="form-label" data-i18n="register_name_label">이름 / ชื่อ</label>
+login.html:79: <input type="text" class="form-input" id="rName" data-i18n="register_name_placeholder" placeholder="홍길동 / สมชาย">
+login.html:82: <label class="form-label" data-i18n="phone_number">전화번호 / เบอร์โทร</label>
+login.html:89: <label class="form-label" data-i18n="register_role_label">역할 선택 / 선택해주세요</label>
+login.html:93: <div class="role-name" data-i18n="role_buyer">구매자</div>
+login.html:94: <div class="role-hint" data-i18n="role_buyer_desc">물건을 구매합니다</div>
+login.html:98: <div class="role-name" data-i18n="role_seller">판매자</div>
+login.html:99: <div class="role-hint" data-i18n="role_seller_desc">물건을 판매합니다</div>
+login.html:106: <label class="form-label" data-i18n="store_name_label">매장명 / ชื่อร้าน</label>
+login.html:107: <input type="text" class="form-input" id="rStore" data-i18n="store_name_placeholder" placeholder="예: Kim Mobile Shop">
+login.html:110: <label class="form-label" data-i18n="store_province">매장 지역 (Province)</label>
+login.html:112: <option value="" data-i18n="select_province">지역(주) 선택</option>
+login.html:116: <label class="form-label" data-i18n="store_district">매장 구/군 (District)</label>
+login.html:118: <option value="" data-i18n="select_district">구/군 선택</option>
+login.html:122: <label class="form-label" data-i18n="store_detailed_address">매장 상세 주소 / ที่อยู่ร้านค้า</label>
+login.html:123: <textarea class="form-textarea" id="rAddress" data-i18n="store_address_placeholder" placeholder="상세 주소를 기재해주세요"></textarea>
+login.html:126: <label class="form-label" data-i18n="store_coords">매장 구글맵 좌표 (위도, 경도)</label>
+login.html:127: <input type="text" class="form-input" id="rCoords" placeholder="예: 13.7563, 100.5018">
+login.html:130: <label class="form-label" data-i18n="store_logo_label">매장 로고 이미지 (선택) / โลโก้ร้านค้า</label>
+login.html:134: <label class="form-label" data-i18n="payout_and_payment_type">수수료 정산 및 결제 방식 / วิธีรับเงิน</label>
+login.html:136: <option value="parent_payment" data-i18n="parent_payment_desc">플랫폼 전체 수금 후 정산 (Parent Payment)</option>
+login.html:137: <option value="cod_commission" data-i18n="cod_commission_desc">캐쉬온딜리버리(COD) 직접 거래 후 수수료 송금 (COD &amp; Commission)</option>
+login.html:143: <label class="form-label" data-i18n="register_pin_label">PIN 번호 설정 (4자리) / ตั้ง PIN</label>
+login.html:153: <button class="btn-submit" id="btnReg" onclick="doRegister()" data-i18n="register">🚀 회원가입</button>
+login.html:155: <span data-i18n="already_have_account">이미 계정이 있으신가요?</span> <span style="color:var(--purple-l);cursor:pointer;font-weight:700;" onclick="switchForm('login')" data-i18n="login">로그인</span>
+login.html:211: // PIN auto-focus (모바일 가상 키보드 최적화 버전)
+login.html:217: // 입력 이벤트 리스너 (글자 입력 시 다음 인풋 포커스)
+login.html:220: el.value = el.value.slice(0, 1); // 1글자 초과 시 잘라내기
+login.html:227: // 백스페이스 감지 리스너
+login.html:233: prevEl.value = ''; // 이전 칸 지우기
+login.html:235: el.value = ''; // 현재 칸 지우기
+login.html:401: // 프로필이 없는 경우 (인증은 되었으나 프로필 생성이 실패한 비정상 세션)
+login.html:402: // 회원가입 페이지로 이동시키고 전화번호를 입력하여 완성을 유도합니다.
+seller\dashboard.html:6: <title>판매자 대시보드 — Phone Switch Hub</title>
+seller\dashboard.html:102: <button class="btn-nav btn-nav-outline" style="padding: 6px 10px; font-size: 11px;" onclick="doLogout()" data-i18n="logout_btn">🚪 로그아웃</button>
+seller\dashboard.html:109: <h1 data-i18n="overview">📊 개요 Overview</h1>
+seller\dashboard.html:117: <div style="font-size: 11px; color: var(--purple-l); font-weight: 700;" data-i18n="store_payout_info">🏪 매장 정산 구조 정보</div>
+seller\dashboard.html:121: <div><span data-i18n="commission_rate">수수료율: </span><span style="font-weight: 800; color: var(--gold);" id="overviewCommRate">—</span></div>
+seller\dashboard.html:122: <div><span data-i18n="payout_method">정산방식: </span><span style="font-weight: 800; color: var(--cyan);" id="overviewPayoutMethod">—</span></div>
+seller\dashboard.html:123: <div><span data-i18n="location_label">지역: </span><span style="font-weight: 800; color: var(--t1);" id="overviewProvince">—</span></div>
+seller\dashboard.html:131: <div class="sc-lbl" data-i18n="sc_products">등록 상품</div>
+seller\dashboard.html:136: <div class="sc-lbl" data-i18n="sc_pending_orders">대기 주문</div>
+seller\dashboard.html:141: <div class="sc-lbl" data-i18n="sc_completed_orders">완료 거래</div>
+seller\dashboard.html:146: <div class="sc-lbl" data-i18n="sc_revenue">누적 매출 (฿)</div>
+seller\dashboard.html:151: <h3 style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;margin-bottom:12px;" data-i18n="recent_orders_title">최근 주문</h3>
+seller\dashboard.html:153: <div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;" data-i18n="loading">로딩 중…</div>
+seller\dashboard.html:162: <h1 data-i18n="my_products_management">📱 내 상품 관리</h1>
+seller\dashboard.html:163: <button class="btn-nav" onclick="openAddProduct()" style="padding: 6px 12px; font-size: 11px;" data-i18n="add_product_btn">➕ 상품 등록</button>
+seller\dashboard.html:167: <div class="empty" style="grid-column:1/-1;"><div class="empty-ico">📱</div><div class="empty-ttl" data-i18n="loading">로딩 중…</div></div>
+seller\dashboard.html:175: <h1 data-i18n="all_orders_history">📦 전체 주문 내역</h1>
+seller\dashboard.html:179: <div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;" data-i18n="loading">로딩 중…</div>
+seller\dashboard.html:187: <h1 data-i18n="profile_shop_settings">👤 프로필 및 매장 설정</h1>
+seller\dashboard.html:194: <span class="btn-sm btn-purple" style="font-size:11px; padding:6px 12px;" data-i18n="change_avatar_btn">📷 사진 변경</span>
+seller\dashboard.html:198: <div class="form-group"><label class="form-label" data-i18n="manager_name">담당자명</label><input type="text" class="form-input" id="profName"></div>
+seller\dashboard.html:199: <div class="form-group"><label class="form-label" data-i18n="phone_number">전화번호</label><input type="text" class="form-input" id="profPhone" disabled style="opacity:.6;"></div>
+seller\dashboard.html:200: <div class="form-group"><label class="form-label" data-i18n="store_name_label">매장명</label><input type="text" class="form-input" id="profStore"></div>
+seller\dashboard.html:203: <label class="form-label" data-i18n="store_province">매장 지역 (Province)</label>
+seller\dashboard.html:205: <option value="" data-i18n="loading">선택해주세요</option>
+seller\dashboard.html:209: <label class="form-label" data-i18n="store_district">매장 구/군 (District)</label>
+seller\dashboard.html:211: <option value="" data-i18n="loading">선택해주세요</option>
+seller\dashboard.html:215: <div class="form-group"><label class="form-label" data-i18n="store_detailed_address">매장 상세 주소</label><textarea class="form-textarea" id="profAddress"></textarea></div>
+seller\dashboard.html:216: <div class="form-group"><label class="form-label" data-i18n="store_coords">매장 구글맵 좌표 (위도, 경도)</label><input type="text" class="form-input" id="profCoords" placeholder="예: 13.7563, 100.5018"></div>
+seller\dashboard.html:219: <label class="form-label" style="color:var(--purple-l); font-weight: 700;" data-i18n="line_notification_integration">🔔 라인 알림 연동 (LINE User ID)</label>
+seller\dashboard.html:220: <input type="text" class="form-input" id="profLineUserId" placeholder="예: U1234567890abcdef1234567890abcdef" style="margin-bottom:8px;">
+seller\dashboard.html:222: 본사 공식 계정 친구 추가 후, 본인의 <b>LINE User ID</b>를 입력하시면 고객 문의 시 실시간으로 라인 메시지 알림을 받으실 수 있습니다.
+seller\dashboard.html:225: <span data-i18n="line_friend_link">🔗 공식 계정 친구 추가용 라인 ID: </span><span style="color:var(--cyan);">@phoneswitchhub</span> (가칭)
+seller\dashboard.html:230: <label class="form-label" data-i18n="payout_and_payment_type">수수료 정산 및 결제 방식 (기본)</label>
+seller\dashboard.html:232: <option value="parent_payment" data-i18n="parent_payment_desc">플랫폼 전체 수금 후 정산 (Parent Payment)</option>
+seller\dashboard.html:233: <option value="cod_commission" data-i18n="cod_commission_desc">캐쉬온딜리버리(COD) 직접 거래 후 수수료 송금 (COD &amp; Commission)</option>
+seller\dashboard.html:235: <span style="font-size:10px; color:var(--t3); margin-top:4px; display:block; line-height:1.2;" data-i18n="payout_change_notice">* 정산 방식 변경은 모회사 관리자(Phone Switch Hub)에게 요청해야 합니다.</span>
+seller\dashboard.html:238: <div class="form-group"><label class="form-label" data-i18n="store_introduction">매장 소개</label><textarea class="form-textarea" id="profDesc"></textarea></div>
+seller\dashboard.html:239: <button class="btn-submit" id="btnSaveProfile" onclick="saveProfile()" data-i18n="save_btn">💾 저장하기</button>
+seller\dashboard.html:247: <h1 data-i18n="customer_chat_inquiry">💬 고객 문의 채팅</h1>
+seller\dashboard.html:255: <div class="empty" style="padding:40px 0;"><div class="empty-ico">💬</div><div class="empty-ttl" data-i18n="no_inquiries">채팅방이 없습니다.</div></div>
+seller\dashboard.html:261: <button onclick="closeActiveChatPanel()" style="background:transparent; border:none; color:var(--purple-l); font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:4px;">◀ <span data-i18n="cancel">목록</span></button>
+seller\dashboard.html:273: <input type="text" id="sellerChatInput" data-i18n="chat_input_placeholder" placeholder="답장을 입력하세요..." style="flex:1; padding:10px 12px; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:10px; color:var(--t1); font-size:12px; outline:none;" onkeydown="if(event.key==='Enter') sendSellerChatMessage()">
+seller\dashboard.html:274: <button onclick="sendSellerChatMessage()" id="sellerChatSendBtn" style="padding:10px 14px; background:var(--gp); border:none; border-radius:10px; color:#fff; font-weight:700; font-size:12px; cursor:pointer;" data-i18n="chat_send">전송</button>
+seller\dashboard.html:286: <span data-i18n="tab_overview">개요</span>
+seller\dashboard.html:290: <span data-i18n="tab_my_products">내 상품</span>
+seller\dashboard.html:297: <span data-i18n="tab_customer_chat">문의 채팅</span>
+seller\dashboard.html:301: <span data-i18n="tab_orders_history">주문 내역</span>
+seller\dashboard.html:305: <span data-i18n="tab_store_profile">프로필</span>
+seller\dashboard.html:314: <span class="modal-title" id="prodModalTitle" data-i18n="product_register_title">📱 상품 등록</span>
+seller\dashboard.html:319: <div class="form-group"><label class="form-label" data-i18n="product_name_label">상품명 *</label><input type="text" class="form-input" id="pTitle" placeholder="예: iPhone 15 Pro 128GB Space Black"></div>
+seller\dashboard.html:323: <label class="form-label" data-i18n="product_price_label">가격 (฿) *</label>
+seller\dashboard.html:327: <label class="form-label" data-i18n="product_category_label">카테고리 *</label>
+seller\dashboard.html:332: <option value="Other" data-i18n="all_categories">📦 기타</option>
+seller\dashboard.html:339: <label class="form-label" data-i18n="product_condition_label">기기 등급 (Condition) *</label>
+seller\dashboard.html:341: <option value="New" data-i18n="condition_new">🍎 새상품 (New)</option>
+seller\dashboard.html:342: <option value="Used S" data-i18n="condition_s">⭐ S급 중고 (Used S)</option>
+seller\dashboard.html:343: <option value="Used A" data-i18n="condition_a">✨ A급 중고 (Used A)</option>
+seller\dashboard.html:344: <option value="Used B" data-i18n="condition_b">👍 B급 중고 (Used B)</option>
+seller\dashboard.html:348: <label class="form-label" data-i18n="product_stock_label">재고 수량 *</label>
+seller\dashboard.html:353: <div class="form-group"><label class="form-label" data-i18n="product_desc_label">상품 설명</label><textarea class="form-textarea" id="pDesc" placeholder="상품 상태, 구성품, 특이사항 등을 입력하세요"></textarea></div>
+seller\dashboard.html:355: <label class="form-label" data-i18n="product_images_label">상품 사진 (최대 10장)</label>
+seller\dashboard.html:358: <div class="img-upload-txt" style="font-size:11px;" data-i18n="click_to_select_images">클릭하여 사진 선택 <span>(max 10장)</span></div>
+seller\dashboard.html:366: <button class="btn-submit" id="btnSaveProd" onclick="saveProduct()" style="flex:1; margin-top:0;" data-i18n="save_btn_short">💾 저장</button>
+seller\dashboard.html:367: <button class="btn-sm btn-red" onclick="closeProdModal()" style="padding:12px 16px;border-radius:var(--r-sm);" data-i18n="cancel">취소</button>
+seller\dashboard.html:439: await updateChatsTabBadge(); // 탭 알림 뱃지 업데이트
+seller\dashboard.html:500: <span style="font-size:11px;color:var(--t3);font-weight:700;">주문 #${o.id.slice(0,8)}</span>
+seller\dashboard.html:528: if (error) { showToast('❌ 오류: ' + error.message, 'error'); return; }
+seller\dashboard.html:833: panel.innerHTML = '<div class="empty">채팅방 목록을 로딩 중...</div>';
+seller\dashboard.html:844: panel.innerHTML = '<div class="empty"><div class="empty-ico">💬</div><div class="empty-ttl">문의가 없습니다.</div></div>';
+seller\dashboard.html:849: const buyerName = r.buyer?.name || '구매자';
+seller\dashboard.html:850: const prodTitle = r.products?.title || '상품 문의';
+seller\dashboard.html:867: <span style="color:var(--purple-l); font-size:11px; font-weight:700; display:flex; align-items:center;">${badgeHtml} 대화하기 ▶</span>
+seller\dashboard.html:874: panel.innerHTML = '<div class="empty">채팅 목록 불러오기 실패</div>';
+seller\dashboard.html:892: container.innerHTML = '<div class="empty">대화 내용을 로딩 중...</div>';
+seller\dashboard.html:903: container.innerHTML = '<div class="empty">대화 시작입니다. 문의 답변을 남겨보세요!</div>';
+seller\dashboard.html:910: container.innerHTML = '<div class="empty">대화 불러오기 실패</div>';
+seller\dashboard.html:971: // 직거래 우회 방지 필터링 실행
+seller\dashboard.html:987: showToast('⚠️ 직거래 방지를 위해 연락처/계좌 정보가 필터링되었습니다.', 'error');
+seller\dashboard.html:990: showToast('메시지 전송 실패: ' + err.message, 'error');
+seller\dashboard.html:1002: showToast('⚠️ 이미지 또는 동영상 파일만 전송할 수 있습니다.', 'error');
+seller\dashboard.html:1009: showToast(`⚠️ 파일 용량이 너무 큽니다. (최대 ${isVideo ? '15MB' : '5MB'} 제한)`, 'error');
+seller\dashboard.html:1042: showToast('파일 전송 실패: ' + err.message, 'error');
+seller\dashboard.html:1085: function statusText(s) { return { pending:'대기중', confirmed:'확인됨', completed:'배송완료', cancelled:'취소' }[s] || s; }

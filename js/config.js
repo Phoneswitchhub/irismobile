@@ -27,9 +27,9 @@ function filterBypassKeywords(text) {
   const bankRegex = /\b\d{3}[-.]?\d{1}[-.]?\d{5}[-.]?\d{1}\b|\b\d{3}[-.]?\d{3}[-.]?\d{3}[-.]?\d{1}\b/g;
   
   let filtered = text;
-  filtered = filtered.replace(phoneRegex, "[연락처 필터링됨 / Phone Blocked]");
-  filtered = filtered.replace(lineRegex, "[라인 정보 필터링됨 / LINE Blocked]");
-  filtered = filtered.replace(bankRegex, "[계좌번호 필터링됨 / Account Blocked]");
+  filtered = filtered.replace(phoneRegex, typeof t === 'function' ? t('phone_blocked') : "[Phone Blocked]");
+  filtered = filtered.replace(lineRegex, typeof t === 'function' ? t('line_blocked') : "[LINE Blocked]");
+  filtered = filtered.replace(bankRegex, typeof t === 'function' ? t('account_blocked') : "[Account Blocked]");
   
   return filtered;
 }
@@ -68,7 +68,7 @@ function showToast(msg, type = 'success') {
 }
 
 // 로딩 상태 버튼
-function setLoading(btnId, loading, text = '처리 중...') {
+function setLoading(btnId, loading, text = 'Loading...') {
   const btn = document.getElementById(btnId);
   if (!btn) return;
   if (loading) {
@@ -106,11 +106,11 @@ try {
     window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
   } else {
     window.supabase = null;
-    console.error("Supabase 라이브러리가 로드되지 않았습니다. CDN 스크립트 연결을 확인하세요.");
+    console.error("Supabase library not loaded. Please check your CDN script connection.");
   }
 } catch (err) {
   window.supabase = null;
-  console.error("Supabase client 초기화 실패:", err);
+  console.error("Supabase client initialization failed:", err);
 }
 
 // 3. 이미지 리사이징 및 압축 유틸리티 (50분의 1로 용량 감소) - 에러 발생 시 무한 루프 방지 처리

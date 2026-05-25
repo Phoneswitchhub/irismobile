@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>로그인 — Phone Switch Hub</title>
-  <meta name="description" content="Phone Switch Hub에 로그인하거나 회원가입하세요.">
+  <title data-i18n="login">로그인</title>
+  <meta name="description" content="Sign in or register to Phone Switch Hub.">
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
@@ -38,26 +38,26 @@
       <div class="auth-logo">
         <div class="icon">💎</div>
         <h1 data-i18n="app_title">IRIS MOBILE</h1>
-        <p data-i18n="hero_badge">전화번호로 간편하게 시작하세요 🇹🇭</p>
+        <p data-i18n="login_subtitle">전화번호로 간편하게 시작하세요 🇹🇭</p>
       </div>
 
       <!-- Tabs -->
       <div class="auth-tabs">
         <button class="tab-btn active" id="tabA" onclick="switchForm('login')" data-i18n="login">🔑 로그인</button>
-        <button class="tab-btn" id="tabB" onclick="switchForm('reg')" data-i18n="tab_mypage">📝 회원가입</button>
+        <button class="tab-btn" id="tabB" onclick="switchForm('reg')" data-i18n="register">📝 회원가입</button>
       </div>
 
       <!-- ===== LOGIN ===== -->
       <div id="loginForm">
         <div class="form-group">
-          <label class="form-label" data-i18n="product_location">전화번호 / เบอร์โทร</label>
+          <label class="form-label" data-i18n="phone_number">전화번호 / เบอร์โทร</label>
           <div class="phone-row">
             <div class="cc">🇹🇭 +66</div>
             <input type="tel" class="form-input" id="lPhone" placeholder="812345678" maxlength="10" inputmode="numeric">
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">PIN 번호 (4자리) / PIN</label>
+          <label class="form-label" data-i18n="login_pin_label">PIN 번호 (4자리) / PIN</label>
           <div class="pin-row">
             <input type="password" class="pin-box" id="l1" maxlength="1" inputmode="numeric">
             <input type="password" class="pin-box" id="l2" maxlength="1" inputmode="numeric">
@@ -68,79 +68,79 @@
         <div class="err" id="lErr" style="margin-bottom:12px;"></div>
         <button class="btn-submit" id="btnLogin" onclick="doLogin()" data-i18n="login">🔑 로그인</button>
         <p style="text-align:center;margin-top:18px;font-size:13px;color:var(--t2);">
-          계정이 없으신가요? <span style="color:var(--purple-l);cursor:pointer;font-weight:700;" onclick="switchForm('reg')">회원가입</span>
+          <span data-i18n="no_account">계정이 없으신가요?</span> <span style="color:var(--purple-l);cursor:pointer;font-weight:700;" onclick="switchForm('reg')" data-i18n="register">회원가입</span>
         </p>
       </div>
 
       <!-- ===== REGISTER ===== -->
       <div id="regForm" style="display:none;">
         <div class="form-group">
-          <label class="form-label">이름 / ชื่อ</label>
-          <input type="text" class="form-input" id="rName" placeholder="홍길동 / สมชาย">
+          <label class="form-label" data-i18n="register_name_label">이름 / ชื่อ</label>
+          <input type="text" class="form-input" id="rName" data-i18n="register_name_placeholder" placeholder="홍길동 / สมชาย">
         </div>
         <div class="form-group">
-          <label class="form-label" data-i18n="product_location">전화번호 / เบอร์โทร</label>
+          <label class="form-label" data-i18n="phone_number">전화번호 / เบอร์โทร</label>
           <div class="phone-row">
             <div class="cc">🇹🇭 +66</div>
             <input type="tel" class="form-input" id="rPhone" placeholder="812345678" maxlength="10" inputmode="numeric">
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">역할 선택 / เลือกบทบาท</label>
+          <label class="form-label" data-i18n="register_role_label">역할 선택 / 선택해주세요</label>
           <div class="role-grid">
             <div class="role-opt sel" id="rBuyer" onclick="pickRole('buyer')">
               <div class="role-icon">🛍️</div>
-              <div class="role-name">구매자</div>
-              <div class="role-hint">물건을 구매합니다</div>
+              <div class="role-name" data-i18n="role_buyer">구매자</div>
+              <div class="role-hint" data-i18n="role_buyer_desc">물건을 구매합니다</div>
             </div>
             <div class="role-opt" id="rSeller" onclick="pickRole('seller')">
               <div class="role-icon">💼</div>
-              <div class="role-name">판매자</div>
-              <div class="role-hint">물건을 판매합니다</div>
+              <div class="role-name" data-i18n="role_seller">판매자</div>
+              <div class="role-hint" data-i18n="role_seller_desc">물건을 판매합니다</div>
             </div>
           </div>
         </div>
         
         <div id="sellerExtra" style="display:none;">
           <div class="form-group">
-            <label class="form-label">매장명 / ชื่อร้าน</label>
-            <input type="text" class="form-input" id="rStore" placeholder="예: Kim Mobile Shop">
+            <label class="form-label" data-i18n="store_name_label">매장명 / ชื่อร้าน</label>
+            <input type="text" class="form-input" id="rStore" data-i18n="store_name_placeholder" placeholder="예: Kim Mobile Shop">
           </div>
           <div class="form-group">
-            <label class="form-label">매장 소속 지역 (주) / พื้นที่ร้านค้า (จังหวัด)</label>
+            <label class="form-label" data-i18n="store_province">매장 지역 (Province)</label>
             <select class="form-input" id="rProvince">
-              <option value="">지역(주) 선택 / 선택해주세요</option>
+              <option value="" data-i18n="select_province">지역(주) 선택</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">매장 소속 구/군 (District) / อำเภอ</label>
+            <label class="form-label" data-i18n="store_district">매장 구/군 (District)</label>
             <select class="form-input" id="rDistrict">
-              <option value="">구/군 선택 / 선택해주세요</option>
+              <option value="" data-i18n="select_district">구/군 선택</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">매장 상세 주소 / ที่อยู่ร้านค้า</label>
-            <textarea class="form-textarea" id="rAddress" placeholder="상세 주소를 기재해주세요"></textarea>
+            <label class="form-label" data-i18n="store_detailed_address">매장 상세 주소 / ที่อยู่ร้านค้า</label>
+            <textarea class="form-textarea" id="rAddress" data-i18n="store_address_placeholder" placeholder="상세 주소를 기재해주세요"></textarea>
           </div>
           <div class="form-group">
-            <label class="form-label">구글맵 GPS 좌표 (선택) / พิกัด Google Maps</label>
-            <input type="text" class="form-input" id="rCoords" placeholder="예: 13.7563, 100.5018">
+            <label class="form-label" data-i18n="store_coords">매장 구글맵 좌표 (위도, 경도)</label>
+            <input type="text" class="form-input" id="rCoords" placeholder="Ex: 13.7563, 100.5018">
           </div>
           <div class="form-group">
-            <label class="form-label">매장 로고 이미지 (선택) / โลโก้ร้านค้า</label>
+            <label class="form-label" data-i18n="store_logo_label">매장 로고 이미지 (선택) / โลโก้ร้านค้า</label>
             <input type="file" id="rLogo" accept="image/*" class="form-input" style="padding: 10px;">
           </div>
           <div class="form-group">
-            <label class="form-label">수수료 정산 및 결제 방식 / วิธีรับเงิน</label>
+            <label class="form-label" data-i18n="payout_and_payment_type">수수료 정산 및 결제 방식 / วิธีรับเงิน</label>
             <select class="form-input" id="rPayout">
-              <option value="parent_payment">플랫폼 전체 수금 후 정산 (Parent Payment)</option>
-              <option value="cod_commission">캐쉬온딜리버리(COD) 직접 거래 후 수수료 송금 (COD &amp; Commission)</option>
+              <option value="parent_payment" data-i18n="parent_payment_desc">플랫폼 전체 수금 후 정산 (Parent Payment)</option>
+              <option value="cod_commission" data-i18n="cod_commission_desc">캐쉬온딜리버리(COD) 직접 거래 후 수수료 송금 (COD &amp; Commission)</option>
             </select>
           </div>
         </div>
         
         <div class="form-group">
-          <label class="form-label">PIN 번호 설정 (4자리) / ตั้ง PIN</label>
+          <label class="form-label" data-i18n="register_pin_label">PIN 번호 설정 (4자리) / ตั้ง PIN</label>
           <div class="pin-row">
             <input type="password" class="pin-box" id="r1" maxlength="1" inputmode="numeric">
             <input type="password" class="pin-box" id="r2" maxlength="1" inputmode="numeric">
@@ -150,9 +150,9 @@
         </div>
         <div class="err" id="rErr" style="margin-bottom:12px;"></div>
         <div class="ok" id="rOk" style="margin-bottom:12px;"></div>
-        <button class="btn-submit" id="btnReg" onclick="doRegister()">🚀 회원가입</button>
+        <button class="btn-submit" id="btnReg" onclick="doRegister()" data-i18n="register">🚀 회원가입</button>
         <p style="text-align:center;margin-top:18px;font-size:13px;color:var(--t2);">
-          이미 계정이 있으신가요? <span style="color:var(--purple-l);cursor:pointer;font-weight:700;" onclick="switchForm('login')">로그인</span>
+          <span data-i18n="already_have_account">이미 계정이 있으신가요?</span> <span style="color:var(--purple-l);cursor:pointer;font-weight:700;" onclick="switchForm('login')" data-i18n="login">로그인</span>
         </p>
       </div>
     </div>
@@ -248,22 +248,22 @@ async function doLogin() {
   const pin = getPin(['l1','l2','l3','l4']);
   const errEl = document.getElementById('lErr');
 
-  if (phone.length < 8) { errEl.textContent = '전화번호를 올바르게 입력해주세요'; return; }
-  if (pin.length !== 4) { errEl.textContent = 'PIN 4자리를 입력해주세요'; return; }
+  if (phone.length < 8) { errEl.textContent = t('err_phone_length'); return; }
+  if (pin.length !== 4) { errEl.textContent = t('err_pin_length'); return; }
   errEl.textContent = '';
 
-  setLoading('btnLogin', true, '로그인 중...');
+  setLoading('btnLogin', true, t('login_loading'));
   try {
     const { error } = await supabase.auth.signInWithPassword({
       email: phoneToEmail(phone),
       password: makePassword(pin, phone)
     });
     setLoading('btnLogin', false);
-    if (error) { errEl.textContent = '전화번호 또는 PIN이 올바르지 않습니다.'; return; }
+    if (error) { errEl.textContent = t('err_login_failed'); return; }
     await redirect();
   } catch (err) {
     setLoading('btnLogin', false);
-    errEl.textContent = '오류 발생: ' + (err.message || err.toString());
+    errEl.textContent = t('error_occurred') + (err.message || err.toString());
     console.error(err);
   }
 }
@@ -283,17 +283,17 @@ async function doRegister() {
   const okEl = document.getElementById('rOk');
 
   errEl.textContent = ''; okEl.textContent = '';
-  if (!name) { errEl.textContent = '이름을 입력해주세요'; return; }
-  if (phone.length < 8) { errEl.textContent = '전화번호를 올바르게 입력해주세요'; return; }
-  if (pin.length !== 4) { errEl.textContent = 'PIN 4자리를 설정해주세요'; return; }
+  if (!name) { errEl.textContent = t('toast_name_required'); return; }
+  if (phone.length < 8) { errEl.textContent = t('err_phone_length'); return; }
+  if (pin.length !== 4) { errEl.textContent = t('err_pin_setup'); return; }
   if (role === 'seller') {
-    if (!store) { errEl.textContent = '매장명을 입력해주세요'; return; }
-    if (!province) { errEl.textContent = '지역(주)을 선택해주세요'; return; }
-    if (!district) { errEl.textContent = '구/군(District)을 선택해주세요'; return; }
-    if (!address) { errEl.textContent = '상세 주소를 입력해주세요'; return; }
+    if (!store) { errEl.textContent = t('toast_store_required'); return; }
+    if (!province) { errEl.textContent = t('toast_province_required'); return; }
+    if (!district) { errEl.textContent = t('toast_district_required'); return; }
+    if (!address) { errEl.textContent = t('toast_address_required'); return; }
   }
 
-  setLoading('btnReg', true, '가입 중...');
+  setLoading('btnReg', true, t('register_loading'));
   try {
     const isAdmin = !!(ADMIN_PHONE && phone === ADMIN_PHONE);
     let userId = null;
@@ -314,7 +314,7 @@ async function doRegister() {
           const { data: existingProfile } = await supabase.from('profiles').select('id').eq('phone', phone).maybeSingle();
           if (existingProfile) {
             setLoading('btnReg', false);
-            errEl.textContent = '이미 등록된 전화번호입니다. 로그인해주세요.';
+            errEl.textContent = t('err_phone_exists');
             return;
           } else {
             // Profile does not exist (broken state) -> Try to login to complete registration
@@ -324,7 +324,7 @@ async function doRegister() {
             });
             if (signInError) {
               setLoading('btnReg', false);
-              errEl.textContent = '이미 가입 진행 중인 번호입니다. 기존 PIN 번호로 로그인하시거나 다른 번호로 가입해주세요.';
+              errEl.textContent = t('err_registering');
               return;
             }
             userId = signInData.user.id;
@@ -372,23 +372,23 @@ async function doRegister() {
       profileData.location_coords = coords || null;
       profileData.payout_method = payout;
       profileData.commission_rate = 10.00; // default 10%
-      profileData.description = '검증된 협력사 매장';
+      profileData.description = t('verified_partner_desc');
     }
 
     const { error: pe } = await supabase.from('profiles').insert(profileData);
 
     setLoading('btnReg', false);
-    if (pe) { errEl.textContent = '오류: ' + pe.message; return; }
+    if (pe) { errEl.textContent = t('error_occurred') + pe.message; return; }
 
     if (role === 'seller' && !isAdmin) {
-      okEl.textContent = '✅ 판매자 등록 완료! 관리자 승인 후 활성화됩니다.';
+      okEl.textContent = t('register_completed');
       setTimeout(() => { window.location.href = 'index.html'; }, 3000);
     } else {
       await redirect();
     }
   } catch (err) {
     setLoading('btnReg', false);
-    errEl.textContent = '오류 발생: ' + (err.message || err.toString());
+    errEl.textContent = t('error_occurred') + (err.message || err.toString());
     console.error(err);
   }
 }
@@ -400,7 +400,7 @@ async function redirect() {
   if (!p) { 
     // 프로필이 없는 경우 (인증은 되었으나 프로필 생성이 실패한 비정상 세션)
     // 회원가입 페이지로 이동시키고 전화번호를 입력하여 완성을 유도합니다.
-    showToast('프로필 정보가 완성되지 않았습니다. 가입 정보를 입력하여 완료해 주세요.', 'error');
+    showToast(t('profile_incomplete'), 'error');
     switchForm('reg');
     const rawEmail = user.email || '';
     const phoneNum = rawEmail.split('@')[0];

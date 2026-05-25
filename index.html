@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Phone Switch Hub — Premium Phone Marketplace</title>
-  <meta name="description" content="태국 프리미엄 중고 스마트폰 마켓. 검증된 판매자와 안전하게 거래하세요.">
+  <meta name="description" content="Thailand's premium used smartphone marketplace. Trade safely with verified sellers.">
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -70,7 +70,7 @@
       </div>
       <div class="shop-logo-list" id="partnerLogoList">
         <!-- Dynically populated shop logos -->
-        <div class="empty" style="padding:10px;">로딩 중...</div>
+        <div class="empty" style="padding:10px;" data-i18n="loading">로딩 중...</div>
       </div>
     </section>
 
@@ -89,7 +89,7 @@
       <div class="products-grid" id="prodsGrid">
         <div class="empty" style="grid-column:1/-1;">
           <div class="empty-ico">📱</div>
-          <div class="empty-ttl">상품 로딩 중…</div>
+          <div class="empty-ttl" data-i18n="loading">상품 로딩 중…</div>
         </div>
       </div>
     </section>
@@ -114,11 +114,11 @@
         </select>
       </div>
       <div style="margin-bottom:20px; display:flex; align-items:center; gap:10px;">
-        <span style="font-size:12px; color:var(--t2); font-weight:700; min-width:60px;">예산 범위:</span>
+        <span style="font-size:12px; color:var(--t2); font-weight:700; min-width:60px;" data-i18n="budget_range">예산 범위:</span>
         <div style="display:flex; align-items:center; gap:6px; flex:1;">
-          <input type="number" class="form-input" id="searchMinPrice" placeholder="최소 가격" style="flex:1; padding:8px 10px; font-size:12px;" oninput="triggerSearch()">
+          <input type="number" class="form-input" id="searchMinPrice" data-i18n="min_price" placeholder="최소 가격" style="flex:1; padding:8px 10px; font-size:12px;" oninput="triggerSearch()">
           <span style="color:var(--t3); font-size:12px;">~</span>
-          <input type="number" class="form-input" id="searchMaxPrice" placeholder="최대 가격" style="flex:1; padding:8px 10px; font-size:12px;" oninput="triggerSearch()">
+          <input type="number" class="form-input" id="searchMaxPrice" data-i18n="max_price" placeholder="최대 가격" style="flex:1; padding:8px 10px; font-size:12px;" oninput="triggerSearch()">
         </div>
       </div>
 
@@ -152,12 +152,11 @@
         <h2 class="sec-title" data-i18n="tab_mypage">내 정보</h2>
       </div>
 
-      <!-- Unauthenticated View -->
       <div id="myPageGuest" class="card" style="text-align:center; padding:40px 20px;">
         <div style="font-size:48px; margin-bottom:16px;">🔑</div>
-        <h3 style="font-size:18px; margin-bottom:8px;" data-i18n="login">로그인이 필요합니다</h3>
-        <p style="font-size:13px; color:var(--t2); margin-bottom:24px;">휴대폰 번호로 3초 만에 로그인하고 거래를 시작하세요.</p>
-        <a href="login.html" class="btn btn-primary" style="width:100%; justify-content:center;" data-i18n="login">로그인 / 회원가입</a>
+        <h3 style="font-size:18px; margin-bottom:8px;" data-i18n="login_required_title">로그인이 필요합니다</h3>
+        <p style="font-size:13px; color:var(--t2); margin-bottom:24px;" data-i18n="login_required_desc">휴대폰 번호로 3초 만에 로그인하고 거래를 시작하세요.</p>
+        <a href="login.html" class="btn btn-primary" style="width:100%; justify-content:center;" data-i18n="login_or_register">로그인 / 회원가입</a>
       </div>
 
       <!-- Authenticated View -->
@@ -183,10 +182,10 @@
         <!-- Buyer Inquiries List -->
         <div style="margin-top:28px; border-top:1px solid var(--border); padding-top:20px;">
           <h4 style="font-size:14px; font-weight:700; margin-bottom:14px; color:var(--purple-l); display:flex; align-items:center; gap:6px;">
-            💬 내 문의 내역 (My Inquiries)
+            💬 <span data-i18n="my_inquiries_title">내 문의 내역 (My Inquiries)</span>
           </h4>
           <div id="myInquiriesList" style="display:flex; flex-direction:column; gap:10px;">
-            <div class="empty" style="padding:20px 0; font-size:12px; color:var(--t3);">문의한 내역이 없습니다.</div>
+            <div class="empty" style="padding:20px 0; font-size:12px; color:var(--t3);" data-i18n="no_inquiries">문의한 내역이 없습니다.</div>
           </div>
         </div>
       </div>
@@ -250,8 +249,8 @@
     </div>
 
     <div class="form-group">
-      <label class="form-label">배송 주소 / ที่อยู่จัดส่ง</label>
-      <textarea class="form-textarea" id="oAddress" placeholder="배송 받으실 주소를 입력해주세요." required></textarea>
+      <label class="form-label" data-i18n="order_address">배송 주소</label>
+      <textarea class="form-textarea" id="oAddress" data-i18n="order_address_placeholder" placeholder="배송 받으실 주소를 입력해주세요." required></textarea>
     </div>
 
     <div class="form-group">
@@ -264,7 +263,7 @@
       <span style="font-family:'Outfit',sans-serif;font-size:24px;font-weight:900;color:var(--gold);" id="oTotal">฿0</span>
     </div>
     
-    <button class="btn-submit" id="btnOrder" onclick="submitOrder()">✅ 주문 요청하기</button>
+    <button class="btn-submit" id="btnOrder" onclick="submitOrder()" data-i18n="btn_submit_order">✅ 주문 요청하기</button>
   </div>
 </div>
 
@@ -301,12 +300,12 @@
       <div id="detailPrice" style="font-family:'Outfit',sans-serif; font-size:22px; font-weight:900; color:var(--gold); margin-bottom:12px;">฿0</div>
       
       <div style="border-top:1px solid var(--border); padding-top:12px; margin-bottom:12px;">
-        <h4 style="font-size:11px; color:var(--t3); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">설명 / Description</h4>
-        <p id="detailDesc" style="font-size:12px; color:var(--t2); line-height:1.6; white-space:pre-wrap;">설명이 없습니다.</p>
+        <h4 style="font-size:11px; color:var(--t3); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;" data-i18n="detail_desc_title">설명 / Description</h4>
+        <p id="detailDesc" style="font-size:12px; color:var(--t2); line-height:1.6; white-space:pre-wrap;"><span data-i18n="detail_no_desc">설명이 없습니다.</span></p>
       </div>
       
       <div style="border-top:1px solid var(--border); padding-top:12px; margin-bottom:4px;">
-        <h4 style="font-size:11px; color:var(--t3); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">판매 매장 정보 / Shop Info</h4>
+        <h4 style="font-size:11px; color:var(--t3); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;" data-i18n="detail_shop_info_title">판매 매장 정보 / Shop Info</h4>
         <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:10px; padding:10px 12px; display:flex; flex-direction:column; gap:4px; font-size:12px;">
           <div style="display:flex; align-items:center; gap:8px;">
             <div class="s-avatar" id="detailStoreAvatar" style="width:22px; height:22px; font-size:11px; margin:0;">🏪</div>
@@ -321,8 +320,8 @@
     
     <!-- Buy Button at bottom -->
     <div style="padding:14px 20px; border-top:1px solid var(--border); background:rgba(13,18,37,0.5); display:flex; gap:10px;">
-      <button class="btn-submit" id="btnDetailChat" onclick="openChatFromDetail()" style="margin:0; flex:1; background:var(--gg);">💬 문의하기</button>
-      <button class="btn-submit" id="btnDetailBuy" onclick="triggerDetailBuy()" style="margin:0; flex:1.2;">🛒 구매 요청하기</button>
+      <button class="btn-submit" id="btnDetailChat" onclick="openChatFromDetail()" style="margin:0; flex:1; background:var(--gg);" data-i18n="btn_chat">💬 문의하기</button>
+      <button class="btn-submit" id="btnDetailBuy" onclick="triggerDetailBuy()" style="margin:0; flex:1.2;" data-i18n="btn_submit_order">🛒 구매 요청하기</button>
     </div>
   </div>
 </div>
@@ -344,19 +343,19 @@
 <div class="modal-bg" id="chatModal">
   <div class="modal" style="max-width:440px; padding:0; overflow:hidden; border-radius:22px; height:80vh; display:flex; flex-direction:column;">
     <div class="modal-hd" style="padding:16px 20px; border-bottom:1px solid var(--border); margin:0;">
-      <span class="modal-title" id="chatModalTitle">💬 1:1 문의하기</span>
+      <span class="modal-title" id="chatModalTitle" data-i18n="chat_title">💬 1:1 문의하기</span>
       <button class="modal-x" onclick="closeChatModal()">✕</button>
     </div>
     <!-- Messages Body -->
     <div id="chatMessagesBody" style="flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; background:var(--bg2);">
-      <div class="empty" style="padding:20px 0;">대화를 시작하세요.</div>
+      <div class="empty" style="padding:20px 0;" data-i18n="chat_start">대화를 시작하세요.</div>
     </div>
     <!-- Send Input -->
     <div style="padding:12px 16px; border-top:1px solid var(--border); background:rgba(13,18,37,0.8); display:flex; gap:8px; align-items:center;">
       <input type="file" id="chatFileInput" accept="image/*,video/*" style="display:none;" onchange="uploadChatMedia(this)">
       <button onclick="document.getElementById('chatFileInput').click()" id="chatAttachBtn" style="padding:12px; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:12px; color:var(--t2); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; width:44px; height:44px; border:1px solid var(--border);">📎</button>
-      <input type="text" id="chatInput" placeholder="메시지를 입력하세요..." style="flex:1; padding:12px 14px; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:12px; color:var(--t1); font-size:13px; outline:none;" onkeydown="if(event.key==='Enter') sendChatMessage()">
-      <button onclick="sendChatMessage()" id="chatSendBtn" style="padding:12px 16px; background:var(--gp); border:none; border-radius:12px; color:#fff; font-weight:700; font-size:13px; cursor:pointer;">전송</button>
+      <input type="text" id="chatInput" data-i18n="chat_input_placeholder" placeholder="메시지를 입력하세요..." style="flex:1; padding:12px 14px; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:12px; color:var(--t1); font-size:13px; outline:none;" onkeydown="if(event.key==='Enter') sendChatMessage()">
+      <button onclick="sendChatMessage()" id="chatSendBtn" style="padding:12px 16px; background:var(--gp); border:none; border-radius:12px; color:#fff; font-weight:700; font-size:13px; cursor:pointer;" data-i18n="chat_send">전송</button>
     </div>
   </div>
 </div>
@@ -390,7 +389,7 @@ async function init() {
         document.getElementById('myPageName').textContent = p.name;
         document.getElementById('myPagePhone').textContent = '📞 ' + p.phone;
         
-        const roleMap = { admin: '관리자 / Admin', seller: '판매자 / Seller', buyer: '구매자 / Buyer' };
+        const roleMap = { admin: 'Admin', seller: t('role_seller'), buyer: t('role_buyer') };
         document.getElementById('myPageRoleBadge').textContent = roleMap[p.role] || p.role;
         
         const dash = document.getElementById('btnMyPageDash');
@@ -445,7 +444,7 @@ async function init() {
 function renderShopLogoList(list) {
   const container = document.getElementById('partnerLogoList');
   if (!list.length) {
-    container.innerHTML = '<div class="empty" style="padding:10px;">매장이 없습니다.</div>';
+    container.innerHTML = '<div class="empty" style="padding:10px;">' + t('no_shops') + '</div>';
     return;
   }
   
@@ -482,7 +481,7 @@ async function filterByShop(sellerId) {
 function renderShopsListView(list) {
   const container = document.getElementById('shopsListViewGrid');
   if (!list.length) {
-    container.innerHTML = '<div class="empty"><div class="empty-ico">🏪</div><div class="empty-ttl">등록된 매장이 없습니다.</div></div>';
+    container.innerHTML = '<div class="empty"><div class="empty-ico">🏪</div><div class="empty-ttl">' + t('no_shops') + '</div></div>';
     return;
   }
   
@@ -506,9 +505,9 @@ function renderShopsListView(list) {
             <div style="font-size:12px; color:var(--t2); margin-top:2px;">📍 ${locText}</div>
           </div>
         </div>
-        <div style="font-size:12px; color:var(--t2); line-height:1.5;">${s.description || '검증된 파트너 매장입니다.'}</div>
+        <div style="font-size:12px; color:var(--t2); line-height:1.5;">${s.description || t('verified_partner_desc')}</div>
         <div style="font-size:11px; color:var(--t3); display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.03); padding-top:10px;">
-          <span>🏡 ${s.location_address || '상세 주소 정보 없음'}</span>
+          <span>🏡 ${s.location_address || t('no_address_info')}</span>
           ${s.location_coords ? `<a href="https://maps.google.com/?q=${s.location_coords}" target="_blank" class="badge bg-blue" style="font-weight:700;">🗺️ ${t('search_view_map')}</a>` : ''}
         </div>
       </div>
@@ -547,11 +546,11 @@ async function loadProducts(cat) {
 function renderProds(list, elementId) {
   const g = document.getElementById(elementId);
   if (!list.length) {
-    g.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="empty-ico">📱</div><div class="empty-ttl">상품이 없습니다</div></div>';
+    g.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="empty-ico">📱</div><div class="empty-ttl">' + t('empty_products') + '</div></div>';
     return;
   }
   g.innerHTML = list.map(p => {
-    const storeName = p.profiles?.store_name || p.profiles?.name || '판매자';
+    const storeName = p.profiles?.store_name || p.profiles?.name || t('role_seller');
     const province = p.profiles?.location_province || 'Bangkok';
     const districtText = p.profiles?.location_district ? ` - ${p.profiles.location_district}` : '';
     const isSubsidiary = p.profiles?.partner_type === 'subsidiary';
@@ -612,7 +611,7 @@ async function triggerSearch() {
   results = results.filter(p => p.price >= minPrice && p.price <= maxPrice);
   
   if (results.length === 0) {
-    grid.innerHTML = `<div class="empty" style="grid-column:1/-1;"><div class="empty-ico">🔍</div><div class="empty-ttl">검색 조건에 맞는 상품이 없습니다</div></div>`;
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1;"><div class="empty-ico">🔍</div><div class="empty-ttl">${t('search_no_results')}</div></div>`;
   } else {
     renderProds(results, 'searchResultsGrid');
   }
@@ -684,7 +683,7 @@ async function openOrder(id) {
     document.getElementById('oAddress').value = '';
   }
   
-  const storeName = currentProd.profiles?.store_name || currentProd.profiles?.name || '판매자';
+  const storeName = currentProd.profiles?.store_name || currentProd.profiles?.name || t('role_seller');
   const conditionText = t('condition_' + (currentProd.condition ? currentProd.condition.toLowerCase().replace(' ', '') : 's'));
   
   document.getElementById('modalProductInfo').innerHTML = `
@@ -712,7 +711,7 @@ async function submitOrder() {
   
   const addr = document.getElementById('oAddress').value.trim();
   if (!addr) {
-    showToast('⚠️ 배송 주소를 입력해주세요.', 'error');
+    showToast(t('toast_address_required'), 'error');
     return;
   }
   
@@ -813,10 +812,10 @@ async function openProductDetail(prodId) {
   
   const conditionText = t('condition_' + (p.condition ? p.condition.toLowerCase().replace(' ', '') : 's'));
   document.getElementById('detailCondition').textContent = `⭐ ${conditionText}`;
-  document.getElementById('detailDesc').textContent = p.description || '상세 설명이 없습니다.';
+  document.getElementById('detailDesc').textContent = p.description || t('detail_no_desc');
   
   // Seller info
-  const storeName = p.profiles?.store_name || p.profiles?.name || '판매자';
+  const storeName = p.profiles?.store_name || p.profiles?.name || t('role_seller');
   document.getElementById('detailStoreName').textContent = storeName;
   
   const logoHtml = p.profiles?.profile_image ? `<img src="${p.profiles.profile_image}">` : avatarEmoji(storeName);
@@ -825,11 +824,11 @@ async function openProductDetail(prodId) {
   const province = p.profiles?.location_province || 'Bangkok';
   const districtText = p.profiles?.location_district ? ` - ${p.profiles.location_district}` : '';
   document.getElementById('detailStoreLoc').textContent = `📍 ${province}${districtText}`;
-  document.getElementById('detailStoreAddress').textContent = `🏡 ${p.profiles?.location_address || '상세 주소 정보 없음'}`;
+  document.getElementById('detailStoreAddress').textContent = `🏡 ${p.profiles?.location_address || t('no_address_info')}`;
   
   const mapLinkContainer = document.getElementById('detailMapLink');
   if (p.profiles?.location_coords) {
-    mapLinkContainer.innerHTML = `<a href="https://maps.google.com/?q=${p.profiles.location_coords}" target="_blank" class="badge bg-blue" style="font-weight:700; font-size:10px; padding:4px 8px; display:inline-block; margin-top:4px;">🗺️ 지도에서 위치 보기</a>`;
+    mapLinkContainer.innerHTML = `<a href="https://maps.google.com/?q=${p.profiles.location_coords}" target="_blank" class="badge bg-blue" style="font-weight:700; font-size:10px; padding:4px 8px; display:inline-block; margin-top:4px;">${t('view_on_map')}</a>`;
   } else {
     mapLinkContainer.innerHTML = '';
   }
@@ -968,11 +967,11 @@ async function openChatFromDetail() {
   if (!currentProd) return;
   
   if (user.id === currentProd.seller_id) {
-    showToast('⚠️ 본인이 등록한 상품에는 문의할 수 없습니다.', 'error');
+    showToast(t('toast_own_product_chat_error'), 'error');
     return;
   }
   
-  setLoading('btnDetailChat', true, '연결 중...');
+  setLoading('btnDetailChat', true, t('connecting'));
   try {
     // 1. 기존 채팅방이 있는지 확인
     let { data: room, error } = await supabase.from('chat_rooms')
@@ -1008,8 +1007,8 @@ async function openChatFromDetail() {
     await markMessagesAsRead(roomId, user.id);
     
     // 대화 상대자 이름으로 타이틀 변경
-    const storeName = currentProd.profiles?.store_name || currentProd.profiles?.name || '판매자';
-    document.getElementById('chatModalTitle').textContent = `💬 ${storeName} 님과 대화`;
+    const storeName = currentProd.profiles?.store_name || currentProd.profiles?.name || t('role_seller');
+    document.getElementById('chatModalTitle').textContent = `💬 ${storeName}`;
     
     // 모달 띄우고 데이터 로드
     document.getElementById('chatModal').classList.add('open');
@@ -1019,7 +1018,7 @@ async function openChatFromDetail() {
     subscribeToChatMessages(roomId);
   } catch (err) {
     console.error(err);
-    showToast('채팅방 연결 오류: ' + err.message, 'error');
+    showToast(t('chat_load_failed') + ': ' + err.message, 'error');
   } finally {
     setLoading('btnDetailChat', false);
   }
@@ -1027,7 +1026,7 @@ async function openChatFromDetail() {
 
 async function loadChatMessages(roomId) {
   const container = document.getElementById('chatMessagesBody');
-  container.innerHTML = '<div class="empty">대화 내용을 로딩 중...</div>';
+  container.innerHTML = `<div class="empty">${t('chat_loading')}</div>`;
   
   try {
     const { data: msgs, error } = await supabase.from('chat_messages')
@@ -1038,7 +1037,7 @@ async function loadChatMessages(roomId) {
     if (error) throw error;
     
     if (!msgs || msgs.length === 0) {
-      container.innerHTML = '<div class="empty">대화 시작입니다. 문의 내용을 남겨보세요!</div>';
+      container.innerHTML = `<div class="empty">${t('chat_start_inquiry')}</div>`;
       return;
     }
     
@@ -1046,7 +1045,7 @@ async function loadChatMessages(roomId) {
     container.innerHTML = msgs.map(m => renderMessageRow(m, user.id)).join('');
     scrollToBottom('chatMessagesBody');
   } catch (err) {
-    container.innerHTML = '<div class="empty">대화 불러오기 실패</div>';
+    container.innerHTML = `<div class="empty">${t('chat_load_failed')}</div>`;
   }
 }
 
@@ -1126,10 +1125,10 @@ async function sendChatMessage() {
     input.value = '';
     
     if (text !== filtered) {
-      showToast('⚠️ 직거래 방지를 위해 연락처/계좌 정보가 필터링되었습니다.', 'error');
+      showToast(t('toast_bypass_filtered'), 'error');
     }
   } catch (err) {
-    showToast('메시지 전송 실패: ' + err.message, 'error');
+    showToast(t('toast_send_failed') + err.message, 'error');
   }
 }
 
@@ -1141,14 +1140,14 @@ async function uploadChatMedia(input) {
   const isVideo = file.type.startsWith('video/');
 
   if (!isImage && !isVideo) {
-    showToast('⚠️ 이미지 또는 동영상 파일만 전송할 수 있습니다.', 'error');
+    showToast(t('toast_only_media'), 'error');
     input.value = '';
     return;
   }
 
   const maxSize = isVideo ? 15 * 1024 * 1024 : 5 * 1024 * 1024;
   if (file.size > maxSize) {
-    showToast(`⚠️ 파일 용량이 너무 큽니다. (최대 ${isVideo ? '15MB' : '5MB'} 제한)`, 'error');
+    showToast(t('toast_file_too_large') + ` (Max ${isVideo ? '15MB' : '5MB'})`, 'error');
     input.value = '';
     return;
   }
@@ -1157,7 +1156,7 @@ async function uploadChatMedia(input) {
   
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('로그인이 필요합니다.');
+    if (!user) throw new Error(t('login_required_title'));
 
     let uploadFile = file;
     if (isImage) {
@@ -1184,7 +1183,7 @@ async function uploadChatMedia(input) {
 
   } catch (err) {
     console.error(err);
-    showToast('파일 전송 실패: ' + err.message, 'error');
+    showToast(t('toast_send_failed') + err.message, 'error');
   } finally {
     setLoading('chatAttachBtn', false);
     input.value = '';
@@ -1223,13 +1222,13 @@ async function loadMyInquiries() {
     if (error) throw error;
     
     if (!rooms || rooms.length === 0) {
-      container.innerHTML = '<div class="empty" style="padding:20px 0; font-size:12px; color:var(--t3);">문의한 내역이 없습니다.</div>';
+      container.innerHTML = `<div class="empty" style="padding:20px 0; font-size:12px; color:var(--t3);">${t('no_inquiries')}</div>`;
       return;
     }
     
     container.innerHTML = rooms.map(r => {
-      const sellerName = r.seller?.store_name || r.seller?.name || '판매자';
-      const prodTitle = r.products?.title || '상품 문의';
+      const sellerName = r.seller?.store_name || r.seller?.name || t('role_seller');
+      const prodTitle = r.products?.title || t('product_inquiry');
       const avatar = r.seller?.profile_image 
         ? `<img src="${r.seller.profile_image}" style="width:100%;height:100%;object-fit:cover;">` 
         : ['👨','👩','🧑','👦','👧','🧔'][sellerName.charCodeAt(0) % 6];
@@ -1246,13 +1245,13 @@ async function loadMyInquiries() {
             <div style="font-weight:700; font-size:12px; color:var(--t1);">${sellerName}</div>
             <div style="font-size:10px; color:var(--t2); margin-top:2px;">📱 ${prodTitle}</div>
           </div>
-          <span style="color:var(--purple-l); font-size:10px; font-weight:700; display:flex; align-items:center;">${badgeHtml} 대화하기 ▶</span>
+          <span style="color:var(--purple-l); font-size:10px; font-weight:700; display:flex; align-items:center;">${badgeHtml} ${t('chat_inquiry_by')}</span>
         </div>
       `;
     }).join('');
   } catch (err) {
     console.error(err);
-    container.innerHTML = '<div class="empty" style="padding:20px 0; font-size:12px; color:var(--red);">내역 불러오기 실패</div>';
+    container.innerHTML = `<div class="empty" style="padding:20px 0; font-size:12px; color:var(--red);">${t('history_load_failed')}</div>`;
   }
 }
 
@@ -1263,7 +1262,7 @@ async function openChatRoom(roomId, sellerName) {
   }
   
   currentChatRoomId = roomId;
-  document.getElementById('chatModalTitle').textContent = `💬 ${sellerName} 님과 대화`;
+  document.getElementById('chatModalTitle').textContent = `💬 ${sellerName}`;
   document.getElementById('chatModal').classList.add('open');
   document.getElementById('chatInput').value = '';
   

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>판매자 대시보드 — Phone Switch Hub</title>
+  <title data-i18n="seller_dashboard_title">판매자 대시보드 — Phone Switch Hub</title>
   <link rel="stylesheet" href="../css/style.css">
   <style>
     /* Mobile-first Overrides for Seller Dashboard */
@@ -91,17 +91,22 @@
   <nav class="navbar">
     <a href="../index.html" class="nav-logo">
       <div class="nav-logo-icon">💎</div>
-      <span class="nav-logo-text" style="font-size: 16px; letter-spacing: 0.5px;">SELLER PORTAL</span>
+      <span class="nav-logo-text" style="font-size: 16px; letter-spacing: 0.5px;" data-i18n="seller_portal">SELLER PORTAL</span>
     </a>
-    <div class="nav-links">
-      <button class="btn-nav btn-nav-outline" style="padding: 6px 10px; font-size: 11px;" onclick="doLogout()">🚪 로그아웃</button>
+    <div class="nav-links" style="display:flex; align-items:center; gap:8px;">
+      <select id="langSelect" class="lang-select" onchange="changeLanguage(this.value)" style="padding:6px; font-size:11px; background:rgba(255,255,255,0.05); border:1px solid var(--border); color:var(--t1); border-radius:6px; outline:none; cursor:pointer;">
+        <option value="th">🇹🇭 TH</option>
+        <option value="mm">🇲🇲 MM</option>
+        <option value="ko">🇰🇷 KO</option>
+      </select>
+      <button class="btn-nav btn-nav-outline" style="padding: 6px 10px; font-size: 11px;" onclick="doLogout()" data-i18n="logout_btn">🚪 로그아웃</button>
     </div>
   </nav>
 
   <!-- ==================== VIEW 1: OVERVIEW ==================== -->
   <div id="page-overview" class="view-section active">
     <div class="main-hd">
-      <h1>📊 개요 Overview</h1>
+      <h1 data-i18n="overview">📊 개요 Overview</h1>
       <span id="hd-date" style="color:var(--t2);font-size:12px;"></span>
     </div>
     <div class="main-body">
@@ -109,13 +114,13 @@
       <!-- Seller Config Info Header -->
       <div class="card" style="margin-bottom: 20px; background: rgba(139, 92, 246, 0.08); border-color: var(--border2); display: flex; flex-direction: column; gap: 8px; padding: 12px 14px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div style="font-size: 11px; color: var(--purple-l); font-weight: 700;">🏪 매장 정산 구조 정보</div>
+          <div style="font-size: 11px; color: var(--purple-l); font-weight: 700;" data-i18n="store_payout_info">🏪 매장 정산 구조 정보</div>
           <div style="font-size: 14px; font-weight: 900;" id="overviewStoreName">—</div>
         </div>
         <div style="display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; font-size: 11px; color: var(--t2);">
-          <div>수수료율: <span style="font-weight: 800; color: var(--gold);" id="overviewCommRate">—</span></div>
-          <div>정산방식: <span style="font-weight: 800; color: var(--cyan);" id="overviewPayoutMethod">—</span></div>
-          <div>지역: <span style="font-weight: 800; color: var(--t1);" id="overviewProvince">—</span></div>
+          <div><span data-i18n="commission_rate">수수료율: </span><span style="font-weight: 800; color: var(--gold);" id="overviewCommRate">—</span></div>
+          <div><span data-i18n="payout_method">정산방식: </span><span style="font-weight: 800; color: var(--cyan);" id="overviewPayoutMethod">—</span></div>
+          <div><span data-i18n="location_label">지역: </span><span style="font-weight: 800; color: var(--t1);" id="overviewProvince">—</span></div>
         </div>
       </div>
 
@@ -123,29 +128,29 @@
         <div class="stat-card">
           <div class="sc-icon" style="background:rgba(139,92,246,.15);">📱</div>
           <div class="sc-val" id="sc1">—</div>
-          <div class="sc-lbl">등록 상품</div>
+          <div class="sc-lbl" data-i18n="sc_products">등록 상품</div>
         </div>
         <div class="stat-card">
           <div class="sc-icon" style="background:rgba(251,191,36,.15);">📦</div>
           <div class="sc-val" id="sc2">—</div>
-          <div class="sc-lbl">대기 주문</div>
+          <div class="sc-lbl" data-i18n="sc_pending_orders">대기 주문</div>
         </div>
         <div class="stat-card">
           <div class="sc-icon" style="background:rgba(16,185,129,.15);">✅</div>
           <div class="sc-val" id="sc3">—</div>
-          <div class="sc-lbl">완료 거래</div>
+          <div class="sc-lbl" data-i18n="sc_completed_orders">완료 거래</div>
         </div>
         <div class="stat-card">
           <div class="sc-icon" style="background:rgba(34,211,238,.15);">💰</div>
           <div class="sc-val" id="sc4">—</div>
-          <div class="sc-lbl">누적 매출 (฿)</div>
+          <div class="sc-lbl" data-i18n="sc_revenue">누적 매출 (฿)</div>
         </div>
       </div>
 
       <div class="card" style="padding: 12px;">
-        <h3 style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;margin-bottom:12px;">최근 주문</h3>
+        <h3 style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;margin-bottom:12px;" data-i18n="recent_orders_title">최근 주문</h3>
         <div id="recentOrders">
-          <div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;">로딩 중…</div>
+          <div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;" data-i18n="loading">로딩 중…</div>
         </div>
       </div>
     </div>
@@ -154,12 +159,12 @@
   <!-- ==================== VIEW 2: PRODUCTS ==================== -->
   <div id="page-products" class="view-section" style="display:none;">
     <div class="main-hd">
-      <h1>📱 내 상품 관리</h1>
-      <button class="btn-nav" onclick="openAddProduct()" style="padding: 6px 12px; font-size: 11px;">➕ 상품 등록</button>
+      <h1 data-i18n="my_products_management">📱 내 상품 관리</h1>
+      <button class="btn-nav" onclick="openAddProduct()" style="padding: 6px 12px; font-size: 11px;" data-i18n="add_product_btn">➕ 상품 등록</button>
     </div>
     <div class="main-body">
       <div class="products-grid" id="myProductsGrid">
-        <div class="empty" style="grid-column:1/-1;"><div class="empty-ico">📱</div><div class="empty-ttl">로딩 중…</div></div>
+        <div class="empty" style="grid-column:1/-1;"><div class="empty-ico">📱</div><div class="empty-ttl" data-i18n="loading">로딩 중…</div></div>
       </div>
     </div>
   </div>
@@ -167,11 +172,11 @@
   <!-- ==================== VIEW 3: ORDERS ==================== -->
   <div id="page-orders" class="view-section" style="display:none;">
     <div class="main-hd">
-      <h1>📦 전체 주문 내역</h1>
+      <h1 data-i18n="all_orders_history">📦 전체 주문 내역</h1>
     </div>
     <div class="main-body">
       <div id="allOrders">
-        <div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;">로딩 중…</div>
+        <div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;" data-i18n="loading">로딩 중…</div>
       </div>
     </div>
   </div>
@@ -179,59 +184,59 @@
   <!-- ==================== VIEW 4: PROFILE ==================== -->
   <div id="page-profile" class="view-section" style="display:none;">
     <div class="main-hd">
-      <h1>👤 프로필 및 매장 설정</h1>
+      <h1 data-i18n="profile_shop_settings">👤 프로필 및 매장 설정</h1>
     </div>
     <div class="main-body">
       <div class="card" style="padding:16px;">
         <div style="text-align:center;margin-bottom:20px;">
           <div class="s-avatar" style="width:80px;height:80px;font-size:32px;margin:0 auto 10px;" id="profAvatarPreview">💼</div>
           <label style="cursor:pointer;">
-            <span class="btn-sm btn-purple" style="font-size:11px; padding:6px 12px;">📷 사진 변경</span>
+            <span class="btn-sm btn-purple" style="font-size:11px; padding:6px 12px;" data-i18n="change_avatar_btn">📷 사진 변경</span>
             <input type="file" id="profImg" accept="image/*" style="display:none;" onchange="previewAvatar(this)">
           </label>
         </div>
-        <div class="form-group"><label class="form-label">담당자명</label><input type="text" class="form-input" id="profName"></div>
-        <div class="form-group"><label class="form-label">전화번호</label><input type="text" class="form-input" id="profPhone" disabled style="opacity:.6;"></div>
-        <div class="form-group"><label class="form-label">매장명</label><input type="text" class="form-input" id="profStore"></div>
+        <div class="form-group"><label class="form-label" data-i18n="manager_name">담당자명</label><input type="text" class="form-input" id="profName"></div>
+        <div class="form-group"><label class="form-label" data-i18n="phone_number">전화번호</label><input type="text" class="form-input" id="profPhone" disabled style="opacity:.6;"></div>
+        <div class="form-group"><label class="form-label" data-i18n="store_name_label">매장명</label><input type="text" class="form-input" id="profStore"></div>
         
         <div class="form-group">
-          <label class="form-label">매장 지역 (Province)</label>
+          <label class="form-label" data-i18n="store_province">매장 지역 (Province)</label>
           <select class="form-input" id="profProvince">
-            <option value="">선택해주세요</option>
+            <option value="" data-i18n="loading">선택해주세요</option>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">매장 구/군 (District)</label>
+          <label class="form-label" data-i18n="store_district">매장 구/군 (District)</label>
           <select class="form-input" id="profDistrict">
-            <option value="">선택해주세요</option>
+            <option value="" data-i18n="loading">선택해주세요</option>
           </select>
         </div>
         
-        <div class="form-group"><label class="form-label">매장 상세 주소</label><textarea class="form-textarea" id="profAddress"></textarea></div>
-        <div class="form-group"><label class="form-label">매장 구글맵 좌표 (위도, 경도)</label><input type="text" class="form-input" id="profCoords" placeholder="예: 13.7563, 100.5018"></div>
+        <div class="form-group"><label class="form-label" data-i18n="store_detailed_address">매장 상세 주소</label><textarea class="form-textarea" id="profAddress"></textarea></div>
+        <div class="form-group"><label class="form-label" data-i18n="store_coords">매장 구글맵 좌표 (위도, 경도)</label><input type="text" class="form-input" id="profCoords" placeholder="Ex: 13.7563, 100.5018"></div>
         
         <div class="form-group" style="background: rgba(139, 92, 246, 0.05); border: 1px dashed var(--border2); padding: 14px; border-radius: var(--r-sm);">
-          <label class="form-label" style="color:var(--purple-l); font-weight: 700;">🔔 라인 알림 연동 (LINE User ID)</label>
-          <input type="text" class="form-input" id="profLineUserId" placeholder="예: U1234567890abcdef1234567890abcdef" style="margin-bottom:8px;">
-          <div style="font-size:10px; color:var(--t2); line-height:1.4;">
+          <label class="form-label" style="color:var(--purple-l); font-weight: 700;" data-i18n="line_notification_integration">🔔 라인 알림 연동 (LINE User ID)</label>
+          <input type="text" class="form-input" id="profLineUserId" placeholder="Ex: U1234567890abcdef1234567890abcdef" style="margin-bottom:8px;">
+          <div style="font-size:10px; color:var(--t2); line-height:1.4;" data-i18n="line_notification_desc">
             본사 공식 계정 친구 추가 후, 본인의 <b>LINE User ID</b>를 입력하시면 고객 문의 시 실시간으로 라인 메시지 알림을 받으실 수 있습니다.
-            <div style="margin-top:6px; font-weight:700;">
-              🔗 공식 계정 친구 추가용 라인 ID: <span style="color:var(--cyan);">@phoneswitchhub</span> (가칭)
-            </div>
+          </div>
+          <div style="margin-top:6px; font-weight:700; font-size:10px;">
+            <span data-i18n="line_friend_link">🔗 공식 계정 친구 추가용 라인 ID: </span><span style="color:var(--cyan);">@phoneswitchhub</span> (가칭)
           </div>
         </div>
         
         <div class="form-group">
-          <label class="form-label">수수료 정산 및 결제 방식 (기본)</label>
+          <label class="form-label" data-i18n="payout_and_payment_type">수수료 정산 및 결제 방식 (기본)</label>
           <select class="form-input" id="profPayout" disabled style="opacity:.7; background:rgba(0,0,0,0.1);">
-            <option value="parent_payment">플랫폼 전체 수금 후 정산 (Parent Payment)</option>
-            <option value="cod_commission">캐쉬온딜리버리(COD) 직접 거래 후 수수료 송금 (COD &amp; Commission)</option>
+            <option value="parent_payment" data-i18n="parent_payment_desc">플랫폼 전체 수금 후 정산 (Parent Payment)</option>
+            <option value="cod_commission" data-i18n="cod_commission_desc">캐쉬온딜리버리(COD) 직접 거래 후 수수료 송금 (COD &amp; Commission)</option>
           </select>
-          <span style="font-size:10px; color:var(--t3); margin-top:4px; display:block; line-height:1.2;">* 정산 방식 변경은 모회사 관리자(Phone Switch Hub)에게 요청해야 합니다.</span>
+          <span style="font-size:10px; color:var(--t3); margin-top:4px; display:block; line-height:1.2;" data-i18n="payout_change_notice">* 정산 방식 변경은 모회사 관리자(Phone Switch Hub)에게 요청해야 합니다.</span>
         </div>
 
-        <div class="form-group"><label class="form-label">매장 소개</label><textarea class="form-textarea" id="profDesc"></textarea></div>
-        <button class="btn-submit" id="btnSaveProfile" onclick="saveProfile()">💾 저장하기</button>
+        <div class="form-group"><label class="form-label" data-i18n="store_introduction">매장 소개</label><textarea class="form-textarea" id="profDesc"></textarea></div>
+        <button class="btn-submit" id="btnSaveProfile" onclick="saveProfile()" data-i18n="save_btn">💾 저장하기</button>
       </div>
     </div>
   </div>
@@ -239,7 +244,7 @@
   <!-- ==================== VIEW 5: CHATS ==================== -->
   <div id="page-chats" class="view-section" style="display:none;">
     <div class="main-hd">
-      <h1>💬 고객 문의 채팅</h1>
+      <h1 data-i18n="customer_chat_inquiry">💬 고객 문의 채팅</h1>
     </div>
     <div class="main-body" style="padding: 16px;">
       <!-- Active Chat List & Detail container (splits on desktop, toggles on mobile) -->
@@ -247,13 +252,13 @@
         
         <!-- Chat Room List Panel -->
         <div id="chatRoomsPanel" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px;">
-          <div class="empty" style="padding:40px 0;"><div class="empty-ico">💬</div><div class="empty-ttl">채팅방이 없습니다.</div></div>
+          <div class="empty" style="padding:40px 0;"><div class="empty-ico">💬</div><div class="empty-ttl" data-i18n="no_inquiries">채팅방이 없습니다.</div></div>
         </div>
         
         <!-- Active Chat Message Panel (Hidden by default, slides up on select) -->
         <div id="chatDetailPanel" style="position:absolute; inset:0; background:var(--bg); display:none; flex-direction:column; z-index:50;">
           <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--border); background:var(--bg2);">
-            <button onclick="closeActiveChatPanel()" style="background:transparent; border:none; color:var(--purple-l); font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:4px;">◀ 목록</button>
+            <button onclick="closeActiveChatPanel()" style="background:transparent; border:none; color:var(--purple-l); font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:4px;">◀ <span data-i18n="cancel">목록</span></button>
             <span id="activeChatTitle" style="font-weight:700; font-size:13px; color:var(--t1);">—</span>
             <div style="width:40px;"></div> <!-- balance spacer -->
           </div>
@@ -265,8 +270,8 @@
           <div style="padding:10px 12px; border-top:1px solid var(--border); background:rgba(13,18,37,0.9); display:flex; gap:8px; align-items:center;">
             <input type="file" id="sellerChatFileInput" accept="image/*,video/*" style="display:none;" onchange="uploadSellerChatMedia(this)">
             <button onclick="document.getElementById('sellerChatFileInput').click()" id="sellerChatAttachBtn" style="padding:10px; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:10px; color:var(--t2); font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; width:38px; height:38px; border:1px solid var(--border);">📎</button>
-            <input type="text" id="sellerChatInput" placeholder="답장을 입력하세요..." style="flex:1; padding:10px 12px; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:10px; color:var(--t1); font-size:12px; outline:none;" onkeydown="if(event.key==='Enter') sendSellerChatMessage()">
-            <button onclick="sendSellerChatMessage()" id="sellerChatSendBtn" style="padding:10px 14px; background:var(--gp); border:none; border-radius:10px; color:#fff; font-weight:700; font-size:12px; cursor:pointer;">전송</button>
+            <input type="text" id="sellerChatInput" data-i18n="chat_input_placeholder" placeholder="답장을 입력하세요..." style="flex:1; padding:10px 12px; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:10px; color:var(--t1); font-size:12px; outline:none;" onkeydown="if(event.key==='Enter') sendSellerChatMessage()">
+            <button onclick="sendSellerChatMessage()" id="sellerChatSendBtn" style="padding:10px 14px; background:var(--gp); border:none; border-radius:10px; color:#fff; font-weight:700; font-size:12px; cursor:pointer;" data-i18n="chat_send">전송</button>
           </div>
         </div>
         
@@ -278,26 +283,26 @@
   <div class="tab-bar">
     <div class="tab-item active" id="tab-overview" onclick="showPage('overview', this)">
       <span class="tab-item-icon">📊</span>
-      <span>개요</span>
+      <span data-i18n="tab_overview">개요</span>
     </div>
     <div class="tab-item" id="tab-products" onclick="showPage('products', this)">
       <span class="tab-item-icon">📱</span>
-      <span>내 상품</span>
+      <span data-i18n="tab_my_products">내 상품</span>
     </div>
     <div class="tab-item" id="tab-chats" onclick="showPage('chats', this)">
       <span class="tab-item-icon" style="position:relative;">
         💬
         <span id="chatsTabBadge" style="position:absolute; top:-4px; right:-6px; background:var(--red); width:8px; height:8px; border-radius:50%; display:none;"></span>
       </span>
-      <span>문의 채팅</span>
+      <span data-i18n="tab_customer_chat">문의 채팅</span>
     </div>
     <div class="tab-item" id="tab-orders" onclick="showPage('orders', this)">
       <span class="tab-item-icon">📦</span>
-      <span>주문 내역</span>
+      <span data-i18n="tab_orders_history">주문 내역</span>
     </div>
     <div class="tab-item" id="tab-profile" onclick="showPage('profile', this)">
       <span class="tab-item-icon">👤</span>
-      <span>프로필</span>
+      <span data-i18n="tab_store_profile">프로필</span>
     </div>
   </div>
 </div>
@@ -306,51 +311,51 @@
 <div class="modal-bg" id="prodModal">
   <div class="modal" style="max-width:440px; padding:20px;">
     <div class="modal-hd" style="margin-bottom:16px;">
-      <span class="modal-title" id="prodModalTitle">📱 상품 등록</span>
+      <span class="modal-title" id="prodModalTitle" data-i18n="product_register_title">📱 상품 등록</span>
       <button class="modal-x" onclick="closeProdModal()">✕</button>
     </div>
     <div style="overflow-y:auto; max-height:65vh; padding-right:4px;">
       <input type="hidden" id="editProductId">
-      <div class="form-group"><label class="form-label">상품명 *</label><input type="text" class="form-input" id="pTitle" placeholder="예: iPhone 15 Pro 128GB Space Black"></div>
+      <div class="form-group"><label class="form-label" data-i18n="product_name_label">상품명 *</label><input type="text" class="form-input" id="pTitle" placeholder="예: iPhone 15 Pro 128GB Space Black"></div>
       
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div class="form-group">
-          <label class="form-label">가격 (฿) *</label>
+          <label class="form-label" data-i18n="product_price_label">가격 (฿) *</label>
           <input type="number" class="form-input" id="pPrice" placeholder="25000">
         </div>
         <div class="form-group">
-          <label class="form-label">카테고리 *</label>
+          <label class="form-label" data-i18n="product_category_label">카테고리 *</label>
           <select class="form-select" id="pCat">
             <option value="iPhone">🍎 iPhone</option>
             <option value="Samsung">🌟 Samsung</option>
             <option value="Xiaomi">🔴 Xiaomi</option>
-            <option value="Other">📦 기타</option>
+            <option value="Other" data-i18n="all_categories">📦 기타</option>
           </select>
         </div>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div class="form-group">
-          <label class="form-label">기기 등급 (Condition) *</label>
+          <label class="form-label" data-i18n="product_condition_label">기기 등급 (Condition) *</label>
           <select class="form-select" id="pCondition">
-            <option value="New">🍎 새상품 (New)</option>
-            <option value="Used S">⭐ S급 중고 (Used S)</option>
-            <option value="Used A">✨ A급 중고 (Used A)</option>
-            <option value="Used B">👍 B급 중고 (Used B)</option>
+            <option value="New" data-i18n="condition_new">🍎 새상품 (New)</option>
+            <option value="Used S" data-i18n="condition_s">⭐ S급 중고 (Used S)</option>
+            <option value="Used A" data-i18n="condition_a">✨ A급 중고 (Used A)</option>
+            <option value="Used B" data-i18n="condition_b">👍 B급 중고 (Used B)</option>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">재고 수량 *</label>
+          <label class="form-label" data-i18n="product_stock_label">재고 수량 *</label>
           <input type="number" class="form-input" id="pStock" value="1" min="0">
         </div>
       </div>
 
-      <div class="form-group"><label class="form-label">상품 설명</label><textarea class="form-textarea" id="pDesc" placeholder="상품 상태, 구성품, 특이사항 등을 입력하세요"></textarea></div>
+      <div class="form-group"><label class="form-label" data-i18n="product_desc_label">상품 설명</label><textarea class="form-textarea" id="pDesc" placeholder="상품 상태, 구성품, 특이사항 등을 입력하세요"></textarea></div>
       
-        <label class="form-label">상품 사진 (최대 10장)</label>
+        <label class="form-label" data-i18n="product_images_label">상품 사진 (최대 10장)</label>
         <div class="img-upload" onclick="document.getElementById('pImgInput').click()" style="padding:20px;">
           <div class="img-upload-ico" style="font-size:24px; margin-bottom:4px;">📷</div>
-          <div class="img-upload-txt" style="font-size:11px;">클릭하여 사진 선택 <span>(max 10장)</span></div>
+          <div class="img-upload-txt" style="font-size:11px;" data-i18n="click_to_select_images">클릭하여 사진 선택 <span>(max 10장)</span></div>
         </div>
         <input type="file" id="pImgInput" accept="image/*" multiple style="display:none;" onchange="previewImages(this)">
         <div class="preview-grid" id="imgPreviews"></div>
@@ -358,8 +363,8 @@
       </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:16px;">
-      <button class="btn-submit" id="btnSaveProd" onclick="saveProduct()" style="flex:1; margin-top:0;">💾 저장</button>
-      <button class="btn-sm btn-red" onclick="closeProdModal()" style="padding:12px 16px;border-radius:var(--r-sm);">취소</button>
+      <button class="btn-submit" id="btnSaveProd" onclick="saveProduct()" style="flex:1; margin-top:0;" data-i18n="save_btn_short">💾 저장</button>
+      <button class="btn-sm btn-red" onclick="closeProdModal()" style="padding:12px 16px;border-radius:var(--r-sm);" data-i18n="cancel">취소</button>
     </div>
   </div>
 <!-- IMAGE LIGHTBOX / ZOOM MODAL -->
@@ -374,6 +379,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/thailand-addresses.js"></script>
+<script src="../js/i18n.js"></script>
 <script src="../js/config.js"></script>
 <script>
 let myProfile = null;
@@ -388,19 +394,20 @@ async function init() {
   const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
   if (!p || (p.role !== 'seller' && p.role !== 'admin')) { window.location.href = '../index.html'; return; }
   if (p.role === 'seller' && !p.is_approved) {
-    document.body.innerHTML = '<div style="text-align:center;padding:100px 20px; background:#070b18; min-height:100vh; color:#fff;"><div style="font-size:56px;margin-bottom:20px;">⏳</div><h2 style="font-family:Outfit,sans-serif;font-size:28px;">승인 대기 중</h2><p style="color:var(--t2);margin-top:10px; font-size:14px;">관리자 승인 후 대시보드를 사용할 수 있습니다.</p><a href="../index.html" style="display:inline-block;margin-top:24px;padding:12px 28px;background:var(--gp);color:#fff;border-radius:12px;font-weight:700;text-decoration:none;">홈으로</a></div>';
+    document.body.innerHTML = '<div style="text-align:center;padding:100px 20px; background:#070b18; min-height:100vh; color:#fff;"><div style="font-size:56px;margin-bottom:20px;">⏳</div><h2 style="font-family:Outfit,sans-serif;font-size:28px;">' + t('seller_pending_approval') + '</h2><p style="color:var(--t2);margin-top:10px; font-size:14px;">' + t('seller_pending_approval_desc') + '</p><a href="../index.html" style="display:inline-block;margin-top:24px;padding:12px 28px;background:var(--gp);color:#fff;border-radius:12px;font-weight:700;text-decoration:none;">' + t('go_home_btn') + '</a></div>';
     return;
   }
 
   myProfile = p;
   
   // Date
-  document.getElementById('hd-date').textContent = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+  const locales = { ko: 'ko-KR', th: 'th-TH', mm: 'en-US' };
+  document.getElementById('hd-date').textContent = new Date().toLocaleDateString(locales[currentLang] || 'th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
 
   // Render header config info
   document.getElementById('overviewStoreName').textContent = p.store_name || p.name;
   document.getElementById('overviewCommRate').textContent = (p.commission_rate || 10.00) + '%';
-  document.getElementById('overviewPayoutMethod').textContent = p.payout_method === 'cod_commission' ? 'COD 및 수수료 수금' : '본사 직접정산';
+  document.getElementById('overviewPayoutMethod').textContent = p.payout_method === 'cod_commission' ? t('payout_method_cod') : t('payout_method_parent');
   document.getElementById('overviewProvince').textContent = p.location_province ? `${p.location_province}${p.location_district ? ' - ' + p.location_district : ''}` : 'Bangkok';
 
   // Fill profile form
@@ -464,33 +471,33 @@ async function loadAllOrders() {
 function renderOrderCards(containerId, orders) {
   const container = document.getElementById(containerId);
   if (!orders || !orders.length) { 
-    container.innerHTML = `<div style="text-align:center;padding:30px;color:var(--t3);font-size:12px;">주문이 없습니다</div>`; 
+    container.innerHTML = `<div style="text-align:center;padding:30px;color:var(--t3);font-size:12px;">${t('no_orders')}</div>`; 
     return; 
   }
   
   container.innerHTML = orders.map(o => {
     const buyerName = o.profiles?.name || '—';
     const buyerPhone = o.profiles?.phone ? '+66 ' + o.profiles.phone : '—';
-    const deliveryAddr = o.delivery_address || '주소 정보 없음';
+    const deliveryAddr = o.delivery_address || t('no_address_info');
     const prodTitle = o.products?.title || '—';
     const condition = o.products?.condition || 'Used S';
     const isCOD = o.payment_method === 'cod';
-    const payBadge = isCOD ? '<span class="badge bg-red">COD</span>' : '<span class="badge bg-green">온라인</span>';
+    const payBadge = isCOD ? '<span class="badge bg-red">COD</span>' : '<span class="badge bg-green">' + t('pay_online') + '</span>';
     const comm = o.commission_amount ? `฿${Number(o.commission_amount).toLocaleString()}` : '฿0';
-    const payoutBadge = o.payout_status === 'completed' ? '<span class="badge bg-green">정산완료</span>' : '<span class="badge bg-yellow">정산대기</span>';
+    const payoutBadge = o.payout_status === 'completed' ? '<span class="badge bg-green">' + t('payout_status_completed') + '</span>' : '<span class="badge bg-yellow">' + t('payout_status_pending') + '</span>';
 
     let actionButtons = '';
     if (o.status === 'pending') {
-      actionButtons += `<button class="btn-action-sm btn-green" onclick="updateOrder('${o.id}','confirmed')">주문 확인</button>`;
-      actionButtons += `<button class="btn-action-sm btn-red" onclick="updateOrder('${o.id}','cancelled')">주문 취소</button>`;
+      actionButtons += `<button class="btn-action-sm btn-green" onclick="updateOrder('${o.id}','confirmed')">${t('order_confirm')}</button>`;
+      actionButtons += `<button class="btn-action-sm btn-red" onclick="updateOrder('${o.id}','cancelled')">${t('order_cancel')}</button>`;
     } else if (o.status === 'confirmed') {
-      actionButtons += `<button class="btn-action-sm btn-purple" onclick="updateOrder('${o.id}','completed')">배송 완료</button>`;
+      actionButtons += `<button class="btn-action-sm btn-purple" onclick="updateOrder('${o.id}','completed')">${t('order_complete')}</button>`;
     }
 
     return `
       <div class="mobile-order-card">
         <div class="mobile-order-header">
-          <span style="font-size:11px;color:var(--t3);font-weight:700;">주문 #${o.id.slice(0,8)}</span>
+          <span style="font-size:11px;color:var(--t3);font-weight:700;">${t('order_id_label')} #${o.id.slice(0,8)}</span>
           <span class="badge ${statusBadge(o.status)}">${statusText(o.status)}</span>
         </div>
         <div class="mobile-order-body">
@@ -498,7 +505,7 @@ function renderOrderCards(containerId, orders) {
             ${prodTitle} <span class="badge bg-purple" style="font-size:9px;margin-left:4px;">${condition}</span>
           </div>
           <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px;">
-            <span>수량: ${o.quantity}개</span>
+            <span>${t('order_qty')}: ${o.quantity}${t('order_qty_suffix')}</span>
             <span style="color:var(--gold);font-weight:800;font-size:14px;">฿${Number(o.total_price).toLocaleString()}</span>
           </div>
           <div style="background:rgba(255,255,255,0.02);border-radius:6px;padding:8px;font-size:11px;margin-bottom:8px;">
@@ -506,8 +513,8 @@ function renderOrderCards(containerId, orders) {
             <div style="margin-top:4px;color:var(--t3);line-height:1.3;">📍 ${deliveryAddr}</div>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;">
-            <div>결제: ${payBadge} / 수수료: ${comm}</div>
-            <div>정산: ${payoutBadge}</div>
+            <div>${t('payment_label')}: ${payBadge} / ${t('commission_label')}: ${comm}</div>
+            <div>${t('payout_label')}: ${payoutBadge}</div>
           </div>
         </div>
         ${actionButtons ? `<div class="mobile-order-actions">${actionButtons}</div>` : ''}
@@ -518,8 +525,8 @@ function renderOrderCards(containerId, orders) {
 
 async function updateOrder(id, status) {
   const { error } = await supabase.from('orders').update({ status }).eq('id', id);
-  if (error) { showToast('❌ 오류: ' + error.message, 'error'); return; }
-  showToast('✅ 상태가 업데이트됐습니다.', 'success');
+  if (error) { showToast(t('error_occurred') + error.message, 'error'); return; }
+  showToast(t('toast_status_updated'), 'success');
   await loadStats(); await loadRecentOrders(); await loadAllOrders();
 }
 
@@ -527,7 +534,7 @@ async function loadMyProducts() {
   const { data } = await supabase.from('products').select('*').eq('seller_id', myProfile.id).order('created_at', { ascending: false });
   const grid = document.getElementById('myProductsGrid');
   if (!data || !data.length) {
-    grid.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="empty-ico">📱</div><div class="empty-ttl">등록된 상품이 없습니다</div><div class="empty-txt">상품을 등록해보세요!</div></div>';
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="empty-ico">📱</div><div class="empty-ttl">' + t('empty_products') + '</div><div class="empty-txt">' + t('empty_products_desc') + '</div></div>';
     return;
   }
   grid.innerHTML = data.map(p => {
@@ -538,19 +545,19 @@ async function loadMyProducts() {
         <div class="p-img">
           ${p.images?.[0] ? `<img src="${p.images[0]}" alt="${p.title}" loading="lazy">` : { iPhone:'🍎', Samsung:'🌟', Xiaomi:'🔴' }[p.category] || '📱'}
           <div class="p-badge">${p.category || 'Mobile'}</div>
-          <div style="position:absolute;top:10px;right:10px;"><span class="badge ${p.status === 'active' ? 'bg-green' : 'bg-gray'}">${p.status === 'active' ? '판매중' : '숨김'}</span></div>
+          <div style="position:absolute;top:10px;right:10px;"><span class="badge ${p.status === 'active' ? 'bg-green' : 'bg-gray'}">${p.status === 'active' ? t('product_status_active') : t('product_status_hidden')}</span></div>
         </div>
         <div class="p-info">
           <div class="meta-row" style="margin-bottom:4px;">
-            <span class="badge bg-purple" style="font-size:9px;">등급: ${conditionText}</span>
-            <span style="font-size:11px;color:var(--t2);">재고: <b>${p.stock}</b>개</span>
+            <span class="badge bg-purple" style="font-size:9px;">${t('grade_label')}: ${conditionText}</span>
+            <span style="font-size:11px;color:var(--t2);">${t('search_stock')}: <b>${p.stock}</b>${t('order_qty_suffix')}</span>
           </div>
           <div class="p-title" style="margin-top:4px; font-size:12px; height:36px; overflow:hidden;">${p.title}</div>
           <div class="p-price" style="font-size:16px; margin-bottom:8px;">฿${Number(p.price).toLocaleString()} <small style="font-size:10px;">THB</small></div>
           <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;">
-            <button class="btn-sm btn-purple" style="padding:4px 8px; font-size:10px;" onclick="event.stopPropagation(); editProduct('${p.id}')">✏️ 수정</button>
+            <button class="btn-sm btn-purple" style="padding:4px 8px; font-size:10px;" onclick="event.stopPropagation(); editProduct('${p.id}')">${t('edit_btn')}</button>
             <button class="btn-sm ${p.status === 'active' ? 'btn-red' : 'btn-green'}" style="padding:4px 8px; font-size:10px;" onclick="event.stopPropagation(); toggleStatus('${p.id}','${p.status}')">
-              ${p.status === 'active' ? '🙈 숨기기' : '👁️ 공개'}
+              ${p.status === 'active' ? t('hide_btn') : t('show_btn')}
             </button>
             <button class="btn-sm btn-red" style="padding:4px 6px; font-size:10px;" onclick="event.stopPropagation(); deleteProduct('${p.id}')">🗑️</button>
           </div>
@@ -564,7 +571,7 @@ function openAddProduct() {
   editingProduct = null;
   newImageFiles = [];
   document.getElementById('editProductId').value = '';
-  document.getElementById('prodModalTitle').textContent = '📱 상품 등록';
+  document.getElementById('prodModalTitle').textContent = t('product_register_title');
   document.getElementById('pTitle').value = '';
   document.getElementById('pPrice').value = '';
   document.getElementById('pCat').value = 'iPhone';
@@ -590,7 +597,7 @@ async function editProduct(id, useExisting = false) {
   }
   
   document.getElementById('editProductId').value = p.id;
-  document.getElementById('prodModalTitle').textContent = '✏️ 상품 수정';
+  document.getElementById('prodModalTitle').textContent = t('product_edit_title');
   document.getElementById('pTitle').value = p.title;
   document.getElementById('pPrice').value = p.price;
   document.getElementById('pCat').value = p.category || 'iPhone';
@@ -620,7 +627,7 @@ function previewImages(input) {
   const existingCount = editingProduct && editingProduct.images ? editingProduct.images.length : 0;
   const maxAllowed = 10 - existingCount;
   if (input.files.length > maxAllowed) {
-    showToast(`❌ 사진은 기존 이미지를 포함하여 최대 10장까지 등록 가능합니다. (추가 가능: ${maxAllowed}장)`, 'error');
+    showToast(t('toast_max_images_detail').replace('{max}', maxAllowed), 'error');
   }
   const files = Array.from(input.files).slice(0, maxAllowed);
   newImageFiles = files;
@@ -651,14 +658,14 @@ async function saveProduct() {
   const cond = document.getElementById('pCondition').value;
   const stock = document.getElementById('pStock').value;
   const desc = document.getElementById('pDesc').value.trim();
-  if (!title || !price) { showToast('❌ 상품명과 가격은 필수입니다.', 'error'); return; }
+  if (!title || !price) { showToast(t('toast_title_price_required'), 'error'); return; }
 
-  setLoading('btnSaveProd', true, '저장 중…');
+  setLoading('btnSaveProd', true, t('loading'));
 
   // Upload new images
   const existingCount = editingProduct && editingProduct.images ? editingProduct.images.length : 0;
   if (existingCount + newImageFiles.length > 10) {
-    showToast('❌ 사진은 기존 이미지를 포함하여 최대 10장까지만 업로드할 수 있습니다.', 'error');
+    showToast(t('toast_max_images'), 'error');
     setLoading('btnSaveProd', false);
     return;
   }
@@ -680,8 +687,8 @@ async function saveProduct() {
     ({ error } = await supabase.from('products').update(payload).eq('id', editingProduct.id));
     if (!error && removedImages.length > 0) {
       const pathsToDelete = removedImages.map(url => {
-        const parts = url.split('/products/');
-        return parts.length > 1 ? parts[1] : null;
+         const parts = url.split('/products/');
+         return parts.length > 1 ? parts[1] : null;
       }).filter(Boolean);
       if (pathsToDelete.length > 0) {
         await supabase.storage.from('products').remove(pathsToDelete);
@@ -693,8 +700,8 @@ async function saveProduct() {
   }
 
   setLoading('btnSaveProd', false);
-  if (error) { showToast('❌ 오류: ' + error.message, 'error'); return; }
-  showToast('✅ 상품이 저장됐습니다!', 'success');
+  if (error) { showToast(t('error_occurred') + error.message, 'error'); return; }
+  showToast(t('toast_product_saved'), 'success');
   newImageFiles = [];
   closeProdModal();
   await loadMyProducts();
@@ -704,14 +711,14 @@ async function saveProduct() {
 async function toggleStatus(id, current) {
   const next = current === 'active' ? 'hidden' : 'active';
   await supabase.from('products').update({ status: next }).eq('id', id);
-  showToast(next === 'active' ? '✅ 상품이 공개됐습니다.' : '🙈 상품이 숨겨졌습니다.');
+  showToast(next === 'active' ? t('toast_product_published') : t('toast_product_hidden'));
   await loadMyProducts();
 }
 
 async function deleteProduct(id) {
-  if (!confirm('정말 삭제하시겠습니까?')) return;
+  if (!confirm(t('confirm_delete'))) return;
   await supabase.from('products').delete().eq('id', id);
-  showToast('🗑️ 상품이 삭제됐습니다.');
+  showToast(t('toast_product_deleted'));
   await loadMyProducts(); await loadStats();
 }
 
@@ -724,12 +731,12 @@ async function saveProfile() {
   const coords = document.getElementById('profCoords').value.trim();
   const desc = document.getElementById('profDesc').value.trim();
   const lineUserId = document.getElementById('profLineUserId').value.trim();
-  if (!name) { showToast('❌ 이름을 입력해주세요.', 'error'); return; }
-  if (!store) { showToast('❌ 매장명을 입력해주세요.', 'error'); return; }
-  if (!prov) { showToast('❌ 지역(주)을 선택해주세요.', 'error'); return; }
-  if (!dist) { showToast('❌ 구/군(District)을 선택해주세요.', 'error'); return; }
+  if (!name) { showToast(t('toast_name_required'), 'error'); return; }
+  if (!store) { showToast(t('toast_store_required'), 'error'); return; }
+  if (!prov) { showToast(t('toast_province_required'), 'error'); return; }
+  if (!dist) { showToast(t('toast_district_required'), 'error'); return; }
 
-  setLoading('btnSaveProfile', true, '저장 중…');
+  setLoading('btnSaveProfile', true, t('loading'));
 
   let profileImage = myProfile.profile_image;
   const file = document.getElementById('profImg').files[0];
@@ -754,8 +761,8 @@ async function saveProfile() {
   }).eq('id', myProfile.id);
 
   setLoading('btnSaveProfile', false);
-  if (error) { showToast('❌ 오류: ' + error.message, 'error'); return; }
-  showToast('✅ 프로필이 저장됐습니다!', 'success');
+  if (error) { showToast(t('error_occurred') + error.message, 'error'); return; }
+  showToast(t('toast_profile_saved'), 'success');
   document.getElementById('profImg').value = '';
   
   // Refresh local memory
@@ -823,7 +830,7 @@ let sellerChatSub = null;
 
 async function loadChatRooms() {
   const panel = document.getElementById('chatRoomsPanel');
-  panel.innerHTML = '<div class="empty">채팅방 목록을 로딩 중...</div>';
+  panel.innerHTML = `<div class="empty">${t('loading_chats')}</div>`;
   
   try {
     const { data: rooms, error } = await supabase.from('chat_rooms')
@@ -834,13 +841,13 @@ async function loadChatRooms() {
     if (error) throw error;
     
     if (!rooms || rooms.length === 0) {
-      panel.innerHTML = '<div class="empty"><div class="empty-ico">💬</div><div class="empty-ttl">문의가 없습니다.</div></div>';
+      panel.innerHTML = `<div class="empty"><div class="empty-ico">💬</div><div class="empty-ttl">${t('empty_chats')}</div></div>`;
       return;
     }
     
     panel.innerHTML = rooms.map(r => {
-      const buyerName = r.buyer?.name || '구매자';
-      const prodTitle = r.products?.title || '상품 문의';
+      const buyerName = r.buyer?.name || t('role_buyer');
+      const prodTitle = r.products?.title || t('product_inquiry');
       const avatar = r.buyer?.profile_image 
         ? `<img src="${r.buyer.profile_image}" style="width:100%;height:100%;object-fit:cover;">` 
         : ['👨','👩','🧑','👦','👧','🧔'][buyerName.charCodeAt(0) % 6];
@@ -857,14 +864,14 @@ async function loadChatRooms() {
             <div style="font-weight:700; font-size:13px; color:var(--t1);">${buyerName}</div>
             <div style="font-size:11px; color:var(--t2); margin-top:2px;">📱 ${prodTitle}</div>
           </div>
-          <span style="color:var(--purple-l); font-size:11px; font-weight:700; display:flex; align-items:center;">${badgeHtml} 대화하기 ▶</span>
+          <span style="color:var(--purple-l); font-size:11px; font-weight:700; display:flex; align-items:center;">${badgeHtml} ${t('chat_inquiry_by')}</span>
         </div>
       `;
     }).join('');
     
     updateChatsTabBadge();
   } catch (err) {
-    panel.innerHTML = '<div class="empty">채팅 목록 불러오기 실패</div>';
+    panel.innerHTML = `<div class="empty">${t('chat_load_failed')}</div>`;
   }
 }
 
@@ -882,7 +889,7 @@ async function openSellerChat(roomId, buyerName) {
 
 async function loadSellerMessages(roomId) {
   const container = document.getElementById('sellerChatMessagesBody');
-  container.innerHTML = '<div class="empty">대화 내용을 로딩 중...</div>';
+  container.innerHTML = `<div class="empty">${t('chat_loading')}</div>`;
   
   try {
     const { data: msgs, error } = await supabase.from('chat_messages')
@@ -893,14 +900,14 @@ async function loadSellerMessages(roomId) {
     if (error) throw error;
     
     if (!msgs || msgs.length === 0) {
-      container.innerHTML = '<div class="empty">대화 시작입니다. 문의 답변을 남겨보세요!</div>';
+      container.innerHTML = `<div class="empty">${t('chat_start_seller')}</div>`;
       return;
     }
     
     container.innerHTML = msgs.map(m => renderSellerMessageRow(m, myProfile.id)).join('');
     scrollToBottom('sellerChatMessagesBody');
   } catch (err) {
-    container.innerHTML = '<div class="empty">대화 불러오기 실패</div>';
+    container.innerHTML = `<div class="empty">${t('chat_load_failed')}</div>`;
   }
 }
 
@@ -977,10 +984,10 @@ async function sendSellerChatMessage() {
     input.value = '';
     
     if (text !== filtered) {
-      showToast('⚠️ 직거래 방지를 위해 연락처/계좌 정보가 필터링되었습니다.', 'error');
+      showToast(t('toast_bypass_filtered'), 'error');
     }
   } catch (err) {
-    showToast('메시지 전송 실패: ' + err.message, 'error');
+    showToast(t('toast_send_failed') + err.message, 'error');
   }
 }
 
@@ -992,14 +999,14 @@ async function uploadSellerChatMedia(input) {
   const isVideo = file.type.startsWith('video/');
 
   if (!isImage && !isVideo) {
-    showToast('⚠️ 이미지 또는 동영상 파일만 전송할 수 있습니다.', 'error');
+    showToast(t('toast_only_media'), 'error');
     input.value = '';
     return;
   }
 
   const maxSize = isVideo ? 15 * 1024 * 1024 : 5 * 1024 * 1024;
   if (file.size > maxSize) {
-    showToast(`⚠️ 파일 용량이 너무 큽니다. (최대 ${isVideo ? '15MB' : '5MB'} 제한)`, 'error');
+    showToast(t('toast_file_too_large') + ` (Max ${isVideo ? '15MB' : '5MB'})`, 'error');
     input.value = '';
     return;
   }
@@ -1032,7 +1039,7 @@ async function uploadSellerChatMedia(input) {
 
   } catch (err) {
     console.error(err);
-    showToast('파일 전송 실패: ' + err.message, 'error');
+    showToast(t('toast_upload_failed') + err.message, 'error');
   } finally {
     setLoading('sellerChatAttachBtn', false);
     input.value = '';
@@ -1075,7 +1082,7 @@ function scrollToBottom(id) {
 
 async function doLogout() { await supabase.auth.signOut(); window.location.href = '../login.html'; }
 
-function statusText(s) { return { pending:'대기중', confirmed:'확인됨', completed:'배송완료', cancelled:'취소' }[s] || s; }
+function statusText(s) { return { pending: t('status_pending'), confirmed: t('status_confirmed'), completed: t('status_completed'), cancelled: t('status_cancelled') }[s] || s; }
 function statusBadge(s) { return { pending:'bg-yellow', confirmed:'bg-blue', completed:'bg-green', cancelled:'bg-red' }[s] || 'bg-gray'; }
 
 async function markSellerMessagesAsRead(roomId) {

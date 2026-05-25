@@ -27,12 +27,13 @@ CREATE POLICY "chat_media_storage_insert" ON storage.objects
   );
 
 -- 3-3. 본인이 올린 미디어 또는 관리자(Admin)가 미디어 삭제 가능
+-- (auth.uid()와 owner의 타입 불일치 에러 해결을 위해 양쪽 모두 ::text 캐스팅 적용)
 DROP POLICY IF EXISTS "chat_media_storage_delete" ON storage.objects;
 CREATE POLICY "chat_media_storage_delete" ON storage.objects 
   FOR DELETE USING (
     bucket_id = 'chat_media' AND 
     (
-      (auth.uid()::text = owner) OR 
+      (auth.uid()::text = owner::text) OR 
       (public.is_admin())
     )
   );
