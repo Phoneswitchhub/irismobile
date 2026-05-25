@@ -82,7 +82,18 @@
       cursor: pointer;
       transition: var(--ease);
     }
+    #sellerChatContainer {
+      height: calc(100vh - 210px);
+      height: calc(100dvh - 210px);
+    }
+    @media (max-width: 640px) {
+      #sellerChatContainer {
+        height: calc(100vh - 210px);
+        height: calc(100dvh - 210px);
+      }
+    }
   </style>
+
 </head>
 <body>
 
@@ -248,7 +259,7 @@
     </div>
     <div class="main-body" style="padding: 16px;">
       <!-- Active Chat List & Detail container (splits on desktop, toggles on mobile) -->
-      <div id="sellerChatContainer" style="display:flex; flex-direction:column; height:calc(100vh - 210px); gap:12px; position:relative; overflow:hidden;">
+      <div id="sellerChatContainer" style="display:flex; flex-direction:column; gap:12px; position:relative; overflow:hidden;">
         
         <!-- Chat Room List Panel -->
         <div id="chatRoomsPanel" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px;">

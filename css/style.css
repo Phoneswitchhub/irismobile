@@ -600,3 +600,58 @@ body {
   .content-body{padding:16px}
 }
 
+/* Chat Modal Styling and Responsiveness */
+.chat-modal {
+  height: 80vh;
+  height: 80dvh;
+}
+.chat-messages-body {
+  padding: 20px;
+}
+.chat-input-footer {
+  padding: 12px 16px;
+}
+.chat-attach-btn {
+  width: 44px;
+  height: 44px;
+  font-size: 16px;
+}
+.chat-text-input {
+  padding: 12px 14px;
+  font-size: 13px;
+}
+.chat-send-button {
+  padding: 12px 16px;
+  font-size: 13px;
+}
+
+@media(max-width:640px) {
+  .modal-bg {
+    padding: 12px;
+  }
+  .chat-modal {
+    height: 68vh;
+    height: 68dvh;
+  }
+  .chat-messages-body {
+    padding: 12px;
+  }
+  .chat-input-footer {
+    padding: 8px 12px;
+  }
+  .chat-attach-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+  .chat-text-input {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .chat-send-button {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+}
+
+
