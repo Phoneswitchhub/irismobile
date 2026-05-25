@@ -179,6 +179,16 @@
             🚪 <span data-i18n="logout">로그아웃</span>
           </button>
         </div>
+        
+        <!-- Buyer Inquiries List -->
+        <div style="margin-top:28px; border-top:1px solid var(--border); padding-top:20px;">
+          <h4 style="font-size:14px; font-weight:700; margin-bottom:14px; color:var(--purple-l); display:flex; align-items:center; gap:6px;">
+            💬 내 문의 내역 (My Inquiries)
+          </h4>
+          <div id="myInquiriesList" style="display:flex; flex-direction:column; gap:10px;">
+            <div class="empty" style="padding:20px 0; font-size:12px; color:var(--t3);">문의한 내역이 없습니다.</div>
+          </div>
+        </div>
       </div>
     </section>
   </div>
@@ -387,6 +397,7 @@ async function init() {
         } else {
           dash.href = p.role === 'admin' ? 'admin/dashboard.html' : 'seller/dashboard.html';
         }
+        await loadMyInquiries(); // 내 문의 내역 로드
       } else {
         // 프로필이 없는 경우 (인증은 되었으나 프로필 생성이 실패한 비정상 세션)
         console.warn("User has active auth session but no profile exists. Redirecting to complete registration...");
@@ -992,6 +1003,7 @@ async function openChatFromDetail() {
     
     currentChatRoomId = roomId;
     closeDetailModal();
+    await markMessagesAsRead(roomId, user.id);
     
     // 대화 상대자 이름으로 타이틀 변경
     const storeName = currentProd.profiles?.store_name || currentProd.profiles?.name || '판매자';
@@ -1065,6 +1077,9 @@ function subscribeToChatMessages(roomId) {
       filter: `room_id=eq.${roomId}`
     }, async (payload) => {
       const { data: { user } } = await supabase.auth.getUser();
+      if (payload.new.sender_id !== user.id) {
+        markMessagesAsRead(roomId, user.id);
+      }
       const container = document.getElementById('chatMessagesBody');
       
       // 만약 기존에 empty 안내문구가 있었다면 제거
@@ -1130,12 +1145,89 @@ function closeChatModal() {
     supabase.removeChannel(chatSubscription);
     chatSubscription = null;
   }
+  loadMyInquiries(); // 대화 닫을 때 목록 갱신
 }
 
 function scrollToBottom(id) {
   const el = document.getElementById(id);
   if (el) {
     el.scrollTop = el.scrollHeight;
+  }
+}
+
+async function loadMyInquiries() {
+  const container = document.getElementById('myInquiriesList');
+  if (!container) return;
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  
+  try {
+    const { data: rooms, error } = await supabase.from('chat_rooms')
+      .select('*, products(title), seller:profiles!chat_rooms_seller_id_fkey(name, store_name, profile_image), chat_messages(id, is_read, sender_id)')
+      .eq('buyer_id', user.id)
+      .order('updated_at', { ascending: false });
+      
+    if (error) throw error;
+    
+    if (!rooms || rooms.length === 0) {
+      container.innerHTML = '<div class="empty" style="padding:20px 0; font-size:12px; color:var(--t3);">문의한 내역이 없습니다.</div>';
+      return;
+    }
+    
+    container.innerHTML = rooms.map(r => {
+      const sellerName = r.seller?.store_name || r.seller?.name || '판매자';
+      const prodTitle = r.products?.title || '상품 문의';
+      const avatar = r.seller?.profile_image 
+        ? `<img src="${r.seller.profile_image}" style="width:100%;height:100%;object-fit:cover;">` 
+        : ['👨','👩','🧑','👦','👧','🧔'][sellerName.charCodeAt(0) % 6];
+        
+      const unreadCount = r.chat_messages ? r.chat_messages.filter(m => !m.is_read && m.sender_id !== user.id).length : 0;
+      const badgeHtml = unreadCount > 0 
+        ? `<span style="background:var(--red); color:#fff; border-radius:50%; width:16px; height:16px; display:inline-flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; margin-right:4px;">${unreadCount}</span>` 
+        : '';
+        
+      return `
+        <div class="card" onclick="openChatRoom('${r.id}', '${sellerName}')" style="display:flex; align-items:center; gap:12px; cursor:pointer; padding:10px 12px; border-radius:10px; background:rgba(255,255,255,0.02);">
+          <div class="s-avatar" style="width:36px; height:36px; margin:0; font-size:16px;">${avatar}</div>
+          <div style="flex:1;">
+            <div style="font-weight:700; font-size:12px; color:var(--t1);">${sellerName}</div>
+            <div style="font-size:10px; color:var(--t2); margin-top:2px;">📱 ${prodTitle}</div>
+          </div>
+          <span style="color:var(--purple-l); font-size:10px; font-weight:700; display:flex; align-items:center;">${badgeHtml} 대화하기 ▶</span>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error(err);
+    container.innerHTML = '<div class="empty" style="padding:20px 0; font-size:12px; color:var(--red);">내역 불러오기 실패</div>';
+  }
+}
+
+async function openChatRoom(roomId, sellerName) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    await markMessagesAsRead(roomId, user.id);
+  }
+  
+  currentChatRoomId = roomId;
+  document.getElementById('chatModalTitle').textContent = `💬 ${sellerName} 님과 대화`;
+  document.getElementById('chatModal').classList.add('open');
+  document.getElementById('chatInput').value = '';
+  
+  await loadChatMessages(roomId);
+  subscribeToChatMessages(roomId);
+}
+
+async function markMessagesAsRead(roomId, userId) {
+  try {
+    await supabase.from('chat_messages')
+      .update({ is_read: true })
+      .eq('room_id', roomId)
+      .neq('sender_id', userId)
+      .eq('is_read', false);
+  } catch (err) {
+    console.warn("Mark read error:", err);
   }
 }
 
