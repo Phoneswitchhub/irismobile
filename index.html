@@ -353,8 +353,10 @@
     </div>
     <!-- Send Input -->
     <div style="padding:12px 16px; border-top:1px solid var(--border); background:rgba(13,18,37,0.8); display:flex; gap:8px; align-items:center;">
+      <input type="file" id="chatFileInput" accept="image/*,video/*" style="display:none;" onchange="uploadChatMedia(this)">
+      <button onclick="document.getElementById('chatFileInput').click()" id="chatAttachBtn" style="padding:12px; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:12px; color:var(--t2); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; width:44px; height:44px; border:1px solid var(--border);">📎</button>
       <input type="text" id="chatInput" placeholder="메시지를 입력하세요..." style="flex:1; padding:12px 14px; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:12px; color:var(--t1); font-size:13px; outline:none;" onkeydown="if(event.key==='Enter') sendChatMessage()">
-      <button onclick="sendChatMessage()" style="padding:12px 16px; background:var(--gp); border:none; border-radius:12px; color:#fff; font-weight:700; font-size:13px; cursor:pointer;">전송</button>
+      <button onclick="sendChatMessage()" id="chatSendBtn" style="padding:12px 16px; background:var(--gp); border:none; border-radius:12px; color:#fff; font-weight:700; font-size:13px; cursor:pointer;">전송</button>
     </div>
   </div>
 </div>
@@ -1054,10 +1056,19 @@ function renderMessageRow(msg, currentUserId) {
   const bg = isMine ? 'background: var(--gp); color: #fff; border-bottom-right-radius: 4px;' : 'background: rgba(255,255,255,0.08); color: var(--t1); border-bottom-left-radius: 4px;';
   const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   
+  let contentHtml = '';
+  if (msg.message_type === 'image') {
+    contentHtml = `<img src="${msg.message}" style="max-width: 100%; max-height: 200px; border-radius: 12px; cursor: zoom-in; display: block;" onclick="openLightbox('${msg.message}')">`;
+  } else if (msg.message_type === 'video') {
+    contentHtml = `<video src="${msg.message}" controls style="max-width: 100%; max-height: 200px; border-radius: 12px; display: block;"></video>`;
+  } else {
+    contentHtml = msg.message;
+  }
+  
   return `
     <div style="display: flex; flex-direction: column; max-width: 75%; ${align}">
       <div style="${bg} padding: 10px 14px; border-radius: 16px; font-size: 13px; line-height: 1.4; word-break: break-all;">
-        ${msg.message}
+        ${contentHtml}
       </div>
       <span style="font-size: 10px; color: var(--t3); margin-top: 3px; padding: 0 4px;">${time}</span>
     </div>
@@ -1086,26 +1097,8 @@ function subscribeToChatMessages(roomId) {
       const emptyEl = container.querySelector('.empty');
       if (emptyEl) emptyEl.remove();
       
-      const div = document.createElement('div');
-      div.style.display = 'flex';
-      div.style.flexDirection = 'column';
-      div.style.maxWidth = '75%';
-      
-      const isMine = payload.new.sender_id === user.id;
-      div.style.alignSelf = isMine ? 'flex-end' : 'flex-start';
-      div.style.alignItems = isMine ? 'flex-end' : 'flex-start';
-      
-      const bg = isMine ? 'background: var(--gp); color: #fff; border-bottom-right-radius: 4px;' : 'background: rgba(255,255,255,0.08); color: var(--t1); border-bottom-left-radius: 4px;';
-      const time = new Date(payload.new.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      
-      div.innerHTML = `
-        <div style="${bg} padding: 10px 14px; border-radius: 16px; font-size: 13px; line-height: 1.4; word-break: break-all;">
-          ${payload.new.message}
-        </div>
-        <span style="font-size: 10px; color: var(--t3); margin-top: 3px; padding: 0 4px;">${time}</span>
-      `;
-      
-      container.appendChild(div);
+      const rowHtml = renderMessageRow(payload.new, user.id);
+      container.insertAdjacentHTML('beforeend', rowHtml);
       scrollToBottom('chatMessagesBody');
     })
     .subscribe();
@@ -1124,7 +1117,8 @@ async function sendChatMessage() {
     const { error } = await supabase.from('chat_messages').insert({
       room_id: currentChatRoomId,
       sender_id: user.id,
-      message: filtered
+      message: filtered,
+      message_type: 'text'
     });
     
     if (error) throw error;
@@ -1136,6 +1130,64 @@ async function sendChatMessage() {
     }
   } catch (err) {
     showToast('메시지 전송 실패: ' + err.message, 'error');
+  }
+}
+
+async function uploadChatMedia(input) {
+  const file = input.files[0];
+  if (!file || !currentChatRoomId) return;
+
+  const isImage = file.type.startsWith('image/');
+  const isVideo = file.type.startsWith('video/');
+
+  if (!isImage && !isVideo) {
+    showToast('⚠️ 이미지 또는 동영상 파일만 전송할 수 있습니다.', 'error');
+    input.value = '';
+    return;
+  }
+
+  const maxSize = isVideo ? 15 * 1024 * 1024 : 5 * 1024 * 1024;
+  if (file.size > maxSize) {
+    showToast(`⚠️ 파일 용량이 너무 큽니다. (최대 ${isVideo ? '15MB' : '5MB'} 제한)`, 'error');
+    input.value = '';
+    return;
+  }
+
+  setLoading('chatAttachBtn', true, '⏳');
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('로그인이 필요합니다.');
+
+    let uploadFile = file;
+    if (isImage) {
+      uploadFile = await resizeAndCompressImage(file, 1200, 0.8);
+    }
+
+    const ext = file.name.split('.').pop() || (isImage ? 'jpg' : 'mp4');
+    const path = `${currentChatRoomId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    
+    const { error: upErr } = await supabase.storage.from('chat_media').upload(path, uploadFile);
+    if (upErr) throw upErr;
+
+    const { data: urlData } = supabase.storage.from('chat_media').getPublicUrl(path);
+    const mediaUrl = urlData.publicUrl;
+
+    const { error: dbErr } = await supabase.from('chat_messages').insert({
+      room_id: currentChatRoomId,
+      sender_id: user.id,
+      message: mediaUrl,
+      message_type: isImage ? 'image' : 'video'
+    });
+
+    if (dbErr) throw dbErr;
+
+  } catch (err) {
+    console.error(err);
+    showToast('파일 전송 실패: ' + err.message, 'error');
+  } finally {
+    setLoading('chatAttachBtn', false);
+    input.value = '';
   }
 }
 

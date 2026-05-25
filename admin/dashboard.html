@@ -24,6 +24,7 @@
       <button class="sb-link" onclick="showPage('buyers',this)"><span class="ico">👥</span> 구매자 관리</button>
       <button class="sb-link" onclick="showPage('products',this)"><span class="ico">📱</span> 전체 상품</button>
       <button class="sb-link" onclick="showPage('orders',this)"><span class="ico">📦</span> 전체 주문/정산</button>
+      <button class="sb-link" onclick="showPage('media',this)"><span class="ico">🖼️</span> 채팅 미디어 관리</button>
       <div class="sb-sec-lbl">바로가기</div>
       <a class="sb-link" href="../index.html"><span class="ico">🏠</span> 메인 홈</a>
     </nav>
@@ -211,6 +212,36 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== CHAT MEDIA MANAGEMENT ===== -->
+    <div id="page-media" style="display:none;">
+      <div class="main-hd">
+        <h1>🖼️ 채팅 미디어 관리</h1>
+        <span class="badge bg-purple" id="mediaCount">미디어 0개</span>
+      </div>
+      <div class="main-body">
+        <div class="card" style="padding: 18px; margin-bottom: 20px; background: rgba(139, 92, 246, 0.05); border: 1px dashed var(--border2); font-size: 13px; color: var(--t2); line-height: 1.5;">
+          💡 대화방에 업로드된 사진 및 동영상을 <b>오래된 등록일 순(Oldest First)</b>으로 확인하고 불필요한 미디어를 수동으로 영구 삭제하여 서버 용량을 확보할 수 있습니다.
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>미디어 파일</th>
+                <th>유형</th>
+                <th>대화방 정보</th>
+                <th>등록한 사람</th>
+                <th>등록 날짜</th>
+                <th>처리</th>
+              </tr>
+            </thead>
+            <tbody id="mediaTbl">
+              <tr><td colspan="6" style="text-align:center;padding:30px;color:var(--t3);">로딩 중…</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -666,11 +697,111 @@ async function completePayout(orderId) {
 
 let activePage = 'overview';
 function showPage(pg, el) {
-  ['overview','sellers','buyers','products','orders'].forEach(p => {
+  ['overview','sellers','buyers','products','orders','media'].forEach(p => {
     document.getElementById('page-' + p).style.display = p === pg ? 'block' : 'none';
   });
   document.querySelectorAll('.sb-link').forEach(l => l.classList.remove('active'));
   if (el) el.classList.add('active');
+  if (pg === 'media') {
+    loadChatMedia();
+  }
+}
+
+async function loadChatMedia() {
+  const tbody = document.getElementById('mediaTbl');
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--t3);">미디어를 로딩 중...</td></tr>';
+  
+  try {
+    const { data, error } = await supabase.from('chat_messages')
+      .select(`
+        id, message, message_type, created_at, sender_id,
+        profiles(name, phone),
+        room:chat_rooms(
+          id,
+          products(title),
+          buyer:profiles!chat_rooms_buyer_id_fkey(name),
+          seller:profiles!chat_rooms_seller_id_fkey(name, store_name)
+        )
+      `)
+      .in('message_type', ['image', 'video'])
+      .order('created_at', { ascending: true });
+      
+    if (error) throw error;
+    
+    document.getElementById('mediaCount').textContent = `미디어 ${data?.length || 0}개`;
+    
+    if (!data || data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:35px;color:var(--t3);">업로드된 미디어가 없습니다.</td></tr>';
+      return;
+    }
+    
+    tbody.innerHTML = data.map(m => {
+      const typeText = m.message_type === 'image' ? '📸 이미지' : '🎥 비디오';
+      
+      let previewHtml = '';
+      if (m.message_type === 'image') {
+        previewHtml = `<a href="${m.message}" target="_blank"><img src="${m.message}" style="width:50px; height:50px; object-fit:cover; border-radius:6px; border:1px solid var(--border);"></a>`;
+      } else {
+        previewHtml = `<a href="${m.message}" target="_blank" style="display:inline-block; padding:8px 12px; background:rgba(255,255,255,0.05); border-radius:6px; font-size:16px;">🎬</a>`;
+      }
+      
+      const senderName = m.profiles?.name || '—';
+      const senderPhone = m.profiles?.phone ? '+66 ' + m.profiles.phone : '';
+      
+      const roomInfo = m.room ? `
+        <div><b>${m.room.products?.title || '상품 정보 없음'}</b></div>
+        <small style="color:var(--t3); display:block; margin-top:2px;">
+          구매: ${m.room.buyer?.name || '—'} / 판매: ${m.room.seller?.store_name || m.room.seller?.name || '—'}
+        </small>
+      ` : '<span style="color:var(--t3);">대화방 정보 없음</span>';
+      
+      return `
+        <tr>
+          <td>${previewHtml}</td>
+          <td><span class="badge ${m.message_type === 'image' ? 'bg-purple' : 'bg-blue'}">${typeText}</span></td>
+          <td>${roomInfo}</td>
+          <td>
+            <div style="font-weight:600;">${senderName}</div>
+            <div style="font-size:11px; color:var(--t2);">${senderPhone}</div>
+          </td>
+          <td style="font-size:12px; color:var(--t3);">${formatDate(m.created_at)}</td>
+          <td>
+            <button class="btn-sm btn-red" onclick="deleteChatMedia('${m.id}', '${m.message}')">🗑️ 삭제</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+    
+  } catch (err) {
+    console.error(err);
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--red);">미디어 로드 실패: ' + err.message + '</td></tr>';
+  }
+}
+
+async function deleteChatMedia(msgId, mediaUrl) {
+  if (!confirm('이 미디어 파일을 서버에서 영구 삭제하시겠습니까?\n(삭제 시 대화 상대방의 채팅창에서도 사진/영상이 사라지고 복구할 수 없습니다.)')) return;
+  
+  try {
+    const parts = mediaUrl.split('/chat_media/');
+    if (parts.length > 1) {
+      const storagePath = parts[1];
+      const { error: storeErr } = await supabase.storage.from('chat_media').remove([storagePath]);
+      if (storeErr) {
+        console.warn("Storage deletion error (might already be deleted):", storeErr);
+      }
+    }
+    
+    const { error: dbErr } = await supabase.from('chat_messages').delete().eq('id', msgId);
+    if (dbErr) throw dbErr;
+    
+    showToast('🗑️ 미디어가 영구 삭제되었습니다.');
+    await loadChatMedia();
+    await loadStats();
+    
+  } catch (err) {
+    console.error(err);
+    showToast('❌ 삭제 실패: ' + err.message, 'error');
+  }
 }
 
 async function doLogout() { await supabase.auth.signOut(); window.location.href = '../login.html'; }
