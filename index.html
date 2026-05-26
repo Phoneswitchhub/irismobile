@@ -23,6 +23,7 @@
         <option value="th">🇹🇭 TH</option>
         <option value="mm">🇲🇲 MM</option>
         <option value="ko">🇰🇷 KO</option>
+        <option value="en">🇺🇸 EN</option>
       </select>
     </div>
   </nav>
@@ -780,11 +781,6 @@ async function submitOrder() {
     // Update buyer's address in profiles so they don't have to retype next time
     await supabase.from('profiles').update({ location_address: addr }).eq('id', user.id);
   
-    // Deduct stock and update status in DB
-    const newStock = Math.max(0, dbProd.stock - qty);
-    const newStatus = newStock <= 0 ? 'sold' : 'active';
-    await supabase.from('products').update({ stock: newStock, status: newStatus }).eq('id', currentProd.id);
-    
     closeModal();
     showToast(t('success_order'), 'success');
     
@@ -1382,32 +1378,7 @@ async function returnOrder(orderId) {
   if (!confirm("정말 이 주문을 반송/거절하시겠습니까? 상품 재고가 즉시 복구됩니다.")) return;
   
   try {
-    // 1. Get order details to restore stock
-    const { data: orderData, error: orderErr } = await supabase.from('orders')
-      .select('product_id, quantity, status')
-      .eq('id', orderId)
-      .single();
-      
-    if (orderErr) throw orderErr;
-    
-    if (orderData && orderData.status !== 'cancelled') {
-      // 2. Get current stock
-      const { data: prodData } = await supabase.from('products')
-        .select('stock, status')
-        .eq('id', orderData.product_id)
-        .single();
-        
-      if (prodData) {
-        const newStock = (prodData.stock || 0) + (orderData.quantity || 1);
-        const newStatus = prodData.status === 'sold' ? 'active' : prodData.status;
-        
-        await supabase.from('products')
-          .update({ stock: newStock, status: newStatus })
-          .eq('id', orderData.product_id);
-      }
-    }
-    
-    // 3. Update order status to cancelled
+    // Update order status to cancelled (DB trigger will automatically restore product stock)
     const { error } = await supabase.from('orders')
       .update({ status: 'cancelled' })
       .eq('id', orderId);
