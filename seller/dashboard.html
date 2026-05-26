@@ -530,7 +530,12 @@ function renderOrderCards(containerId, orders) {
 
     let actionButtons = '';
     if (o.status === 'pending') {
-      actionButtons += `<button class="btn-action-sm btn-green" onclick="openShipModal('${o.id}')">${t('btn_ship_start') || '🚀 배송 시작'}</button>`;
+      if (o.deposit_confirmed) {
+        actionButtons += `<button class="btn-action-sm btn-green" onclick="openShipModal('${o.id}')">${t('btn_please_ship') || '🚀 물건을 발송해주세요'}</button>`;
+      } else {
+        const waitMsg = o.payment_method === 'online' ? t('waiting_deposit_online') : t('waiting_deposit_cod');
+        actionButtons += `<span style="color:var(--gold); font-size:11px; font-weight:700; display:inline-flex; align-items:center; margin-right:8px;">${waitMsg}</span>`;
+      }
       actionButtons += `<button class="btn-action-sm btn-red" onclick="updateOrder('${o.id}','cancelled')">${t('order_cancel')}</button>`;
     } else if (o.status === 'confirmed') {
       actionButtons += `<button class="btn-action-sm btn-purple" onclick="updateOrder('${o.id}','completed')">${t('order_complete')}</button>`;

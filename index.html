@@ -269,6 +269,14 @@
       <label class="form-label" data-i18n="order_notes">요청사항 (선택)</label>
       <textarea class="form-textarea" id="oNotes" data-i18n="order_notes_placeholder" placeholder="색상, 용량, 기타 요청사항"></textarea>
     </div>
+
+    <!-- Payment Info Notice (Dynamic) -->
+    <div id="paymentInfoBox" style="background:rgba(139,92,246,0.06); border:1px solid rgba(139,92,246,0.15); border-radius:var(--r-sm); padding:12px; font-size:12px; line-height:1.5; color:var(--t2); margin-bottom:18px;">
+    </div>
+
+    <!-- Refund / COD Disclaimer Warning -->
+    <div id="orderWarningBox" data-i18n="order_warning_text" style="font-size:11px; line-height:1.4; color:var(--red); margin-bottom:18px; background:rgba(239,68,68,0.04); border:1px dashed rgba(239,68,68,0.25); border-radius:var(--r-sm); padding:10px;">
+    </div>
     
     <div style="background:var(--card);border-radius:var(--r-sm);padding:14px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;">
       <span style="color:var(--t2);font-size:13px;" data-i18n="order_total">합계</span>
@@ -672,6 +680,31 @@ function setPaymentMethod(method) {
   
   const index = method === 'online' ? 0 : 1;
   document.querySelectorAll('.pay-opt')[index].classList.add('active');
+  
+  updatePaymentNotice();
+}
+
+function updatePaymentNotice() {
+  if (!currentProd) return;
+  const qty = parseInt(document.getElementById('oQty').value) || 1;
+  const totalPrice = Number(currentProd.price) * qty;
+  const infoBox = document.getElementById('paymentInfoBox');
+  if (!infoBox) return;
+
+  if (selectedPaymentMethod === 'online') {
+    infoBox.innerHTML = t('order_online_desc') || `💡 <b>[온라인 송금]</b> 본사 계좌로 100% 금액 입금이 확인되면 판매자가 배송을 시작합니다. (구매자 추가 수수료 없음)`;
+  } else {
+    const deposit = Math.round(totalPrice * 0.03);
+    const rest = totalPrice;
+    
+    let desc = t('order_cod_desc');
+    if (desc) {
+      desc = desc.replace('{deposit}', deposit.toLocaleString()).replace('{rest}', rest.toLocaleString());
+    } else {
+      desc = `⚠️ <b>[COD 예약금 선입금 필요]</b> 노쇼 및 단순 변심 방지를 위해 기기값의 3% (<b>฿${deposit.toLocaleString()}</b>)를 본사 계좌로 선입금하셔야 배송이 시작됩니다. 나머지 97% (<b>฿${rest.toLocaleString()}</b>)는 수령 시 택배 기사에게 현금으로 결제합니다.`;
+    }
+    infoBox.innerHTML = desc;
+  }
 }
 
 // Open Order Modal
@@ -716,6 +749,8 @@ function calcTotal() {
   if (!currentProd) return;
   const qty = parseInt(document.getElementById('oQty').value) || 1;
   document.getElementById('oTotal').textContent = '฿' + (Number(currentProd.price) * qty).toLocaleString();
+  
+  updatePaymentNotice();
 }
 
 // Submit Order
@@ -755,9 +790,8 @@ async function submitOrder() {
 
     const totalPrice = Number(currentProd.price) * qty;
     
-    // Calculate commission amount
-    const rate = currentProd.profiles?.commission_rate || 10.00;
-    const commAmount = Number(((totalPrice * rate) / 100).toFixed(2));
+    // New commission rule: 3%, capped at 400 Baht
+    const commAmount = Math.min(totalPrice * 0.03, 400);
     
     const { error } = await supabase.from('orders').insert({
       buyer_id: user.id,
@@ -769,7 +803,8 @@ async function submitOrder() {
       payment_method: selectedPaymentMethod,
       commission_amount: commAmount,
       payout_status: 'pending',
-      delivery_address: addr
+      delivery_address: addr,
+      deposit_confirmed: false
     });
     
     setLoading('btnOrder', false);

@@ -207,6 +207,7 @@
                   <th>주문상태</th>
                   <th>주문관리</th>
                   <th>정산처리</th>
+                  <th>삭제</th>
                 </tr>
               </thead>
               <tbody id="allOrdersTbl">
@@ -620,7 +621,7 @@ async function savePartnerConfig() {
 
 async function loadBuyers() {
   const { data } = await supabase.from('profiles')
-    .select('*, orders:orders!orders_buyer_id_fkey(id, status, total_price, created_at, products(title))')
+    .select('*, orders:orders!orders_buyer_id_fkey(id, status, total_price, created_at, payment_method, deposit_confirmed, commission_amount, products(title))')
     .eq('role', 'buyer')
     .order('created_at', { ascending: false });
     
@@ -745,6 +746,12 @@ async function loadAllOrders() {
     
     const isCOD = o.payment_method === 'cod';
     const paymentText = isCOD ? '<span class="badge bg-red">COD (현장결제)</span>' : '<span class="badge bg-green">온라인 송금</span>';
+    
+    const depositRequired = isCOD ? Math.round(Number(o.total_price) * 0.03) : Number(o.total_price);
+    const depositConfirmedBadge = o.deposit_confirmed 
+      ? '<div style="margin-top:4px;"><span class="badge bg-green" style="font-size:10px; padding:2px 6px;">✅ 입금확인됨</span></div>' 
+      : `<div style="margin-top:4px;"><span class="badge bg-yellow" style="font-size:10px; padding:2px 6px; line-height:1.3; font-weight:700;">⏳ 대기: ฿${depositRequired.toLocaleString()} (${isCOD ? '3%' : '100%'})</span></div>`;
+    
     const comm = o.commission_amount ? `฿${Number(o.commission_amount).toLocaleString()}` : '฿0';
     
     const payoutStatusText = o.payout_status === 'completed' 
@@ -753,12 +760,21 @@ async function loadAllOrders() {
 
     let adminActions = '—';
     if (o.status === 'pending') {
-      adminActions = `
-        <div style="display:flex; flex-direction:column; gap:4px;">
-          <button class="btn-sm btn-green" style="padding:4px 8px; font-size:11px;" onclick="adminUpdateOrderStatus('${o.id}', 'confirmed')">수락/배송</button>
-          <button class="btn-sm btn-red" style="padding:4px 8px; font-size:11px;" onclick="adminUpdateOrderStatus('${o.id}', 'cancelled')">주문취소</button>
-        </div>
-      `;
+      if (!o.deposit_confirmed) {
+        adminActions = `
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <button class="btn-sm btn-green" style="padding:4px 8px; font-size:11px; background:var(--purple-l); border-color:var(--purple-l);" onclick="confirmOrderDeposit('${o.id}')">💰 입금 확인</button>
+            <button class="btn-sm btn-red" style="padding:4px 8px; font-size:11px;" onclick="adminUpdateOrderStatus('${o.id}', 'cancelled')">주문취소</button>
+          </div>
+        `;
+      } else {
+        adminActions = `
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <button class="btn-sm btn-green" style="padding:4px 8px; font-size:11px;" onclick="adminUpdateOrderStatus('${o.id}', 'confirmed')">수락/배송</button>
+            <button class="btn-sm btn-red" style="padding:4px 8px; font-size:11px;" onclick="adminUpdateOrderStatus('${o.id}', 'cancelled')">주문취소</button>
+          </div>
+        `;
+      }
     } else if (o.status === 'confirmed') {
       adminActions = `
         <div style="display:flex; flex-direction:column; gap:4px;">
@@ -766,6 +782,14 @@ async function loadAllOrders() {
           <button class="btn-sm btn-red" style="padding:4px 8px; font-size:11px;" onclick="adminUpdateOrderStatus('${o.id}', 'cancelled')">반송/취소</button>
         </div>
       `;
+    }
+
+    let payoutAmountText = '';
+    if (o.status === 'completed') {
+      const payoutAmount = isCOD 
+        ? Math.max(0, Math.round(Number(o.total_price) * 0.03) - Number(o.commission_amount))
+        : Number(o.total_price) - Number(o.commission_amount);
+      payoutAmountText = `<div style="font-size:11px; font-weight:700; color:var(--gold); margin-top:2px;">정산액: ฿${payoutAmount.toLocaleString()}</div>`;
     }
 
     return `
@@ -787,6 +811,7 @@ async function loadAllOrders() {
         <td style="color:var(--gold);font-weight:700;">฿${Number(o.total_price).toLocaleString()}</td>
         <td>
           <div>${paymentText}</div>
+          ${depositConfirmedBadge}
           <div style="font-size:11px;color:var(--t2);margin-top:2px;">수수료: <b>${comm}</b></div>
         </td>
         <td>${payoutStatusText}</td>
@@ -795,6 +820,10 @@ async function loadAllOrders() {
         <td>${adminActions}</td>
         <td>
           ${o.status === 'completed' && o.payout_status !== 'completed' ? `<button class="btn-sm btn-green" onclick="completePayout('${o.id}')">정산처리</button>` : '—'}
+          ${payoutAmountText}
+        </td>
+        <td>
+          <button class="btn-sm btn-red" style="background:rgba(239,68,68,.1); color:var(--red); border:1px solid rgba(239,68,68,.2);" onclick="adminDeleteOrder('${o.id}')">🗑️ 삭제</button>
         </td>
       </tr>
     `;
@@ -810,6 +839,35 @@ async function completePayout(orderId) {
   }
   showToast('✅ 정산이 완료되었습니다!', 'success');
   await refreshAll();
+}
+
+async function adminDeleteOrder(orderId) {
+  if (!confirm('이 주문 기록을 완전히 삭제하시겠습니까?\n(통계 및 누적 매출에서 즉시 제외되며 복구할 수 없습니다.)')) return;
+  
+  const { error } = await supabase.from('orders').delete().eq('id', orderId);
+  if (error) {
+    showToast('❌ 주문 삭제 실패: ' + error.message, 'error');
+    return;
+  }
+  showToast('🗑️ 주문 기록이 삭제되었습니다.');
+  await refreshAll();
+}
+
+async function confirmOrderDeposit(orderId) {
+  if (!confirm('해당 주문의 선입금(온라인 100% 또는 COD 3%)이 완료되었음을 확인하셨습니까? 확인 후 판매자가 배송할 수 있게 됩니다.')) return;
+  
+  const { error } = await supabase.from('orders').update({ deposit_confirmed: true }).eq('id', orderId);
+  if (error) {
+    showToast('❌ 입금 확인 처리 실패: ' + error.message, 'error');
+    return;
+  }
+  showToast('💰 입금 확인 처리가 완료되었습니다. 판매자에게 발송 지시가 내려집니다.', 'success');
+  await refreshAll();
+}
+
+async function confirmOrderDepositFromModal(orderId) {
+  closeBuyerOrdersModal();
+  await confirmOrderDeposit(orderId);
 }
 
 async function adminUpdateOrderStatus(orderId, nextStatus) {
@@ -865,10 +923,17 @@ function openBuyerOrders(buyerId, ordersJsonEscaped, buyerName) {
       
       let actionButtons = '—';
       if (o.status === 'pending') {
-        actionButtons = `
-          <button class="btn-sm btn-green" onclick="adminUpdateOrderStatusFromModal('${o.id}', 'confirmed')">수락/배송</button>
-          <button class="btn-sm btn-red" style="margin-left:4px;" onclick="adminUpdateOrderStatusFromModal('${o.id}', 'cancelled')">취소</button>
-        `;
+        if (!o.deposit_confirmed) {
+          actionButtons = `
+            <button class="btn-sm btn-green" style="background:var(--purple-l); border-color:var(--purple-l);" onclick="confirmOrderDepositFromModal('${o.id}')">💰 입금 확인</button>
+            <button class="btn-sm btn-red" style="margin-left:4px;" onclick="adminUpdateOrderStatusFromModal('${o.id}', 'cancelled')">취소</button>
+          `;
+        } else {
+          actionButtons = `
+            <button class="btn-sm btn-green" onclick="adminUpdateOrderStatusFromModal('${o.id}', 'confirmed')">수락/배송</button>
+            <button class="btn-sm btn-red" style="margin-left:4px;" onclick="adminUpdateOrderStatusFromModal('${o.id}', 'cancelled')">취소</button>
+          `;
+        }
       } else if (o.status === 'confirmed') {
         actionButtons = `
           <button class="btn-sm btn-blue" style="background:rgba(34,211,238,.15); color:var(--cyan); border:1px solid rgba(34,211,238,.3);" onclick="adminUpdateOrderStatusFromModal('${o.id}', 'completed')">구매승인</button>
