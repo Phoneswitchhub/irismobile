@@ -45,7 +45,7 @@
     
     /* Mobile orders card layout */
     .mobile-order-card {
-      background: rgba(255, 255, 255, 0.03);
+      background: rgba(0, 0, 0, 0.02);
       border: 1px solid var(--border);
       border-radius: var(--r-sm);
       padding: 14px;
@@ -59,7 +59,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
       padding-bottom: 8px;
       margin-bottom: 8px;
     }
@@ -106,7 +106,7 @@
       <span class="nav-logo-text" style="font-size: 16px; letter-spacing: 0.5px;" data-i18n="seller_portal">SELLER PORTAL</span>
     </a>
     <div class="nav-links" style="display:flex; align-items:center; gap:8px;">
-      <select id="langSelect" class="lang-select" onchange="changeLanguage(this.value)" style="padding:6px; font-size:11px; background:rgba(255,255,255,0.05); border:1px solid var(--border); color:var(--t1); border-radius:6px; outline:none; cursor:pointer;">
+      <select id="langSelect" class="lang-select" onchange="changeLanguage(this.value)" style="padding:6px; font-size:11px; background:rgba(0,0,0,0.04); border:1px solid var(--border); color:var(--t1); border-radius:6px; outline:none; cursor:pointer;">
         <option value="th">🇹🇭 TH</option>
         <option value="mm">🇲🇲 MM</option>
         <option value="ko">🇰🇷 KO</option>
@@ -129,7 +129,7 @@
           <div style="font-size: 11px; color: var(--purple-l); font-weight: 700;" data-i18n="store_payout_info">🏪 매장 정산 구조 정보</div>
           <div style="font-size: 14px; font-weight: 900;" id="overviewStoreName">—</div>
         </div>
-        <div style="display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; font-size: 11px; color: var(--t2);">
+        <div style="display: flex; justify-content: space-between; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 8px; font-size: 11px; color: var(--t2);">
           <div><span data-i18n="commission_rate">수수료율: </span><span style="font-weight: 800; color: var(--gold);" id="overviewCommRate">—</span></div>
           <div><span data-i18n="payout_method">정산방식: </span><span style="font-weight: 800; color: var(--cyan);" id="overviewPayoutMethod">—</span></div>
           <div><span data-i18n="location_label">지역: </span><span style="font-weight: 800; color: var(--t1);" id="overviewProvince">—</span></div>
@@ -279,10 +279,10 @@
             <!-- Messages load dynamically -->
           </div>
           <!-- Send Input -->
-          <div style="padding:10px 12px; border-top:1px solid var(--border); background:rgba(13,18,37,0.9); display:flex; gap:8px; align-items:center;">
+          <div style="padding:10px 12px; border-top:1px solid var(--border); background:var(--bg3); display:flex; gap:8px; align-items:center;">
             <input type="file" id="sellerChatFileInput" accept="image/*,video/*" style="display:none;" onchange="uploadSellerChatMedia(this)">
-            <button onclick="document.getElementById('sellerChatFileInput').click()" id="sellerChatAttachBtn" style="padding:10px; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:10px; color:var(--t2); font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; width:38px; height:38px; border:1px solid var(--border);">📎</button>
-            <input type="text" id="sellerChatInput" data-i18n="chat_input_placeholder" placeholder="답장을 입력하세요..." style="flex:1; padding:10px 12px; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:10px; color:var(--t1); font-size:12px; outline:none;" onkeydown="if(event.key==='Enter') sendSellerChatMessage()">
+            <button onclick="document.getElementById('sellerChatFileInput').click()" id="sellerChatAttachBtn" style="padding:10px; background:#f8fafc; border:1px solid var(--border); border-radius:10px; color:var(--t2); font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; width:38px; height:38px; border:1px solid var(--border);">📎</button>
+            <input type="text" id="sellerChatInput" data-i18n="chat_input_placeholder" placeholder="답장을 입력하세요..." style="flex:1; padding:10px 12px; background:#f8fafc; border:1px solid var(--border); border-radius:10px; color:var(--t1); font-size:12px; outline:none;" onkeydown="if(event.key==='Enter') sendSellerChatMessage()">
             <button onclick="sendSellerChatMessage()" id="sellerChatSendBtn" style="padding:10px 14px; background:var(--gp); border:none; border-radius:10px; color:#fff; font-weight:700; font-size:12px; cursor:pointer;" data-i18n="chat_send">전송</button>
           </div>
         </div>
@@ -406,7 +406,7 @@ async function init() {
   const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
   if (!p || (p.role !== 'seller' && p.role !== 'admin')) { window.location.href = '../index.html'; return; }
   if (p.role === 'seller' && !p.is_approved) {
-    document.body.innerHTML = '<div style="text-align:center;padding:100px 20px; background:#070b18; min-height:100vh; color:#fff;"><div style="font-size:56px;margin-bottom:20px;">⏳</div><h2 style="font-family:Outfit,sans-serif;font-size:28px;">' + t('seller_pending_approval') + '</h2><p style="color:var(--t2);margin-top:10px; font-size:14px;">' + t('seller_pending_approval_desc') + '</p><a href="../index.html" style="display:inline-block;margin-top:24px;padding:12px 28px;background:var(--gp);color:#fff;border-radius:12px;font-weight:700;text-decoration:none;">' + t('go_home_btn') + '</a></div>';
+    document.body.innerHTML = '<div style="text-align:center;padding:100px 20px; background:var(--bg); min-height:100vh; color:var(--t1);"><div style="font-size:56px;margin-bottom:20px;">⏳</div><h2 style="font-family:Outfit,sans-serif;font-size:28px;">' + t('seller_pending_approval') + '</h2><p style="color:var(--t2);margin-top:10px; font-size:14px;">' + t('seller_pending_approval_desc') + '</p><a href="../index.html" style="display:inline-block;margin-top:24px;padding:12px 28px;background:var(--gp);color:#fff;border-radius:12px;font-weight:700;text-decoration:none;">' + t('go_home_btn') + '</a></div>';
     return;
   }
 
@@ -929,7 +929,7 @@ async function loadSellerMessages(roomId) {
 function renderSellerMessageRow(msg, currentUserId) {
   const isMine = msg.sender_id === currentUserId;
   const align = isMine ? 'align-self: flex-end; align-items: flex-end;' : 'align-self: flex-start; align-items: flex-start;';
-  const bg = isMine ? 'background: var(--gp); color: #fff; border-bottom-right-radius: 4px;' : 'background: rgba(255,255,255,0.08); color: var(--t1); border-bottom-left-radius: 4px;';
+  const bg = isMine ? 'background: var(--gp); color: #fff; border-bottom-right-radius: 4px;' : 'background: rgba(0,0,0,0.04); color: var(--t1); border-bottom-left-radius: 4px;';
   const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   
   let contentHtml = '';
