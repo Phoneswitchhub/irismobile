@@ -379,6 +379,35 @@
       <button class="btn-sm btn-red" onclick="closeProdModal()" style="padding:12px 16px;border-radius:var(--r-sm);" data-i18n="cancel">취소</button>
     </div>
   </div>
+
+<!-- SHIP/TRACKING MODAL -->
+<div class="modal-bg" id="shipModal">
+  <div class="modal" style="max-width:400px; padding:20px;">
+    <div class="modal-hd" style="margin-bottom:16px;">
+      <span class="modal-title" data-i18n="tracking_input_title">📦 배송 정보 입력 (수락 및 배송)</span>
+      <button class="modal-x" onclick="closeShipModal()">✕</button>
+    </div>
+    <input type="hidden" id="shipOrderId">
+    <div class="form-group">
+      <label class="form-label" data-i18n="tracking_company_label">배송사 선택</label>
+      <select class="form-select" id="shipCompany">
+        <option value="Flash Express">⚡ Flash Express</option>
+        <option value="KEX (Kerry Express)">📦 KEX (Kerry Express)</option>
+        <option value="Thailand Post">📮 Thailand Post</option>
+        <option value="Other">기타 (Other)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="tracking_number_placeholder">송장 번호</label>
+      <input type="text" class="form-input" id="shipTrackingNum" placeholder="Tracking Number">
+    </div>
+    <div style="display:flex; gap:10px; margin-top:16px;">
+      <button class="btn-submit" id="btnSaveShip" onclick="saveShippingInfo()" style="flex:1; margin-top:0;" data-i18n="btn_ship_start">🚀 수락 및 배송 시작</button>
+      <button class="btn-sm btn-red" onclick="closeShipModal()" style="padding:12px 16px; border-radius:var(--r-sm);" data-i18n="cancel">취소</button>
+    </div>
+  </div>
+</div>
+
 <!-- IMAGE LIGHTBOX / ZOOM MODAL -->
 <div class="modal-bg" id="lightboxModal" onclick="closeLightbox()" style="z-index: 9999; background: rgba(0,0,0,0.95); backdrop-filter: blur(10px);">
   <button onclick="event.stopPropagation(); closeLightbox();" style="position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.1); border: none; color: #fff; font-size: 20px; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10000;">✕</button>
@@ -500,10 +529,19 @@ function renderOrderCards(containerId, orders) {
 
     let actionButtons = '';
     if (o.status === 'pending') {
-      actionButtons += `<button class="btn-action-sm btn-green" onclick="updateOrder('${o.id}','confirmed')">${t('order_confirm')}</button>`;
+      actionButtons += `<button class="btn-action-sm btn-green" onclick="openShipModal('${o.id}')">${t('btn_ship_start') || '🚀 배송 시작'}</button>`;
       actionButtons += `<button class="btn-action-sm btn-red" onclick="updateOrder('${o.id}','cancelled')">${t('order_cancel')}</button>`;
     } else if (o.status === 'confirmed') {
       actionButtons += `<button class="btn-action-sm btn-purple" onclick="updateOrder('${o.id}','completed')">${t('order_complete')}</button>`;
+    }
+
+    let trackingHtml = '';
+    if (o.tracking_number) {
+      trackingHtml = `
+        <div style="margin-top:8px; background:rgba(0,0,0,0.02); border-radius:6px; padding:8px; font-size:11px; color:var(--t2); border: 1px dashed var(--border);">
+          🚚 <b>${o.tracking_company || 'Flash Express'}</b>: ${o.tracking_number}
+        </div>
+      `;
     }
 
     return `
@@ -528,6 +566,7 @@ function renderOrderCards(containerId, orders) {
             <div>${t('payment_label')}: ${payBadge} / ${t('commission_label')}: ${comm}</div>
             <div>${t('payout_label')}: ${payoutBadge}</div>
           </div>
+          ${trackingHtml}
         </div>
         ${actionButtons ? `<div class="mobile-order-actions">${actionButtons}</div>` : ''}
       </div>
@@ -536,10 +575,44 @@ function renderOrderCards(containerId, orders) {
 }
 
 async function updateOrder(id, status) {
-  const { error } = await supabase.from('orders').update({ status }).eq('id', id);
-  if (error) { showToast(t('error_occurred') + error.message, 'error'); return; }
-  showToast(t('toast_status_updated'), 'success');
-  await loadStats(); await loadRecentOrders(); await loadAllOrders();
+  try {
+    if (status === 'cancelled') {
+      if (!confirm(t('confirm_delete') || "정말 이 주문을 취소하시겠습니까? 상품 재고가 즉시 복구됩니다.")) return;
+      
+      // 1. Get order details to restore stock
+      const { data: orderData, error: orderErr } = await supabase.from('orders')
+        .select('product_id, quantity, status')
+        .eq('id', id)
+        .single();
+        
+      if (orderErr) throw orderErr;
+      
+      if (orderData && orderData.status !== 'cancelled') {
+        // 2. Restore product stock
+        const { data: prodData } = await supabase.from('products')
+          .select('stock, status')
+          .eq('id', orderData.product_id)
+          .single();
+          
+        if (prodData) {
+          const newStock = (prodData.stock || 0) + (orderData.quantity || 1);
+          const newStatus = prodData.status === 'sold' ? 'active' : prodData.status;
+          
+          await supabase.from('products')
+            .update({ stock: newStock, status: newStatus })
+            .eq('id', orderData.product_id);
+        }
+      }
+    }
+
+    const { error } = await supabase.from('orders').update({ status }).eq('id', id);
+    if (error) throw error;
+    
+    showToast(status === 'cancelled' ? (t('toast_order_returned') || "주문이 취소되어 재고가 복구되었습니다.") : t('toast_status_updated'), 'success');
+    await loadStats(); await loadRecentOrders(); await loadAllOrders();
+  } catch (err) {
+    showToast(t('error_occurred') + err.message, 'error');
+  }
 }
 
 async function loadMyProducts() {
@@ -810,6 +883,49 @@ function previewAvatar(input) {
 }
 
 function closeProdModal() { document.getElementById('prodModal').classList.remove('open'); }
+
+function openShipModal(orderId) {
+  document.getElementById('shipOrderId').value = orderId;
+  document.getElementById('shipTrackingNum').value = '';
+  document.getElementById('shipCompany').value = 'Flash Express';
+  document.getElementById('shipModal').classList.add('open');
+}
+
+function closeShipModal() {
+  document.getElementById('shipModal').classList.remove('open');
+}
+
+async function saveShippingInfo() {
+  const orderId = document.getElementById('shipOrderId').value;
+  const company = document.getElementById('shipCompany').value;
+  const trackingNum = document.getElementById('shipTrackingNum').value.trim();
+  
+  if (!trackingNum) {
+    showToast("송장 번호를 입력해주세요.", 'error');
+    return;
+  }
+  
+  setLoading('btnSaveShip', true, t('loading'));
+  try {
+    const { error } = await supabase.from('orders')
+      .update({
+        status: 'confirmed',
+        tracking_company: company,
+        tracking_number: trackingNum
+      })
+      .eq('id', orderId);
+      
+    if (error) throw error;
+    
+    showToast(t('toast_order_shipped') || "🚀 배송이 시작되었습니다! 송장 번호가 등록되었습니다.", 'success');
+    closeShipModal();
+    await loadStats(); await loadRecentOrders(); await loadAllOrders();
+  } catch (err) {
+    showToast(t('error_occurred') + err.message, 'error');
+  } finally {
+    setLoading('btnSaveShip', false);
+  }
+}
 
 function showPage(pg, el) {
   ['overview','products','orders','profile','chats'].forEach(p => {

@@ -730,46 +730,71 @@ async function submitOrder() {
   
   setLoading('btnOrder', true, t('loading'));
   const qty = parseInt(document.getElementById('oQty').value) || 1;
-  const totalPrice = Number(currentProd.price) * qty;
-  
-  // Calculate commission amount
-  const rate = currentProd.profiles?.commission_rate || 10.00;
-  const commAmount = Number(((totalPrice * rate) / 100).toFixed(2));
-  
-  const { error } = await supabase.from('orders').insert({
-    buyer_id: user.id,
-    seller_id: currentProd.seller_id,
-    product_id: currentProd.id,
-    quantity: qty,
-    total_price: totalPrice,
-    notes: document.getElementById('oNotes').value || null,
-    payment_method: selectedPaymentMethod,
-    commission_amount: commAmount,
-    payout_status: 'pending',
-    delivery_address: addr
-  });
-  
-  setLoading('btnOrder', false);
-  if (error) {
-    showToast(t('error_occurred') + error.message, 'error');
-    return;
-  }
-  
-  // Update buyer's address in profiles so they don't have to retype next time
-  await supabase.from('profiles').update({ location_address: addr }).eq('id', user.id);
 
-  // Deduct stock and update status in DB
-  const currentStock = currentProd.stock !== undefined && currentProd.stock !== null ? currentProd.stock : 1;
-  const newStock = Math.max(0, currentStock - qty);
-  const newStatus = newStock <= 0 ? 'sold' : 'active';
-  await supabase.from('products').update({ stock: newStock, status: newStatus }).eq('id', currentProd.id);
+  // Real-time database check for stock and status (concurrency safety)
+  try {
+    const { data: dbProd, error: fetchErr } = await supabase.from('products')
+      .select('stock, status')
+      .eq('id', currentProd.id)
+      .single();
+      
+    if (fetchErr || !dbProd) {
+      showToast(t('error_occurred') + (fetchErr ? fetchErr.message : ""), 'error');
+      setLoading('btnOrder', false);
+      return;
+    }
+    
+    if (dbProd.status !== 'active' || dbProd.stock < qty) {
+      showToast(t('toast_out_of_stock'), 'error');
+      setLoading('btnOrder', false);
+      closeModal();
+      await loadProducts('all');
+      return;
+    }
+
+    const totalPrice = Number(currentProd.price) * qty;
+    
+    // Calculate commission amount
+    const rate = currentProd.profiles?.commission_rate || 10.00;
+    const commAmount = Number(((totalPrice * rate) / 100).toFixed(2));
+    
+    const { error } = await supabase.from('orders').insert({
+      buyer_id: user.id,
+      seller_id: currentProd.seller_id,
+      product_id: currentProd.id,
+      quantity: qty,
+      total_price: totalPrice,
+      notes: document.getElementById('oNotes').value || null,
+      payment_method: selectedPaymentMethod,
+      commission_amount: commAmount,
+      payout_status: 'pending',
+      delivery_address: addr
+    });
+    
+    setLoading('btnOrder', false);
+    if (error) {
+      showToast(t('error_occurred') + error.message, 'error');
+      return;
+    }
+    
+    // Update buyer's address in profiles so they don't have to retype next time
+    await supabase.from('profiles').update({ location_address: addr }).eq('id', user.id);
   
-  closeModal();
-  showToast(t('success_order'), 'success');
-  
-  // Reload product lists and order history
-  await loadProducts('all');
-  await loadMyOrders();
+    // Deduct stock and update status in DB
+    const newStock = Math.max(0, dbProd.stock - qty);
+    const newStatus = newStock <= 0 ? 'sold' : 'active';
+    await supabase.from('products').update({ stock: newStock, status: newStatus }).eq('id', currentProd.id);
+    
+    closeModal();
+    showToast(t('success_order'), 'success');
+    
+    // Reload product lists and order history
+    await loadProducts('all');
+    await loadMyOrders();
+  } catch (err) {
+    showToast(t('error_occurred') + err.message, 'error');
+    setLoading('btnOrder', false);
+  }
 }
 
 function closeModal() {
@@ -1271,6 +1296,39 @@ async function loadMyOrders() {
       const dateStr = new Date(o.created_at).toLocaleDateString();
       const paymentText = o.payment_method === 'cod' ? t('order_pay_cod') : t('order_pay_online');
 
+      // Tracking info section
+      let trackingHtml = '';
+      if (o.status === 'confirmed' && o.tracking_number) {
+        const company = o.tracking_company || 'Flash Express';
+        let trackingUrl = '';
+        if (company.toLowerCase().includes('flash')) {
+          trackingUrl = `https://www.flashexpress.co.th/tracking/?k=${o.tracking_number}`;
+        } else if (company.toLowerCase().includes('kex') || company.toLowerCase().includes('kerry')) {
+          trackingUrl = `https://th.kex-express.com/en/track/?track=${o.tracking_number}`;
+        }
+        
+        trackingHtml = `
+          <div style="background:rgba(139,92,246,0.06); border:1px dashed var(--border2); border-radius:8px; padding:10px; font-size:11px; margin-top:4px;">
+            <div style="font-weight:700; color:var(--purple-l); margin-bottom:4px;">${t('tracking_info_title') || '🚚 배송 추적 정보'}</div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span><b>${company}</b>: ${o.tracking_number}</span>
+              ${trackingUrl ? `<a href="${trackingUrl}" target="_blank" class="badge bg-purple" style="font-weight:700; text-decoration:none;">🔍 추적/Track</a>` : ''}
+            </div>
+          </div>
+        `;
+      }
+
+      // Buyer actions for confirmed orders (accept or return)
+      let buyerActions = '';
+      if (o.status === 'confirmed') {
+        buyerActions = `
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <button class="btn-sm btn-green" onclick="confirmOrderReceipt('${o.id}')" style="flex:1; padding:8px 12px; font-weight:700;">${t('btn_confirm_receipt') || '✅ 구매 확정'}</button>
+            <button class="btn-sm btn-red" onclick="returnOrder('${o.id}')" style="flex:1; padding:8px 12px; font-weight:700;">${t('btn_reject_return') || '❌ 반송 / 거절'}</button>
+          </div>
+        `;
+      }
+
       return `
         <div class="card" style="padding:14px; border-radius:12px; background:var(--card); border:1px solid var(--border); display:flex; flex-direction:column; gap:10px; text-align:left;">
           <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(0,0,0,0.05); padding-bottom:8px;">
@@ -1292,12 +1350,74 @@ async function loadMyOrders() {
             <div><strong>💳 ${t('order_payment')}:</strong> ${paymentText}</div>
             ${o.notes ? `<div><strong>📝 ${t('order_notes')}:</strong> ${o.notes}</div>` : ''}
           </div>
+          ${trackingHtml}
+          ${buyerActions}
         </div>
       `;
     }).join('');
   } catch (err) {
     console.error("Error loading orders:", err);
     container.innerHTML = `<div class="empty" style="padding:20px 0; font-size:12px; color:var(--t3);">${t('error_occurred')}</div>`;
+  }
+}
+
+async function confirmOrderReceipt(orderId) {
+  if (!confirm("상품을 무사히 받으셨습니까? 구매 확정 후에는 거래가 취소되지 않습니다.")) return;
+  
+  try {
+    const { error } = await supabase.from('orders')
+      .update({ status: 'completed' })
+      .eq('id', orderId);
+      
+    if (error) throw error;
+    
+    showToast(t('toast_order_completed') || "✅ 구매 확정이 완료되었습니다. 감사합니다!", 'success');
+    await loadMyOrders();
+  } catch (err) {
+    showToast(t('error_occurred') + err.message, 'error');
+  }
+}
+
+async function returnOrder(orderId) {
+  if (!confirm("정말 이 주문을 반송/거절하시겠습니까? 상품 재고가 즉시 복구됩니다.")) return;
+  
+  try {
+    // 1. Get order details to restore stock
+    const { data: orderData, error: orderErr } = await supabase.from('orders')
+      .select('product_id, quantity, status')
+      .eq('id', orderId)
+      .single();
+      
+    if (orderErr) throw orderErr;
+    
+    if (orderData && orderData.status !== 'cancelled') {
+      // 2. Get current stock
+      const { data: prodData } = await supabase.from('products')
+        .select('stock, status')
+        .eq('id', orderData.product_id)
+        .single();
+        
+      if (prodData) {
+        const newStock = (prodData.stock || 0) + (orderData.quantity || 1);
+        const newStatus = prodData.status === 'sold' ? 'active' : prodData.status;
+        
+        await supabase.from('products')
+          .update({ stock: newStock, status: newStatus })
+          .eq('id', orderData.product_id);
+      }
+    }
+    
+    // 3. Update order status to cancelled
+    const { error } = await supabase.from('orders')
+      .update({ status: 'cancelled' })
+      .eq('id', orderId);
+      
+    if (error) throw error;
+    
+    showToast(t('toast_order_returned') || "❌ 주문이 거부되어 반송 처리되었습니다. 상품 재고가 복구되었습니다.", 'success');
+    await loadMyOrders();
+  } catch (err) {
+    showToast(t('error_occurred') + err.message, 'error');
   }
 }
 

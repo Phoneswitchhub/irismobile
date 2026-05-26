@@ -235,7 +235,18 @@ const TRANSLATIONS = {
     product_inquiry: "상품 문의",
     phone_blocked: "[연락처 필터링됨 / Phone Blocked]",
     line_blocked: "[라인 정보 필터링됨 / LINE Blocked]",
-    account_blocked: "[계좌번호 필터링됨 / Account Blocked]"
+    account_blocked: "[계좌번호 필터링됨 / Account Blocked]",
+    toast_out_of_stock: "❌ 이미 판매 완료되었거나 품절된 상품입니다.",
+    tracking_input_title: "📦 배송 정보 입력 (수락 및 배송)",
+    tracking_company_label: "배송사 선택",
+    tracking_number_placeholder: "송장 번호를 입력하세요",
+    btn_ship_start: "🚀 수락 및 배송 시작",
+    btn_confirm_receipt: "✅ 구매 확정",
+    btn_reject_return: "❌ 반송 / 거절",
+    tracking_info_title: "🚚 배송 추적 정보",
+    toast_order_shipped: "🚀 배송이 시작되었습니다! 송장 번호가 등록되었습니다.",
+    toast_order_completed: "✅ 구매 확정이 완료되었습니다. 감사합니다!",
+    toast_order_returned: "❌ 주문이 거부되어 반송 처리되었습니다. 상품 재고가 복구되었습니다."
   },
   th: {
     app_title: "PHONE SWITCH HUB",
@@ -471,7 +482,18 @@ const TRANSLATIONS = {
     product_inquiry: "สอบถามสินค้า",
     phone_blocked: "[เบอร์โทรศัพท์ถูกบล็อก / Phone Blocked]",
     line_blocked: "[LINE ID ถูกบล็อก / LINE Blocked]",
-    account_blocked: "[เลขบัญชีถูกบล็อก / Account Blocked]"
+    account_blocked: "[เลขบัญชีถูกบล็อก / Account Blocked]",
+    toast_out_of_stock: "❌ สินค้านี้ถูกขายไปแล้วหรือสินค้าหมดเกลี้ยง",
+    tracking_input_title: "📦 กรอกข้อมูลการจัดส่ง (ยอมรับและจัดส่ง)",
+    tracking_company_label: "เลือกบริษัทขนส่ง",
+    tracking_number_placeholder: "กรอกหมายเลขติดตามพัสดุ (Tracking Number)",
+    btn_ship_start: "🚀 ยอมรับและเริ่มจัดส่ง",
+    btn_confirm_receipt: "✅ ยืนยันการรับสินค้า",
+    btn_reject_return: "❌ ปฏิเสธ / คืนสินค้า",
+    tracking_info_title: "🚚 ข้อมูลการติดตามพัสดุ",
+    toast_order_shipped: "🚀 เริ่มจัดส่งแล้ว! ลงทะเบียนหมายเลขพัสดุเรียบร้อย",
+    toast_order_completed: "✅ ยืนยันการรับสินค้าเสร็จสิ้น ขอบคุณครับ!",
+    toast_order_returned: "❌ รายการสั่งซื้อถูกปฏิเสธและส่งคืนพัสดุ คืนคลังสินค้าเรียบร้อย"
   },
   mm: {
     app_title: "PHONE SWITCH HUB",
@@ -707,7 +729,18 @@ const TRANSLATIONS = {
     product_inquiry: "ဖုန်းစုံစမ်းမေးမြန်းမှု",
     phone_blocked: "[ဖုန်းနံပါတ်ပိတ်ထားပါသည် / Phone Blocked]",
     line_blocked: "[LINE ID ပိတ်ထားပါသည် / LINE Blocked]",
-    account_blocked: "[ဘဏ်အကောင့်ပိတ်ထားပါသည် / Account Blocked]"
+    account_blocked: "[ဘဏ်အကောင့်ပိတ်ထားပါသည် / Account Blocked]",
+    toast_out_of_stock: "❌ ဤပစ္စည်းသည် ရောင်းထွက်သွားပြီ သို့မဟုတ် ပစ္စည်းပြတ်သွားပါပြီ။",
+    tracking_input_title: "📦 ပို့ဆောင်ရေးအချက်အလက်ဖြည့်ရန်",
+    tracking_company_label: "ပို့ဆောင်ရေးကုမ္ပဏီရွေးချယ်ပါ",
+    tracking_number_placeholder: "ဖြတ်ပိုင်းနံပါတ် (Tracking Number) ထည့်ပါ",
+    btn_ship_start: "🚀 လက်ခံပြီး ပို့ဆောင်မှုစတင်ရန်",
+    btn_confirm_receipt: "✅ ပစ္စည်းလက်ခံရရှိကြောင်းအတည်ပြုရန်",
+    btn_reject_return: "❌ ငြင်းပယ်ရန် / ပြန်လည်ပေးပို့ရန်",
+    tracking_info_title: "🚚 ပို့ဆောင်မှုခြေရာခံရန်အချက်အလက်",
+    toast_order_shipped: "🚀 ပို့ဆောင်မှုစတင်ပါပြီ။ ဖြတ်ပိုင်းနံပါတ်စာရင်းသွင်းပြီးပါပြီ။",
+    toast_order_completed: "✅ ပစ္စည်းလက်ခံရရှိကြောင်းအတည်ပြုပြီးပါပြီ။ ကျေးဇူးတင်ပါသည်!",
+    toast_order_returned: "❌ အော်ဒါကိုငြင်းပယ်ပြီး ပြန်လည်ပေးပို့လိုက်ပါပြီ။ လက်ကျันအရေအတွက်ပြန်လည်ဖြည့်သွင်းပြီးပါပြီ။"
   }
 };
 
