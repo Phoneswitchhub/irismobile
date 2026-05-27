@@ -261,8 +261,22 @@
     </div>
 
     <div class="form-group">
-      <label class="form-label" data-i18n="order_address">배송 주소</label>
-      <textarea class="form-textarea" id="oAddress" data-i18n="order_address_placeholder" placeholder="배송 받으실 주소를 입력해주세요." required></textarea>
+      <label class="form-label" data-i18n="order_province">배송 지역 (Province)</label>
+      <select class="form-input" id="oProvince" required>
+        <option value="" data-i18n="select_province">지역(주) 선택</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" data-i18n="order_district">배송 구/군 (District)</label>
+      <select class="form-input" id="oDistrict" required>
+        <option value="" data-i18n="select_district">구/군 선택</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" data-i18n="order_detailed_address">상세 주소 (Detailed Address)</label>
+      <textarea class="form-textarea" id="oAddress" data-i18n="order_address_placeholder" placeholder="상세 주소를 입력해주세요." required></textarea>
     </div>
 
     <div class="form-group">
@@ -384,6 +398,7 @@
 <!-- TOAST -->
 <div class="toast" id="globalToast"></div>
 
+<script src="js/thailand-addresses.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/config.js"></script>
 <script>
@@ -723,12 +738,37 @@ async function openOrder(id) {
   if (!currentProd) return;
   
   // Auto-fill buyer's address from their profile if exists
-  const { data: buyerProfile } = await supabase.from('profiles').select('location_address').eq('id', user.id).single();
-  if (buyerProfile && buyerProfile.location_address) {
-    document.getElementById('oAddress').value = buyerProfile.location_address;
-  } else {
-    document.getElementById('oAddress').value = '';
+  const { data: buyerProfile } = await supabase.from('profiles')
+    .select('location_province, location_district, location_address')
+    .eq('id', user.id)
+    .single();
+
+  let initialProv = '';
+  let initialDist = '';
+  let initialAddr = '';
+
+  if (buyerProfile) {
+    initialProv = buyerProfile.location_province || '';
+    initialDist = buyerProfile.location_district || '';
+    initialAddr = buyerProfile.location_address || '';
+    
+    // Legacy support if they only have location_address formatted as "province - district - addr"
+    if (initialAddr && !initialProv && !initialDist) {
+      const parts = initialAddr.split(' - ');
+      if (parts.length >= 3) {
+        initialProv = parts[0];
+        initialDist = parts[1];
+        initialAddr = parts.slice(2).join(' - ');
+      }
+    }
   }
+
+  try {
+    initThailandAddressSelects('oProvince', 'oDistrict', initialProv, initialDist);
+  } catch (e) {
+    console.error("Order Address dropdowns init failed:", e);
+  }
+  document.getElementById('oAddress').value = initialAddr;
   
   const storeName = currentProd.profiles?.store_name || currentProd.profiles?.name || t('role_seller');
   const conditionText = t('condition_' + (currentProd.condition ? currentProd.condition.toLowerCase().replace(' ', '') : 's'));
@@ -758,11 +798,24 @@ async function submitOrder() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || !currentProd) return;
   
-  const addr = document.getElementById('oAddress').value.trim();
-  if (!addr) {
+  const province = document.getElementById('oProvince').value;
+  const district = document.getElementById('oDistrict').value;
+  const detailedAddr = document.getElementById('oAddress').value.trim();
+
+  if (!province) {
+    showToast(t('toast_province_required'), 'error');
+    return;
+  }
+  if (!district) {
+    showToast(t('toast_district_required'), 'error');
+    return;
+  }
+  if (!detailedAddr) {
     showToast(t('toast_address_required'), 'error');
     return;
   }
+
+  const fullAddr = `${province} - ${district} - ${detailedAddr}`;
   
   setLoading('btnOrder', true, t('loading'));
   const qty = parseInt(document.getElementById('oQty').value) || 1;
@@ -803,7 +856,7 @@ async function submitOrder() {
       payment_method: selectedPaymentMethod,
       commission_amount: commAmount,
       payout_status: 'pending',
-      delivery_address: addr,
+      delivery_address: fullAddr,
       deposit_confirmed: false
     });
     
@@ -814,7 +867,11 @@ async function submitOrder() {
     }
     
     // Update buyer's address in profiles so they don't have to retype next time
-    await supabase.from('profiles').update({ location_address: addr }).eq('id', user.id);
+    await supabase.from('profiles').update({ 
+      location_province: province,
+      location_district: district,
+      location_address: detailedAddr 
+    }).eq('id', user.id);
   
     closeModal();
     showToast(t('success_order'), 'success');

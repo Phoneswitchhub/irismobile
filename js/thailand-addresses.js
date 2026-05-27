@@ -5198,7 +5198,8 @@ function initThailandAddressSelects(provinceSelectId, districtSelectId, initialP
   if (!provSelect || !distSelect) return;
 
   // Clear province dropdown
-  provSelect.innerHTML = '<option value="">선택해주세요 / เลือกจังหวัด</option>';
+  const provText = typeof t === 'function' ? t('select_province') : '선택해주세요 / เลือกจังหวัด';
+  provSelect.innerHTML = `<option value="">${provText}</option>`;
   
   // Populate provinces
   THAILAND_PROVINCES.forEach(p => {
@@ -5215,7 +5216,8 @@ function initThailandAddressSelects(provinceSelectId, districtSelectId, initialP
   });
 
   function updateDistrictOptions(provName, distName) {
-    distSelect.innerHTML = '<option value="">선택해주세요 / เลือกอำเภอ</option>';
+    const distText = typeof t === 'function' ? t('select_district') : '선택해주세요 / เลือกอำเภอ';
+    distSelect.innerHTML = `<option value="">${distText}</option>`;
     if (!provName) {
       distSelect.disabled = true;
       return;
