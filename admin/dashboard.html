@@ -178,6 +178,24 @@
     <div id="page-products" style="display:none;">
       <div class="main-hd"><h1>📱 전체 상품</h1></div>
       <div class="main-body">
+        <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 13px; font-weight: 700; color: var(--t2);">판매자 필터:</span>
+            <select id="adminProductSellerFilter" class="form-input" style="width: 180px; padding: 8px 12px; font-size: 13px;" onchange="filterAdminProducts()">
+              <option value="all">전체 판매자</option>
+            </select>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 13px; font-weight: 700; color: var(--t2);">카테고리 필터:</span>
+            <select id="adminProductCategoryFilter" class="form-input" style="width: 180px; padding: 8px 12px; font-size: 13px;" onchange="filterAdminProducts()">
+              <option value="all">전체 카테고리</option>
+              <option value="iPhone">🍎 iPhone</option>
+              <option value="Samsung">🌟 Samsung</option>
+              <option value="Xiaomi">🔴 Xiaomi</option>
+              <option value="Other">📦 기타</option>
+            </select>
+          </div>
+        </div>
         <div class="tbl-wrap">
           <table class="tbl">
             <thead><tr><th>상품명</th><th>등급</th><th>판매자</th><th>카테고리</th><th>가격</th><th>재고</th><th>상태</th><th>등록일</th><th>처리</th></tr></thead>
@@ -191,6 +209,12 @@
     <div id="page-orders" style="display:none;">
       <div class="main-hd"><h1>📦 전체 주문 및 수수료 정산</h1></div>
       <div class="main-body">
+        <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 13px; font-weight: 700; color: var(--t2);">판매자 필터:</span>
+          <select id="adminOrderSellerFilter" class="form-input" style="width: 220px; padding: 8px 12px; font-size: 13px;" onchange="filterAdminOrders()">
+            <option value="all">전체 판매자</option>
+          </select>
+        </div>
         <div class="card">
           <div class="tbl-wrap">
             <table class="tbl">
@@ -441,25 +465,25 @@ async function loadRecentOrders() {
   const tbody = document.getElementById('recentOrdersTbl');
   if (!data?.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--t3);">주문 없음</td></tr>'; return; }
   
-  tbody.innerHTML = data.map(o => {
-    const buyer = o.buyer?.name || '—';
-    const seller = o.seller?.store_name || o.seller?.name || '—';
-    const isCOD = o.payment_method === 'cod';
-    const payMethodText = isCOD ? '<span style="color:var(--red);">COD (현금)</span>' : '<span style="color:var(--green);">온라인 (카드)</span>';
-    const comm = o.commission_amount ? `฿${Number(o.commission_amount).toLocaleString()}` : '฿0';
+    tbody.innerHTML = data.map(o => {
+      const buyer = o.buyer?.name || '—';
+      const seller = o.seller?.store_name || o.seller?.name || '—';
+      const isCOD = o.payment_method === 'cod';
+      const payMethodText = isCOD ? '<span style="color:var(--red);">COD (현금)</span>' : '<span style="color:var(--green);">온라인 (카드)</span>';
+      const noteHtml = o.notes ? `<div style="font-size:10px; color:var(--purple-l); margin-top:2px; max-width:180px; white-space:normal; line-height:1.2;">💬 <b>요청:</b> ${o.notes}</div>` : '';
 
-    return `
-      <tr>
-        <td>${buyer}</td>
-        <td>${seller}</td>
-        <td>${o.products?.title || '—'}</td>
-        <td style="color:var(--gold);font-weight:700;">฿${Number(o.total_price).toLocaleString()}</td>
-        <td style="font-size:12px;">${payMethodText}<br><small style="color:var(--t2);">수수료: ${comm}</small></td>
-        <td style="font-size:12px;color:var(--t3);">${formatDate(o.created_at)}</td>
-        <td><span class="badge ${statusBadge(o.status)}">${statusText(o.status)}</span></td>
-      </tr>
-    `;
-  }).join('');
+      return `
+        <tr>
+          <td>${buyer}</td>
+          <td>${seller}</td>
+          <td>${o.products?.title || '—'}${noteHtml}</td>
+          <td style="color:var(--gold);font-weight:700;">฿${Number(o.total_price).toLocaleString()}</td>
+          <td style="font-size:12px;">${payMethodText}<br><small style="color:var(--t2);">수수료: ${comm}</small></td>
+          <td style="font-size:12px;color:var(--t3);">${formatDate(o.created_at)}</td>
+          <td><span class="badge ${statusBadge(o.status)}">${statusText(o.status)}</span></td>
+        </tr>
+      `;
+    }).join('');
 }
 
 async function loadSellers() {
@@ -621,7 +645,7 @@ async function savePartnerConfig() {
 
 async function loadBuyers() {
   const { data } = await supabase.from('profiles')
-    .select('*, orders:orders!orders_buyer_id_fkey(id, status, total_price, created_at, payment_method, deposit_confirmed, commission_amount, products(title))')
+    .select('*, orders:orders!orders_buyer_id_fkey(id, status, total_price, created_at, payment_method, deposit_confirmed, commission_amount, notes, products(title))')
     .eq('role', 'buyer')
     .order('created_at', { ascending: false });
     
@@ -684,11 +708,49 @@ async function initiatePinReset(userId, phone) {
   showToast('🔑 PIN 번호가 성공적으로 초기화되었습니다!', 'success');
 }
 
-async function loadAllProducts() {
+async function loadAllProducts(skipRebuildDropdown = false) {
   const { data } = await supabase.from('products').select('*, profiles(name, store_name)').order('created_at', { ascending: false });
+  
+  const filterSelect = document.getElementById('adminProductSellerFilter');
+  if (filterSelect && !skipRebuildDropdown && data) {
+    const currentVal = filterSelect.value;
+    filterSelect.innerHTML = '<option value="all">전체 판매자</option>';
+    const sellersMap = new Map();
+    data.forEach(p => {
+      if (p.profiles) {
+        const sellerName = p.profiles.store_name || p.profiles.name;
+        sellersMap.set(p.seller_id, sellerName);
+      }
+    });
+    const sortedSellers = Array.from(sellersMap.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+    sortedSellers.forEach(([id, name]) => {
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = name;
+      filterSelect.appendChild(opt);
+    });
+    if (sellersMap.has(currentVal)) {
+      filterSelect.value = currentVal;
+    } else {
+      filterSelect.value = 'all';
+    }
+  }
+
+  const selectedSeller = filterSelect ? filterSelect.value : 'all';
+  const categorySelect = document.getElementById('adminProductCategoryFilter');
+  const selectedCategory = categorySelect ? categorySelect.value : 'all';
+
+  let filteredData = data || [];
+  if (selectedSeller !== 'all') {
+    filteredData = filteredData.filter(p => p.seller_id === selectedSeller);
+  }
+  if (selectedCategory !== 'all') {
+    filteredData = filteredData.filter(p => p.category === selectedCategory);
+  }
+
   const tbody = document.getElementById('allProductsTbl');
-  if (!data?.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--t3);">상품 없음</td></tr>'; return; }
-  tbody.innerHTML = data.map(p => {
+  if (!filteredData.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--t3);">상품 없음</td></tr>'; return; }
+  tbody.innerHTML = filteredData.map(p => {
     const store = p.profiles?.store_name || p.profiles?.name || '—';
     const condition = p.condition || 'Used S';
     
@@ -706,6 +768,10 @@ async function loadAllProducts() {
       </tr>
     `;
   }).join('');
+}
+
+function filterAdminProducts() {
+  loadAllProducts(true);
 }
 
 async function adminDeleteProduct(id) {
@@ -729,14 +795,46 @@ async function adminDeleteProduct(id) {
   await loadAllProducts(); await loadStats();
 }
 
-async function loadAllOrders() {
+async function loadAllOrders(skipRebuildDropdown = false) {
   const { data } = await supabase.from('orders')
     .select('*, products(title), buyer:profiles!orders_buyer_id_fkey(name, phone, location_address), seller:profiles!orders_seller_id_fkey(name, store_name, partner_type, payout_method)')
     .order('created_at', { ascending: false });
+    
+  const filterSelect = document.getElementById('adminOrderSellerFilter');
+  if (filterSelect && !skipRebuildDropdown && data) {
+    const currentVal = filterSelect.value;
+    filterSelect.innerHTML = '<option value="all">전체 판매자</option>';
+    const sellersMap = new Map();
+    data.forEach(o => {
+      if (o.seller) {
+        const sellerName = o.seller.store_name || o.seller.name;
+        sellersMap.set(o.seller_id, sellerName);
+      }
+    });
+    const sortedSellers = Array.from(sellersMap.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+    sortedSellers.forEach(([id, name]) => {
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = name;
+      filterSelect.appendChild(opt);
+    });
+    if (sellersMap.has(currentVal)) {
+      filterSelect.value = currentVal;
+    } else {
+      filterSelect.value = 'all';
+    }
+  }
+
+  const selectedSeller = filterSelect ? filterSelect.value : 'all';
+  let filteredData = data || [];
+  if (selectedSeller !== 'all') {
+    filteredData = filteredData.filter(o => o.seller_id === selectedSeller);
+  }
+
   const tbody = document.getElementById('allOrdersTbl');
-  if (!data?.length) { tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:30px;color:var(--t3);">주문 없음</td></tr>'; return; }
+  if (!filteredData.length) { tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:30px;color:var(--t3);">주문 없음</td></tr>'; return; }
   
-  tbody.innerHTML = data.map(o => {
+  tbody.innerHTML = filteredData.map(o => {
     const buyerName = o.buyer?.name || '—';
     const buyerPhone = o.buyer?.phone ? '+66 ' + o.buyer.phone : '';
     const delivery = o.delivery_address || '주소 정보 없음';
@@ -799,6 +897,7 @@ async function loadAllOrders() {
           <div style="font-weight:600;">${buyerName}</div>
           <div style="font-size:11px;color:var(--t2);">${buyerPhone}</div>
           <div style="font-size:10px;color:var(--t3);margin-top:2px;max-width:150px;white-space:normal;line-height:1.2;">🏠 ${delivery}</div>
+          ${o.notes ? `<div style="font-size:10px;color:var(--purple-l);margin-top:4px;max-width:150px;white-space:normal;line-height:1.2;background:rgba(139,92,246,0.06);border:1px dashed rgba(139,92,246,0.15);border-radius:4px;padding:4px 6px;">💬 <b>요청:</b> ${o.notes}</div>` : ''}
         </td>
         <td>
           <div style="font-weight:600;">${store}</div>
@@ -828,6 +927,10 @@ async function loadAllOrders() {
       </tr>
     `;
   }).join('');
+}
+
+function filterAdminOrders() {
+  loadAllOrders(true);
 }
 
 async function completePayout(orderId) {
@@ -941,10 +1044,11 @@ function openBuyerOrders(buyerId, ordersJsonEscaped, buyerName) {
         `;
       }
       
+      const notesHtml = o.notes ? `<div style="font-size:10px; color:var(--purple-l); margin-top:2px; line-height:1.2;">💬 <b>요청:</b> ${o.notes}</div>` : '';
       return `
         <tr>
           <td style="font-size:12px; color:var(--t3);">${dateStr}</td>
-          <td style="font-weight:600;">${title}</td>
+          <td style="font-weight:600;">${title}${notesHtml}</td>
           <td style="color:var(--gold); font-weight:700;">${priceStr}</td>
           <td><span class="badge ${statusBadge(o.status)}">${statusText(o.status)}</span></td>
           <td>${actionButtons}</td>
