@@ -354,13 +354,28 @@
 
     <!-- Company Bank Account Info -->
     <div id="companyBankBox" style="background:rgba(34,211,238,0.06); border:1px solid rgba(34,211,238,0.15); border-radius:var(--r-sm); padding:12px; font-size:11px; line-height:1.5; color:var(--t2); margin-bottom:18px; text-align:left;">
-      <div style="font-weight:700; color:var(--cyan); margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+      <div style="font-weight:700; color:var(--cyan); margin-bottom:6px; display:flex; align-items:center; gap:6px;">
         🏦 본사 안심 입금 계좌 (Head Office Account)
       </div>
-      <div style="margin-top:2px;">
+      <div style="margin-top:2px; display:flex; flex-direction:column; gap:3px;">
         <div>은행 / Bank: <b>Kasikornbank (KBank)</b></div>
         <div>예금주 / Name: <b>Phone Switch Hub</b></div>
-        <div>계좌번호 / Account No.: <b style="font-size:13px; color:var(--cyan); letter-spacing:0.5px;">220-2-61971-4</b></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; background:rgba(34,211,238,0.1); padding:6px 10px; border-radius:4px;">
+          <div>계좌번호 / Account: <b id="headOfficeAcc" style="font-size:13px; color:var(--cyan); letter-spacing:0.5px;">220-2-61971-4</b></div>
+          <button type="button" onclick="copyAccount()" style="background:var(--cyan); color:#000; border:none; border-radius:4px; padding:4px 8px; font-size:10px; font-weight:700; cursor:pointer;" data-i18n="copy_account_btn">📋 계좌번호 복사</button>
+        </div>
+      </div>
+      <!-- Banking / Wallet App Shortcuts -->
+      <div style="margin-top:12px; border-top:1px solid rgba(34,211,238,0.15); padding-top:10px;">
+        <div style="font-weight:700; font-size:10px; color:var(--t3); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">태국 송금앱 바로가기 (Open App)</div>
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;">
+          <a href="kplus://" class="app-link-btn" style="background:#00A950; color:#fff;" data-i18n="open_kplus_btn">K PLUS</a>
+          <a href="scbeasy://" class="app-link-btn" style="background:#4E2A84; color:#fff;" data-i18n="open_scb_btn">SCB Easy</a>
+          <a href="bualuangmbanking://" class="app-link-btn" style="background:#0056B3; color:#fff;" data-i18n="open_bangkok_btn">Bangkok</a>
+          <a href="kma://" class="app-link-btn" style="background:#FFC72C; color:#333; font-weight:700;" data-i18n="open_krungsri_btn">Krungsri</a>
+          <a href="ktbnetbank://" class="app-link-btn" style="background:#00A1E4; color:#fff;" data-i18n="open_krungthai_btn">Krungthai</a>
+          <a href="truemoney://" class="app-link-btn" style="background:#FF8200; color:#fff;" data-i18n="open_truemoney_btn">TrueMoney</a>
+        </div>
       </div>
     </div>
 
@@ -820,20 +835,65 @@ function updatePaymentNotice() {
     totalPrice = Number(currentProd.price) * qty;
   }
 
+  const submitBtn = document.getElementById('btnOrder');
+  
   if (selectedPaymentMethod === 'online') {
-    infoBox.innerHTML = t('order_online_desc') || `💡 <b>[온라인 송금]</b> 본사 계좌로 100% 금액 입금이 확인되면 판매자가 배송을 시작합니다. (구매자 추가 수수료 없음)`;
+    const formattedTotal = totalPrice.toLocaleString();
+    const step2 = (t('cod_step_2') || '2. 은행/지갑 앱을 열어 송금합니다.') + ` (100%: ฿${formattedTotal})`;
+    
+    infoBox.innerHTML = `
+      <div style="font-weight:700; color:var(--purple-l); margin-bottom:6px;">${t('cod_step_title') || '💡 송금 가이드 (Transfer Guide)'}</div>
+      <div style="display:flex; flex-direction:column; gap:4px; font-size:11.5px; color:var(--t2);">
+        <div>${t('cod_step_1') || '1. 아래 계좌번호를 복사합니다.'}</div>
+        <div><b>${step2}</b></div>
+        <div>${t('cod_step_3') || '3. 입금 완료 후 아래 주문 요청 버튼을 누릅니다.'}</div>
+      </div>
+      <div style="margin-top:10px; font-size:11px; color:var(--t3); line-height:1.4;">
+        ${t('order_online_desc') || '💡 <b>[온라인 송금]</b> 본사 계좌로 100% 금액 입금이 확인되면 판매자가 배송을 시작합니다. (구매자 추가 수수료 없음)'}
+      </div>
+    `;
+    if (submitBtn) {
+      submitBtn.innerHTML = t('btn_submit_order_online') || `✅ 100% 송금 완료 및 주문 요청하기`;
+    }
   } else {
     const deposit = Math.round(totalPrice * 0.03);
     const rest = totalPrice;
+    const formattedDeposit = deposit.toLocaleString();
+    const formattedRest = rest.toLocaleString();
+    const step2 = (t('cod_step_2') || '2. 은행/지갑 앱을 열어 송금합니다.') + ` (3%: ฿${formattedDeposit})`;
     
-    let desc = t('order_cod_desc');
-    if (desc) {
-      desc = desc.replace('{deposit}', deposit.toLocaleString()).replace('{rest}', rest.toLocaleString());
+    let warningDesc = t('order_cod_desc');
+    if (warningDesc) {
+      warningDesc = warningDesc.replace('{deposit}', formattedDeposit).replace('{rest}', formattedRest.toLocaleString());
     } else {
-      desc = `⚠️ <b>[COD 예약금 선입금 필요]</b> 노쇼 및 단순 변심 방지를 위해 기기값의 3% (<b>฿${deposit.toLocaleString()}</b>)를 본사 계좌로 선입금하셔야 배송이 시작됩니다. 나머지 97% (<b>฿${rest.toLocaleString()}</b>)는 수령 시 택배 기사에게 현금으로 결제합니다.`;
+      warningDesc = `⚠️ <b>[COD 예약금 선입금 필요]</b> 노쇼 및 단순 변심 방지를 위해 기기값의 3% (<b>฿${formattedDeposit}</b>)를 본사 계좌로 선입금하셔야 배송이 시작됩니다. 나머지 97% (<b>฿${formattedRest}</b>)는 수령 시 택배 기사에게 현금으로 결제합니다.`;
     }
-    infoBox.innerHTML = desc;
+
+    infoBox.innerHTML = `
+      <div style="font-weight:700; color:var(--purple-l); margin-bottom:6px;">${t('cod_step_title') || '💡 송금 가이드 (Transfer Guide)'}</div>
+      <div style="display:flex; flex-direction:column; gap:4px; font-size:11.5px; color:var(--t2);">
+        <div>${t('cod_step_1') || '1. 아래 계좌번호를 복사합니다.'}</div>
+        <div><b>${step2}</b></div>
+        <div>${t('cod_step_3') || '3. 입금 완료 후 아래 주문 요청 버튼을 누릅니다.'}</div>
+      </div>
+      <div style="margin-top:10px; font-size:11px; color:var(--t3); line-height:1.4;">
+        ${warningDesc}
+      </div>
+    `;
+    if (submitBtn) {
+      submitBtn.innerHTML = t('btn_submit_order_cod') || `✅ 3% 예약금 선입금 완료 및 주문 요청하기`;
+    }
   }
+}
+
+function copyAccount() {
+  const accNo = '220-2-61971-4';
+  navigator.clipboard.writeText(accNo).then(() => {
+    showToast(t('toast_account_copied') || "🏦 본사 계좌번호가 복사되었습니다!", 'success');
+  }).catch(err => {
+    console.error("Failed to copy account number:", err);
+    showToast("Copy failed", 'error');
+  });
 }
 
 // Open Order Modal (Single item checkout)

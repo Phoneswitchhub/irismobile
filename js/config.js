@@ -114,7 +114,7 @@ try {
 }
 
 // 3. 이미지 리사이징 및 압축 유틸리티 (50분의 1로 용량 감소) - 에러 발생 시 무한 루프 방지 처리
-function resizeAndCompressImage(file, maxWidth = 1600, quality = 0.9) {
+function resizeAndCompressImage(file, maxWidth = 1000, quality = 0.75) {
   return new Promise((resolve) => {
     try {
       if (!file || !file.type.startsWith('image/')) {

@@ -61,6 +61,20 @@ const TRANSLATIONS = {
     order_warning_text: "📢 <b>구매 유의사항 및 환불 안내</b><br>• 물건의 불량이 아닌 고객의 단순 변심으로 인한 환불은 왕복 배송비를 제하고 환불됩니다.<br>• COD(현장결제)의 경우, 고객 미수취(노쇼) 시 선입금하신 3% 예약금은 반환되지 않습니다. (판매자가 발송 시 지불한 COD 수수료가 환불되지 않기 때문입니다.)",
     order_total: "합계",
     btn_submit_order: "✅ 주문 요청하기",
+    btn_submit_order_online: "✅ 100% 송금 완료 및 주문 요청하기",
+    btn_submit_order_cod: "✅ 3% 예약금 선입금 완료 및 주문 요청하기",
+    copy_account_btn: "📋 계좌번호 복사",
+    open_kplus_btn: "🟢 K PLUS (KBank) 앱 열기",
+    open_scb_btn: "🟣 SCB Easy 앱 열기",
+    open_bangkok_btn: "🔵 Bangkok Bank 앱 열기",
+    open_krungsri_btn: "🟡 Krungsri (KMA) 앱 열기",
+    open_krungthai_btn: "🔵 Krungthai NEXT 앱 열기",
+    open_truemoney_btn: "🟠 TrueMoney 앱 열기",
+    toast_account_copied: "🏦 본사 계좌번호가 복사되었습니다!",
+    cod_step_title: "💡 송금 가이드 (Transfer Guide)",
+    cod_step_1: "1. 아래 계좌번호를 복사합니다.",
+    cod_step_2: "2. 은행/지갑 앱을 열어 송금합니다.",
+    cod_step_3: "3. 입금 완료 후 아래 주문 요청 버튼을 누릅니다.",
     
     // Common / Buttons
     login: "로그인",
@@ -334,6 +348,20 @@ const TRANSLATIONS = {
     order_warning_text: "📢 <b>คำเตือนและนโยบายการคืนเงิน</b><br>• การคืนเงินเนื่องจากลูกค้าเปลี่ยนใจ (ไม่ใช่ความเสียหายของสินค้า) จะถูกหักค่าธรรมเนียมการจัดส่งไป-กลับ<br>• สำหรับบริการ COD หากลูกค้าไม่รับสินค้า เงินมัดจำ 3% ที่ชำระแล้วจะไม่สามารถขอคืนได้ (เนื่องจากผู้ขายชำระค่าธรรมเนียมจัดส่ง COD ล่วงหน้าซึ่งไม่สามารถคืนเงินได้)",
     order_total: "รวมทั้งสิ้น",
     btn_submit_order: "✅ ยืนยันการสั่งซื้อ",
+    btn_submit_order_online: "✅ โอนเงิน 100% เรียบร้อยแล้วและสั่งซื้อ",
+    btn_submit_order_cod: "✅ มัดจำ 3% เรียบร้อยแล้วและสั่งซื้อ",
+    copy_account_btn: "📋 คัดลอกเลขบัญชี",
+    open_kplus_btn: "🟢 เปิด K PLUS (KBank)",
+    open_scb_btn: "🟣 เปิด SCB Easy",
+    open_bangkok_btn: "🔵 เปิด Bangkok Bank",
+    open_krungsri_btn: "🟡 เปิด Krungsri (KMA)",
+    open_krungthai_btn: "🔵 เปิด Krungthai NEXT",
+    open_truemoney_btn: "🟠 เปิด TrueMoney Wallet",
+    toast_account_copied: "🏦 คัดลอกเลขบัญชีบริษัทเรียบร้อยแล้ว!",
+    cod_step_title: "💡 คู่มือการโอนเงิน (Transfer Guide)",
+    cod_step_1: "1. คัดลอกเลขบัญชีด้านล่าง",
+    cod_step_2: "2. เปิดแอปธนาคาร/วอลเล็ทเพื่อทำการโอนเงิน",
+    cod_step_3: "3. หลังจากโอนเงินเรียบร้อย กดปุ่มส่งคำสั่งซื้อด้านล่าง",
     
     // Common / Buttons
     login: "เข้าสู่ระบบ",
@@ -607,6 +635,20 @@ const TRANSLATIONS = {
     order_warning_text: "📢 <b>ဝယ်ယူရန်သတိပြုချက်နှင့် ငွေပြန်အမ်းရေးမူဝါဒ</b><br>• ပစ္စည်းချို့ယွင်းချက်မဟုတ်ဘဲ ဝယ်ယူသူစိတ်ပြောင်းလဲမှုကြောင့် ငွေပြန်အမ်းပါက အသွားအပြန်ပို့ဆောင်ခကို နုတ်ယူပြီး ပြန်လည်အမ်းပါမည်။<br>• COD စနစ်တွင် ပစ္စည်းမယူဘဲငြင်းပယ်ပါက ကြိုတင်ပေးသွင်းထားသော ၃% မော်ကွန်းငွေကို ပြန်လည်ထုတ်ပေးမည်မဟုတ်ပါ။ (ရောင်းချသူမှ ကြိုတင်ပေးဆောင်ထားသော COD ဝန်ဆောင်ခကို ပြန်လည်အမ်းပေးခြင်းမရှိသောကြောင့်ဖြစ်သည်)",
     order_total: "စုစုပေါင်းကျသင့်ငွေ",
     btn_submit_order: "✅ အော်ဒါတင်မည်",
+    btn_submit_order_online: "✅ ၁၀၀% ငွေလွှဲပြီးပါက အော်ဒါတင်မည်",
+    btn_submit_order_cod: "✅ ၃% ကြိုတင်ငွေပေးပြီးပါက အော်ဒါတင်မည်",
+    copy_account_btn: "📋 အကောင့်နံပါတ် ကူးယူမည်",
+    open_kplus_btn: "🟢 K PLUS (KBank) ဖွင့်မည်",
+    open_scb_btn: "🟣 SCB Easy ဖွင့်မည်",
+    open_bangkok_btn: "🔵 Bangkok Bank ဖွင့်မည်",
+    open_krungsri_btn: "🟡 Krungsri (KMA) ဖွင့်မည်",
+    open_krungthai_btn: "🔵 Krungthai NEXT ဖွင့်မည်",
+    open_truemoney_btn: "🟠 TrueMoney ဖွင့်မည်",
+    toast_account_copied: "🏦 ကုမ္ပဏီအကောင့်နံပါတ်ကို ကူးယူပြီးပါပြီ!",
+    cod_step_title: "💡 ငွေလွှဲရန်လမ်းညွှန် (Transfer Guide)",
+    cod_step_1: "1. အောက်ပါ အကောင့်နံပါတ်ကို ကူးယူပါ။",
+    cod_step_2: "2. ဘဏ် သို့မဟုတ် e-Wallet အက်ပ်ကိုဖွင့်၍ ငွေလွှဲပါ။",
+    cod_step_3: "3. ငွေလွှဲပြီးပါက အောက်ပါ အော်ဒါတင်ရန်ခလုတ်ကို နှိပ်ပါ။",
     
     // Common / Buttons
     login: "လော့ဂ်အင်ဝင်ရန်",
@@ -870,6 +912,20 @@ const TRANSLATIONS = {
     order_warning_text: "📢 <b>Purchase Notice & Refund Policy</b><br>• Refunds due to change of mind (not product defect) will be processed excluding round-trip shipping costs.<br>• For COD, the 3% booking deposit is non-refundable if the package is rejected, as the COD shipping fee paid in advance by the seller is non-refundable.",
     order_total: "Total",
     btn_submit_order: "✅ Submit Purchase Request",
+    btn_submit_order_online: "✅ Completed 100% Transfer & Request Order",
+    btn_submit_order_cod: "✅ Completed 3% Deposit & Request Order",
+    copy_account_btn: "📋 Copy Account No.",
+    open_kplus_btn: "🟢 Open K PLUS (KBank)",
+    open_scb_btn: "🟣 Open SCB Easy",
+    open_bangkok_btn: "🔵 Open Bangkok Bank",
+    open_krungsri_btn: "🟡 Open Krungsri (KMA)",
+    open_krungthai_btn: "🔵 Open Krungthai NEXT",
+    open_truemoney_btn: "🟠 Open TrueMoney Wallet",
+    toast_account_copied: "🏦 Head office account number copied!",
+    cod_step_title: "💡 Transfer Guide",
+    cod_step_1: "1. Copy the account number below.",
+    cod_step_2: "2. Open banking/wallet app and transfer.",
+    cod_step_3: "3. After transfer, click the Order button below.",
     login: "Log In",
     logout: "Log Out",
     dashboard: "Dashboard",
@@ -1078,8 +1134,21 @@ const TRANSLATIONS = {
   }
 };
 
-// 현재 설정된 언어 (기본값: 태국어 th)
-let currentLang = localStorage.getItem("iris_lang") || "th";
+// 브라우저 언어 감지 및 매핑
+function detectBrowserLanguage() {
+  const browserLang = navigator.language || navigator.userLanguage || "th";
+  const code = browserLang.toLowerCase();
+  
+  if (code.startsWith("ko")) return "ko";
+  if (code.startsWith("th")) return "th";
+  if (code.startsWith("my") || code.startsWith("mm")) return "mm"; // Myanmar/Burmese
+  if (code.startsWith("en")) return "en";
+  
+  return "th"; // Default fallback
+}
+
+// 현재 설정된 언어 (기본값: 브라우저 감지 언어)
+let currentLang = localStorage.getItem("iris_lang") || detectBrowserLanguage();
 
 // 언어 변경 및 저장
 function changeLanguage(lang) {
