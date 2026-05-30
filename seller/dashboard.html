@@ -626,6 +626,7 @@ async function loadMyProducts() {
             <button class="btn-sm ${p.status === 'active' ? 'btn-red' : 'btn-green'}" style="padding:4px 8px; font-size:10px;" onclick="event.stopPropagation(); toggleStatus('${p.id}','${p.status}')">
               ${p.status === 'active' ? t('hide_btn') : t('show_btn')}
             </button>
+            <button class="btn-sm btn-purple" style="padding:4px 8px; font-size:10px; background:var(--cyan); border:none; color:#fff;" onclick="event.stopPropagation(); copyProductLink('${p.id}')">${t('btn_copy_link')}</button>
             <button class="btn-sm btn-red" style="padding:4px 6px; font-size:10px;" onclick="event.stopPropagation(); deleteProduct('${p.id}')">🗑️</button>
           </div>
         </div>
@@ -790,6 +791,16 @@ async function deleteProduct(id) {
   await supabase.from('products').delete().eq('id', id);
   showToast(t('toast_product_deleted'));
   await loadMyProducts(); await loadStats();
+}
+
+function copyProductLink(id) {
+  const link = window.location.origin + window.location.pathname.replace('seller/dashboard.html', 'index.html') + '?p=' + id;
+  navigator.clipboard.writeText(link).then(() => {
+    showToast(t('toast_link_copied') || "🔗 링크가 복사되었습니다!", 'success');
+  }).catch(err => {
+    console.error("Failed to copy link:", err);
+    showToast("Copy failed", 'error');
+  });
 }
 
 async function saveProfile() {

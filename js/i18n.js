@@ -258,7 +258,21 @@ const TRANSLATIONS = {
     tracking_info_title: "🚚 배송 추적 정보",
     toast_order_shipped: "🚀 배송이 시작되었습니다! 송장 번호가 등록되었습니다.",
     toast_order_completed: "✅ 구매 확정이 완료되었습니다. 감사합니다!",
-    toast_order_returned: "❌ 주문이 거부되어 반송 처리되었습니다. 상품 재고가 복구되었습니다."
+    toast_order_returned: "❌ 주문이 거부되어 반송 처리되었습니다. 상품 재고가 복구되었습니다.",
+    tab_cart: "장바구니",
+    select_carrier_label: "배송사 선택 (본사 송금 시)",
+    order_status_tracking: "내 주문 진행 상태",
+    track_unpaid: "미결제",
+    track_paid: "입금완료",
+    track_shipping: "배송중",
+    track_completed: "배송완료",
+    track_returned: "반품",
+    add_to_cart_btn: "장바구니 담기",
+    toast_added_to_cart: "🛒 장바구니에 담겼습니다!",
+    cart_empty: "장바구니가 비어 있습니다.",
+    btn_checkout_all: "전체 주문하기",
+    toast_link_copied: "🔗 링크가 복사되었습니다!",
+    btn_copy_link: "🔗 링크 복사"
   },
   th: {
     app_title: "PHONE SWITCH HUB",
@@ -517,7 +531,21 @@ const TRANSLATIONS = {
     tracking_info_title: "🚚 ข้อมูลการติดตามพัสดุ",
     toast_order_shipped: "🚀 เริ่มจัดส่งแล้ว! ลงทะเบียนหมายเลขพัสดุเรียบร้อย",
     toast_order_completed: "✅ ยืนยันการรับสินค้าเสร็จสิ้น ขอบคุณครับ!",
-    toast_order_returned: "❌ รายการสั่งซื้อถูกปฏิเสธและส่งคืนพัสดุ คืนคลังสินค้าเรียบร้อย"
+    toast_order_returned: "❌ รายการสั่งซื้อถูกปฏิเสธและส่งคืนพัสดุ คืนคลังสินค้าเรียบร้อย",
+    tab_cart: "ตะกร้าสินค้า",
+    select_carrier_label: "เลือกบริษัทขนส่ง (สำหรับการโอนเงิน)",
+    order_status_tracking: "สถานะการสั่งซื้อของฉัน",
+    track_unpaid: "ยังไม่ชำระเงิน",
+    track_paid: "ชำระเงินแล้ว",
+    track_shipping: "กำลังจัดส่ง",
+    track_completed: "จัดส่งสำเร็จ",
+    track_returned: "คืนสินค้า",
+    add_to_cart_btn: "ใส่ตะกร้า",
+    toast_added_to_cart: "🛒 เพิ่มในตะกร้าแล้ว!",
+    cart_empty: "ตะกร้าสินค้าว่างเปล่า",
+    btn_checkout_all: "สั่งซื้อทั้งหมด",
+    toast_link_copied: "🔗 คัดลอกลิงก์แล้ว!",
+    btn_copy_link: "🔗 คัดลอกลิงก์"
   },
   mm: {
     app_title: "PHONE SWITCH HUB",
@@ -776,7 +804,21 @@ const TRANSLATIONS = {
     tracking_info_title: "🚚 ပို့ဆောင်မှုခြေရာခံရန်အချက်အလက်",
     toast_order_shipped: "🚀 ပို့ဆောင်မှုစတင်ပါပြီ။ ဖြတ်ပိုင်းနံပါတ်စာရင်းသွင်းပြီးပါပြီ။",
     toast_order_completed: "✅ ပစ္စည်းလက်ခံရရှိကြောင်းအတည်ပြုပြီးပါပြီ။ ကျေးဇူးတင်ပါသည်!",
-    toast_order_returned: "❌ အော်ဒါကိုငြင်းပယ်ပြီး ပြန်လည်ပေးပို့လိုက်ပါပြီ။ လက်ကျန်အရေအတွက်ပြန်လည်ဖြည့်သွင်းပြီးပါပြီ။"
+    toast_order_returned: "❌ အော်ဒါကိုငြင်းပယ်ပြီး ပြန်လည်ပေးပို့လိုက်ပါပြီ။ လက်ကျန်အရေအတွက်ပြန်လည်ဖြည့်သွင်းပြီးပါပြီ။",
+    tab_cart: "ခြင်းတောင်း",
+    select_carrier_label: "ပို့ဆောင်ရေးရွေးချယ်ရန် (အွန်လိုင်းလွှဲ)",
+    order_status_tracking: "ကျွန်ုပ်၏အော်ဒါအခြေအနေ",
+    track_unpaid: "မပေးချေရသေး",
+    track_paid: "ပေးချေပြီး",
+    track_shipping: "ပို့ဆောင်နေဆဲ",
+    track_completed: "ပို့ဆောင်ပြီး",
+    track_returned: "ပြန်ပေးပြီး",
+    add_to_cart_btn: "ခြင်းတောင်းထဲထည့်ရန်",
+    toast_added_to_cart: "🛒 ခြင်းတောင်းထဲသို့ထည့်ပြီးပါပြီ!",
+    cart_empty: "ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိပါ။",
+    btn_checkout_all: "အားလုံးအော်ဒါတင်ရန်",
+    toast_link_copied: "🔗 လင့်ခ်ကူးယူပြီးပါပြီ!",
+    btn_copy_link: "🔗 လင့်ခ်ကူးယူရန်"
   },
   en: {
     app_title: "Phone Switch Hub",
@@ -1018,7 +1060,21 @@ const TRANSLATIONS = {
     tracking_info_title: "🚚 Tracking Information",
     toast_order_shipped: "🚀 Shipping started! Tracking number registered.",
     toast_order_completed: "✅ Receipt confirmed! Thank you.",
-    toast_order_returned: "❌ Order rejected and returned. Product stock restored."
+    toast_order_returned: "❌ Order rejected and returned. Product stock restored.",
+    tab_cart: "Cart",
+    select_carrier_label: "Select Carrier (For Online Transfer)",
+    order_status_tracking: "My Order Status",
+    track_unpaid: "Unpaid",
+    track_paid: "Paid",
+    track_shipping: "Shipping",
+    track_completed: "Completed",
+    track_returned: "Returned",
+    add_to_cart_btn: "Add to Cart",
+    toast_added_to_cart: "🛒 Added to cart!",
+    cart_empty: "Your cart is empty.",
+    btn_checkout_all: "Checkout All",
+    toast_link_copied: "🔗 Link copied to clipboard!",
+    btn_copy_link: "🔗 Copy Link"
   }
 };
 

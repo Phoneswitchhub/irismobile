@@ -45,25 +45,60 @@
         <p class="hero-sub" data-i18n="hero_sub">
           검증된 판매자들의 중고 스마트폰을 안전하게 구매하세요.
         </p>
-        <div class="hero-btns" style="margin-bottom:20px;">
-          <button onclick="switchTab('search')" class="btn btn-primary" data-i18n="btn_shop_now">🛍️ 지금 쇼핑하기</button>
-        </div>
-        <div class="stats-bar">
-          <div>
-            <div class="stat-num" id="sProducts">—</div>
+        <div class="stats-bar" style="grid-template-columns: repeat(2, 1fr); max-width: 320px; margin: 0 auto;">
+          <div onclick="switchTab('search')" style="cursor:pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+            <div class="stat-num" id="sProducts" style="text-decoration: underline; text-underline-offset: 4px;">—</div>
             <div class="stat-lbl" data-i18n="stat_products">등록 상품</div>
           </div>
-          <div>
-            <div class="stat-num" id="sSellers">—</div>
+          <div onclick="switchTab('shops')" style="cursor:pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+            <div class="stat-num" id="sSellers" style="text-decoration: underline; text-underline-offset: 4px;">—</div>
             <div class="stat-lbl" data-i18n="stat_sellers">활성 판매자</div>
-          </div>
-          <div>
-            <div class="stat-num" id="sOrders">—</div>
-            <div class="stat-lbl" data-i18n="stat_orders">성사된 거래</div>
           </div>
         </div>
       </div>
     </section>
+
+    <!-- BUYER ORDER TRACKER CARD (Shows only if logged in) -->
+    <div id="buyerTrackerCard" class="card" style="display:none; margin: 16px; padding: 16px; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r-md); text-align: left;">
+      <div style="font-size: 13px; font-weight: 700; color: var(--gold); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;" data-i18n="order_status_tracking">
+        📦 내 주문 진행 상태
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; text-align: center;">
+        <div onclick="switchTab('mypage')" style="cursor:pointer;">
+          <div class="tracker-num" id="trackUnpaid" style="font-size:18px; font-weight:800; color:var(--purple-l);">0</div>
+          <div style="font-size: 9px; color: var(--t2); margin-top: 4px;" data-i18n="track_unpaid">미결제</div>
+        </div>
+        <div onclick="switchTab('mypage')" style="cursor:pointer;">
+          <div class="tracker-num" id="trackPaid" style="font-size:18px; font-weight:800; color:var(--yellow);">0</div>
+          <div style="font-size: 9px; color: var(--t2); margin-top: 4px;" data-i18n="track_paid">입금완료</div>
+        </div>
+        <div onclick="switchTab('mypage')" style="cursor:pointer;">
+          <div class="tracker-num" id="trackShipping" style="font-size:18px; font-weight:800; color:var(--cyan);">0</div>
+          <div style="font-size: 9px; color: var(--t2); margin-top: 4px;" data-i18n="track_shipping">배송중</div>
+        </div>
+        <div onclick="switchTab('mypage')" style="cursor:pointer;">
+          <div class="tracker-num" id="trackCompleted" style="font-size:18px; font-weight:800; color:var(--green);">0</div>
+          <div style="font-size: 9px; color: var(--t2); margin-top: 4px;" data-i18n="track_completed">배송완료</div>
+        </div>
+        <div onclick="switchTab('mypage')" style="cursor:pointer;">
+          <div class="tracker-num" id="trackReturned" style="font-size:18px; font-weight:800; color:var(--red);">0</div>
+          <div style="font-size: 9px; color: var(--t2); margin-top: 4px;" data-i18n="track_returned">반품</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVIEWS PLACEHOLDER CARD -->
+    <div id="reviewsPlaceholderCard" class="card" style="margin: 16px; padding: 14px; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r-md); cursor: pointer; text-align: left;" onclick="showToast('리뷰 게시판 기능 준비 중입니다! / Review Board Coming Soon!', 'success')">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div style="font-size: 13px; font-weight: 700; color: var(--purple-l); display: flex; align-items: center; gap: 6px;">
+          ⭐ <span>고객 후기 / Reviews</span>
+        </div>
+        <span style="font-size:10px; color:var(--t3);">더보기 / View All ▶</span>
+      </div>
+      <div style="font-size: 11px; color: var(--t2); margin-top: 6px; font-style: italic; line-height:1.4;">
+        "본사 안심 거래 덕분에 너무 믿음직스러워요! 태국 최고 중고폰 플랫폼 추천합니다." - Areeya K. (★5)
+      </div>
+    </div>
 
     <!-- PARTNER SHOPS HORIZONTAL LIST -->
     <section class="section" style="padding-bottom:10px; border-bottom:1px solid var(--border);">
@@ -147,6 +182,29 @@
     </section>
   </div>
 
+  <!-- ==================== VIEW 3.5: SHOPPING CART ==================== -->
+  <div id="viewCart" class="view-section">
+    <section class="section">
+      <div class="sec-head" style="text-align:left; margin-bottom:16px;">
+        <h2 class="sec-title" data-i18n="tab_cart">장바구니</h2>
+      </div>
+      
+      <div id="cartList" style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
+        <!-- Cart items populated dynamically -->
+      </div>
+      
+      <div id="cartSummaryBox" class="card" style="display:none; padding:16px; margin-bottom:20px; background:var(--bg3); border:1px solid var(--border);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <span style="font-size:14px; font-weight:700; color:var(--t2);">총 합계 금액 (Total)</span>
+          <span id="cartTotalPrice" style="font-family:'Outfit',sans-serif; font-size:24px; font-weight:900; color:var(--gold);">฿0</span>
+        </div>
+        <button class="btn-submit" id="btnCartCheckout" onclick="checkoutAllCart()" style="margin:0; width:100%; display:flex; align-items:center; justify-content:center; gap:8px;">
+          🛍️ <span data-i18n="btn_checkout_all">전체 주문하기</span>
+        </button>
+      </div>
+    </section>
+  </div>
+
   <!-- ==================== VIEW 4: MY PAGE ==================== -->
   <div id="viewMyPage" class="view-section">
     <section class="section">
@@ -221,9 +279,9 @@
       <span class="tab-item-icon">🔍</span>
       <span data-i18n="tab_search">검색</span>
     </div>
-    <div class="tab-item" onclick="switchTab('shops')">
-      <span class="tab-item-icon">🏪</span>
-      <span data-i18n="tab_shops">매장들</span>
+    <div class="tab-item" onclick="switchTab('cart')">
+      <span class="tab-item-icon">🛒</span>
+      <span data-i18n="tab_cart">장바구니</span>
     </div>
     <div class="tab-item" onclick="switchTab('mypage')">
       <span class="tab-item-icon">👤</span>
@@ -260,6 +318,16 @@
       </div>
     </div>
 
+    <div class="form-group" id="oCarrierGroup" style="display:none;">
+      <label class="form-label" data-i18n="select_carrier_label">배송사 선택 (본사 송금 시)</label>
+      <select class="form-select" id="oCarrier" style="width:100%; padding:10px 12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--t1); font-size:12px; outline:none; cursor:pointer;">
+        <option value="Flash Express">⚡ Flash Express</option>
+        <option value="KEX (Kerry Express)">📦 KEX (Kerry Express)</option>
+        <option value="Thailand Post">📮 Thailand Post</option>
+        <option value="J&T Express">🚚 J&T Express</option>
+      </select>
+    </div>
+
     <div class="form-group">
       <label class="form-label" data-i18n="order_province">배송 지역 (Province)</label>
       <select class="form-input" id="oProvince" required>
@@ -282,6 +350,18 @@
     <div class="form-group">
       <label class="form-label" data-i18n="order_notes">요청사항 (선택)</label>
       <textarea class="form-textarea" id="oNotes" data-i18n="order_notes_placeholder" placeholder="색상, 용량, 기타 요청사항"></textarea>
+    </div>
+
+    <!-- Company Bank Account Info -->
+    <div id="companyBankBox" style="background:rgba(34,211,238,0.06); border:1px solid rgba(34,211,238,0.15); border-radius:var(--r-sm); padding:12px; font-size:11px; line-height:1.5; color:var(--t2); margin-bottom:18px; text-align:left;">
+      <div style="font-weight:700; color:var(--cyan); margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+        🏦 본사 안심 입금 계좌 (Head Office Account)
+      </div>
+      <div style="margin-top:2px;">
+        <div>은행 / Bank: <b>Kasikornbank (KBank)</b></div>
+        <div>예금주 / Name: <b>Phone Switch Hub</b></div>
+        <div>계좌번호 / Account No.: <b style="font-size:13px; color:var(--cyan); letter-spacing:0.5px;">220-2-61971-4</b></div>
+      </div>
     </div>
 
     <!-- Payment Info Notice (Dynamic) -->
@@ -353,9 +433,10 @@
     </div>
     
     <!-- Buy Button at bottom -->
-    <div style="padding:14px 20px; border-top:1px solid var(--border); background:var(--bg3); display:flex; gap:10px;">
-      <button class="btn-submit" id="btnDetailChat" onclick="openChatFromDetail()" style="margin:0; flex:1; background:var(--gg);" data-i18n="btn_chat">💬 문의하기</button>
-      <button class="btn-submit" id="btnDetailBuy" onclick="triggerDetailBuy()" style="margin:0; flex:1.2;" data-i18n="btn_submit_order">🛒 구매 요청하기</button>
+    <div style="padding:14px 20px; border-top:1px solid var(--border); background:var(--bg3); display:flex; gap:8px; flex-wrap:wrap;">
+      <button class="btn-submit" id="btnDetailChat" onclick="openChatFromDetail()" style="margin:0; flex:1; min-width:80px; background:var(--gg);" data-i18n="btn_chat">💬 문의하기</button>
+      <button class="btn-submit" id="btnDetailCart" onclick="addCurrentToCart()" style="margin:0; flex:1.2; min-width:100px; background:var(--border2); color:var(--t1);" data-i18n="add_to_cart_btn">🛒 장바구니 담기</button>
+      <button class="btn-submit" id="btnDetailBuy" onclick="triggerDetailBuy()" style="margin:0; flex:1.2; min-width:100px;" data-i18n="btn_submit_order">🛒 구매 요청하기</button>
     </div>
   </div>
 </div>
@@ -407,6 +488,7 @@ let shops = [];
 let currentProd = null;
 let selectedPaymentMethod = 'online';
 let activeShopFilter = 'all';
+let isCartCheckout = false; // Flag to indicate if we are doing cart checkout
 
 async function init() {
   // 1. Language initialized by i18n.js
@@ -436,6 +518,7 @@ async function init() {
         }
         await loadMyInquiries(); // 내 문의 내역 로드
         await loadMyOrders(); // 내 주문 내역 로드
+        await updateBuyerOrderTracker(); // 구매자 실시간 주문 트래커 로드
       } else {
         // 프로필이 없는 경우 (인증은 되었으나 프로필 생성이 실패한 비정상 세션)
         console.warn("User has active auth session but no profile exists. Redirecting to complete registration...");
@@ -444,15 +527,13 @@ async function init() {
       }
     }
 
-    // 3. Stats
-    const [pCount, sCount, oCount] = await Promise.all([
+    // 3. Stats (Removed oCount completed trades)
+    const [pCount, sCount] = await Promise.all([
       supabase.from('products').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-      supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'seller').eq('is_approved', true),
-      supabase.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'completed')
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'seller').eq('is_approved', true)
     ]);
     animNum('sProducts', pCount.count || 0);
     animNum('sSellers', sCount.count || 0);
-    animNum('sOrders', oCount.count || 0);
 
     // 4. Load Shops
     const { data: profilesList } = await supabase.from('profiles')
@@ -467,6 +548,15 @@ async function init() {
 
     // 5. Products
     await loadProducts('all');
+
+    // 6. Share routing via URL query parameter ?p=PRODUCT_ID
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedProdId = urlParams.get('p');
+    if (sharedProdId) {
+      await openProductDetail(sharedProdId);
+    }
+    
+    updateCartBadge();
   } catch (err) {
     console.warn("Supabase initialization skipped or failed (likely local file:// protocol limits):", err);
     // Render empty states for local preview
@@ -669,18 +759,23 @@ function switchTab(tabId) {
   const targetMap = {
     shop: { view: 'viewShop', idx: 0 },
     search: { view: 'viewSearch', idx: 1 },
-    shops: { view: 'viewShops', idx: 2 },
-    mypage: { view: 'viewMyPage', idx: 3 }
+    cart: { view: 'viewCart', idx: 2 },
+    mypage: { view: 'viewMyPage', idx: 3 },
+    shops: { view: 'viewShops', idx: -1 }
   };
   
   const target = targetMap[tabId];
   if (target) {
     document.getElementById(target.view).classList.add('active');
-    document.querySelectorAll('.tab-bar .tab-item')[target.idx].classList.add('active');
+    if (target.idx !== -1) {
+      document.querySelectorAll('.tab-bar .tab-item')[target.idx].classList.add('active');
+    }
   }
 
   if (tabId === 'search') {
     triggerSearch();
+  } else if (tabId === 'cart') {
+    renderCart();
   }
   
   // Real-time language updates
@@ -696,15 +791,34 @@ function setPaymentMethod(method) {
   const index = method === 'online' ? 0 : 1;
   document.querySelectorAll('.pay-opt')[index].classList.add('active');
   
+  const carrierGrp = document.getElementById('oCarrierGroup');
+  if (carrierGrp) {
+    carrierGrp.style.display = method === 'online' ? 'block' : 'none';
+  }
+  
   updatePaymentNotice();
 }
 
 function updatePaymentNotice() {
-  if (!currentProd) return;
-  const qty = parseInt(document.getElementById('oQty').value) || 1;
-  const totalPrice = Number(currentProd.price) * qty;
+  const isBulk = isCartCheckout;
   const infoBox = document.getElementById('paymentInfoBox');
   if (!infoBox) return;
+  
+  let totalPrice = 0;
+  if (isBulk) {
+    const cart = getCart();
+    // Sum total price of cart items from products array
+    cart.forEach(item => {
+      const p = products.find(prod => prod.id === item.product_id);
+      if (p) {
+        totalPrice += Number(p.price) * item.quantity;
+      }
+    });
+  } else {
+    if (!currentProd) return;
+    const qty = parseInt(document.getElementById('oQty').value) || 1;
+    totalPrice = Number(currentProd.price) * qty;
+  }
 
   if (selectedPaymentMethod === 'online') {
     infoBox.innerHTML = t('order_online_desc') || `💡 <b>[온라인 송금]</b> 본사 계좌로 100% 금액 입금이 확인되면 판매자가 배송을 시작합니다. (구매자 추가 수수료 없음)`;
@@ -722,10 +836,13 @@ function updatePaymentNotice() {
   }
 }
 
-// Open Order Modal
+// Open Order Modal (Single item checkout)
 async function openOrder(id) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) { window.location.href = 'login.html'; return; }
+  
+  isCartCheckout = false;
+  document.getElementById('oQty').parentElement.style.display = 'block';
   
   currentProd = products.find(p => p.id === id);
   if (!currentProd) {
@@ -751,16 +868,6 @@ async function openOrder(id) {
     initialProv = buyerProfile.location_province || '';
     initialDist = buyerProfile.location_district || '';
     initialAddr = buyerProfile.location_address || '';
-    
-    // Legacy support if they only have location_address formatted as "province - district - addr"
-    if (initialAddr && !initialProv && !initialDist) {
-      const parts = initialAddr.split(' - ');
-      if (parts.length >= 3) {
-        initialProv = parts[0];
-        initialDist = parts[1];
-        initialAddr = parts.slice(2).join(' - ');
-      }
-    }
   }
 
   try {
@@ -786,6 +893,7 @@ async function openOrder(id) {
 }
 
 function calcTotal() {
+  if (isCartCheckout) return;
   if (!currentProd) return;
   const qty = parseInt(document.getElementById('oQty').value) || 1;
   document.getElementById('oTotal').textContent = '฿' + (Number(currentProd.price) * qty).toLocaleString();
@@ -793,10 +901,11 @@ function calcTotal() {
   updatePaymentNotice();
 }
 
-// Submit Order
+// Submit Order (Single & Cart Checkout)
 async function submitOrder() {
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !currentProd) return;
+  if (!user) return;
+  if (!isCartCheckout && !currentProd) return;
   
   const province = document.getElementById('oProvince').value;
   const district = document.getElementById('oDistrict').value;
@@ -816,54 +925,111 @@ async function submitOrder() {
   }
 
   const fullAddr = `${province} - ${district} - ${detailedAddr}`;
-  
   setLoading('btnOrder', true, t('loading'));
-  const qty = parseInt(document.getElementById('oQty').value) || 1;
 
-  // Real-time database check for stock and status (concurrency safety)
+  // Get notes and prepend shipping carrier if Online Transfer
+  let baseNotes = document.getElementById('oNotes').value.trim();
+  if (selectedPaymentMethod === 'online') {
+    const carrier = document.getElementById('oCarrier').value;
+    baseNotes = `[배송사/Carrier: ${carrier}] ${baseNotes}`;
+  }
+
   try {
-    const { data: dbProd, error: fetchErr } = await supabase.from('products')
-      .select('stock, status')
-      .eq('id', currentProd.id)
-      .single();
+    if (isCartCheckout) {
+      const cart = getCart();
+      if (cart.length === 0) {
+        setLoading('btnOrder', false);
+        return;
+      }
       
-    if (fetchErr || !dbProd) {
-      showToast(t('error_occurred') + (fetchErr ? fetchErr.message : ""), 'error');
-      setLoading('btnOrder', false);
-      return;
-    }
-    
-    if (dbProd.status !== 'active' || dbProd.stock < qty) {
-      showToast(t('toast_out_of_stock'), 'error');
-      setLoading('btnOrder', false);
-      closeModal();
-      await loadProducts('all');
-      return;
-    }
+      const prodIds = cart.map(item => item.product_id);
+      const { data: dbProducts, error: fetchErr } = await supabase.from('products')
+        .select('id, title, price, seller_id, stock, status')
+        .in('id', prodIds);
+        
+      if (fetchErr || !dbProducts) {
+        showToast(t('error_occurred') + (fetchErr ? fetchErr.message : ""), 'error');
+        setLoading('btnOrder', false);
+        return;
+      }
+      
+      // Verify stock for all items
+      for (const item of cart) {
+        const p = dbProducts.find(prod => prod.id === item.product_id);
+        if (!p || p.status !== 'active' || p.stock < item.quantity) {
+          showToast((t('toast_out_of_stock') || "재고 부족") + ` (${p ? p.title : ""})`, 'error');
+          setLoading('btnOrder', false);
+          return;
+        }
+      }
+      
+      // Perform order insertions
+      const orderInserts = cart.map(item => {
+        const p = dbProducts.find(prod => prod.id === item.product_id);
+        const totalPrice = Number(p.price) * item.quantity;
+        const commAmount = Math.min(totalPrice * 0.03, 400);
+        return {
+          buyer_id: user.id,
+          seller_id: p.seller_id,
+          product_id: p.id,
+          quantity: item.quantity,
+          total_price: totalPrice,
+          notes: baseNotes || null,
+          payment_method: selectedPaymentMethod,
+          commission_amount: commAmount,
+          payout_status: 'pending',
+          delivery_address: fullAddr,
+          deposit_confirmed: false
+        };
+      });
+      
+      const { error: insertErr } = await supabase.from('orders').insert(orderInserts);
+      if (insertErr) throw insertErr;
+      
+      // Clear cart
+      localStorage.removeItem('iris_cart');
+      updateCartBadge();
+      
+    } else {
+      // Single product checkout
+      const qty = parseInt(document.getElementById('oQty').value) || 1;
+      const { data: dbProd, error: fetchErr } = await supabase.from('products')
+        .select('stock, status')
+        .eq('id', currentProd.id)
+        .single();
+        
+      if (fetchErr || !dbProd) {
+        showToast(t('error_occurred') + (fetchErr ? fetchErr.message : ""), 'error');
+        setLoading('btnOrder', false);
+        return;
+      }
+      
+      if (dbProd.status !== 'active' || dbProd.stock < qty) {
+        showToast(t('toast_out_of_stock'), 'error');
+        setLoading('btnOrder', false);
+        closeModal();
+        await loadProducts('all');
+        return;
+      }
 
-    const totalPrice = Number(currentProd.price) * qty;
-    
-    // New commission rule: 3%, capped at 400 Baht
-    const commAmount = Math.min(totalPrice * 0.03, 400);
-    
-    const { error } = await supabase.from('orders').insert({
-      buyer_id: user.id,
-      seller_id: currentProd.seller_id,
-      product_id: currentProd.id,
-      quantity: qty,
-      total_price: totalPrice,
-      notes: document.getElementById('oNotes').value || null,
-      payment_method: selectedPaymentMethod,
-      commission_amount: commAmount,
-      payout_status: 'pending',
-      delivery_address: fullAddr,
-      deposit_confirmed: false
-    });
-    
-    setLoading('btnOrder', false);
-    if (error) {
-      showToast(t('error_occurred') + error.message, 'error');
-      return;
+      const totalPrice = Number(currentProd.price) * qty;
+      const commAmount = Math.min(totalPrice * 0.03, 400);
+      
+      const { error: insertErr } = await supabase.from('orders').insert({
+        buyer_id: user.id,
+        seller_id: currentProd.seller_id,
+        product_id: currentProd.id,
+        quantity: qty,
+        total_price: totalPrice,
+        notes: baseNotes || null,
+        payment_method: selectedPaymentMethod,
+        commission_amount: commAmount,
+        payout_status: 'pending',
+        delivery_address: fullAddr,
+        deposit_confirmed: false
+      });
+      
+      if (insertErr) throw insertErr;
     }
     
     // Update buyer's address in profiles so they don't have to retype next time
@@ -872,16 +1038,328 @@ async function submitOrder() {
       location_district: district,
       location_address: detailedAddr 
     }).eq('id', user.id);
-  
+    
+    setLoading('btnOrder', false);
     closeModal();
     showToast(t('success_order'), 'success');
     
     // Reload product lists and order history
     await loadProducts('all');
     await loadMyOrders();
+    await updateBuyerOrderTracker(); // Refresh tracker counts
   } catch (err) {
     showToast(t('error_occurred') + err.message, 'error');
     setLoading('btnOrder', false);
+  }
+}
+
+function closeModal() {
+  document.getElementById('orderModal').classList.remove('open');
+}
+
+// === SHOPPING CART CORE FUNCTIONS ===
+function getCart() {
+  try {
+    return JSON.parse(localStorage.getItem('iris_cart')) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveCart(cart) {
+  localStorage.setItem('iris_cart', JSON.stringify(cart));
+  updateCartBadge();
+}
+
+function updateCartBadge() {
+  const cart = getCart();
+  const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const cartTabs = document.querySelectorAll('[onclick="switchTab(\'cart\')"]');
+  cartTabs.forEach(tab => {
+    const iconSpan = tab.querySelector('.tab-item-icon');
+    if (iconSpan) {
+      const existingBadge = iconSpan.querySelector('.cart-badge');
+      if (existingBadge) existingBadge.remove();
+      
+      if (count > 0) {
+        const badge = document.createElement('span');
+        badge.className = 'cart-badge';
+        badge.style.position = 'absolute';
+        badge.style.top = '-4px';
+        badge.style.right = '-6px';
+        badge.style.background = 'var(--red)';
+        badge.style.color = '#fff';
+        badge.style.fontSize = '8px';
+        badge.style.fontWeight = 'bold';
+        badge.style.borderRadius = '50%';
+        badge.style.width = '14px';
+        badge.style.height = '14px';
+        badge.style.display = 'flex';
+        badge.style.alignItems = 'center';
+        badge.style.justifyContent = 'center';
+        badge.textContent = count;
+        iconSpan.style.position = 'relative';
+        iconSpan.appendChild(badge);
+      }
+    }
+  });
+}
+
+async function addCurrentToCart() {
+  if (!currentProd) return;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) { window.location.href = 'login.html'; return; }
+  
+  const cart = getCart();
+  const existing = cart.find(item => item.product_id === currentProd.id);
+  if (existing) {
+    if (existing.quantity >= (currentProd.stock || 1)) {
+      showToast(t('toast_out_of_stock') || "재고 수량을 초과할 수 없습니다.", 'error');
+      return;
+    }
+    existing.quantity += 1;
+  } else {
+    cart.push({ product_id: currentProd.id, quantity: 1 });
+  }
+  saveCart(cart);
+  showToast(t('toast_added_to_cart'), 'success');
+  closeDetailModal();
+}
+
+async function renderCart() {
+  const container = document.getElementById('cartList');
+  const summaryBox = document.getElementById('cartSummaryBox');
+  if (!container) return;
+  
+  const cart = getCart();
+  if (cart.length === 0) {
+    container.innerHTML = `
+      <div class="empty" style="padding:40px 20px;">
+        <div class="empty-ico">🛒</div>
+        <div class="empty-ttl" data-i18n="cart_empty">${t('cart_empty')}</div>
+        <button class="btn btn-secondary" onclick="switchTab('shop')" style="margin: 20px auto 0;">🛍️ 쇼핑하러 가기</button>
+      </div>
+    `;
+    summaryBox.style.display = 'none';
+    return;
+  }
+  
+  container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;">${t('loading')}</div>`;
+  summaryBox.style.display = 'none';
+  
+  try {
+    const prodIds = cart.map(item => item.product_id);
+    const { data: productsData, error } = await supabase.from('products')
+      .select('id, title, price, images, category, condition, stock, seller_id, status, profiles(store_name, name)')
+      .in('id', prodIds);
+      
+    if (error) throw error;
+    
+    let total = 0;
+    let activeItemsCount = 0;
+    
+    const html = cart.map(item => {
+      const p = productsData.find(prod => prod.id === item.product_id);
+      if (!p || p.status !== 'active') {
+        return `
+          <div class="card" style="padding:14px; display:flex; align-items:center; justify-content:space-between; opacity:0.6;">
+            <div style="font-size:12px; color:var(--red);">판매가 불가능한 상품이 포함되어 있습니다.</div>
+            <button class="btn-sm btn-red" onclick="removeFromCart('${item.product_id}')">✕</button>
+          </div>
+        `;
+      }
+      
+      activeItemsCount++;
+      const qty = Math.min(item.quantity, p.stock || 1);
+      if (qty !== item.quantity) {
+        item.quantity = qty;
+      }
+      
+      const itemSubtotal = Number(p.price) * qty;
+      total += itemSubtotal;
+      
+      const imgUrl = p.images?.[0] || '';
+      const storeName = p.profiles?.store_name || p.profiles?.name || t('role_seller');
+      const conditionText = t('condition_' + (p.condition ? p.condition.toLowerCase().replace(' ', '') : 's'));
+      
+      return `
+        <div class="card" style="padding:14px; border-radius:12px; display:flex; flex-direction:column; gap:10px; border:1px solid var(--border); background:var(--card);">
+          <div style="display:flex; gap:12px; align-items:center; text-align:left;">
+            <div style="width:55px; height:55px; border-radius:8px; overflow:hidden; background:rgba(0,0,0,0.04); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              ${imgUrl ? `<img src="${imgUrl}" style="width:100%; height:100%; object-fit:cover;">` : '📱'}
+            </div>
+            <div style="flex:1;">
+              <div style="font-weight:700; font-size:13px; color:var(--t1);">${p.title}</div>
+              <div style="font-size:11px; color:var(--t2); margin-top:2px;">🏪 ${storeName} | ⭐ ${conditionText}</div>
+              <div style="font-size:12px; font-weight:700; color:var(--gold); margin-top:4px;">฿${Number(p.price).toLocaleString()}</div>
+            </div>
+            <button onclick="removeFromCart('${p.id}')" style="background:transparent; border:none; color:var(--t3); font-size:16px; cursor:pointer; padding:4px;">✕</button>
+          </div>
+          
+          <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(0,0,0,0.03); padding-top:10px; font-size:12px;">
+            <div style="display:flex; align-items:center; gap:8px; background:rgba(0,0,0,0.03); border-radius:8px; padding:3px 6px;">
+              <button onclick="updateCartQty('${p.id}', -1)" style="background:transparent; border:none; font-weight:bold; font-size:14px; cursor:pointer; width:20px; color:var(--t1);">-</button>
+              <span style="font-weight:700; min-width:16px; text-align:center;">${qty}</span>
+              <button onclick="updateCartQty('${p.id}', 1)" style="background:transparent; border:none; font-weight:bold; font-size:14px; cursor:pointer; width:20px; color:var(--t1);">+</button>
+            </div>
+            <div style="text-align:right;">
+              <span style="color:var(--t3); font-size:11px; margin-right:4px;">합계</span>
+              <strong style="color:var(--gold); font-size:14px;">฿${itemSubtotal.toLocaleString()}</strong>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    saveCart(cart);
+    container.innerHTML = html;
+    
+    if (activeItemsCount > 0) {
+      document.getElementById('cartTotalPrice').textContent = '฿' + total.toLocaleString();
+      summaryBox.style.display = 'block';
+    } else {
+      summaryBox.style.display = 'none';
+    }
+  } catch (err) {
+    console.error("Error rendering cart:", err);
+    container.innerHTML = `<div class="empty" style="padding:20px 0; font-size:12px; color:var(--t3);">${t('error_occurred')}</div>`;
+  }
+}
+
+function removeFromCart(productId) {
+  let cart = getCart();
+  cart = cart.filter(item => item.product_id !== productId);
+  saveCart(cart);
+  renderCart();
+}
+
+async function updateCartQty(productId, delta) {
+  const cart = getCart();
+  const item = cart.find(i => i.product_id === productId);
+  if (!item) return;
+  
+  const { data: p } = await supabase.from('products').select('stock').eq('id', productId).single();
+  const stock = p ? p.stock : 1;
+  
+  item.quantity += delta;
+  if (item.quantity <= 0) {
+    removeFromCart(productId);
+    return;
+  }
+  if (item.quantity > stock) {
+    item.quantity = stock;
+    showToast(t('toast_out_of_stock') || "재고 수량을 초과할 수 없습니다.", 'error');
+  }
+  saveCart(cart);
+  renderCart();
+}
+
+async function checkoutAllCart() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) { window.location.href = 'login.html'; return; }
+  
+  const cart = getCart();
+  if (cart.length === 0) return;
+  
+  isCartCheckout = true;
+  currentProd = null;
+  
+  const { data: buyerProfile } = await supabase.from('profiles')
+    .select('location_province, location_district, location_address')
+    .eq('id', user.id)
+    .single();
+
+  let initialProv = '';
+  let initialDist = '';
+  let initialAddr = '';
+  if (buyerProfile) {
+    initialProv = buyerProfile.location_province || '';
+    initialDist = buyerProfile.location_district || '';
+    initialAddr = buyerProfile.location_address || '';
+  }
+  
+  try {
+    initThailandAddressSelects('oProvince', 'oDistrict', initialProv, initialDist);
+  } catch (e) {
+    console.error(e);
+  }
+  document.getElementById('oAddress').value = initialAddr;
+  
+  const prodIds = cart.map(item => item.product_id);
+  const { data: productsData } = await supabase.from('products')
+    .select('id, title, price')
+    .in('id', prodIds);
+    
+  let cartTotal = 0;
+  const itemsSummary = cart.map(item => {
+    const p = productsData.find(prod => prod.id === item.product_id);
+    if (!p) return '';
+    const sub = Number(p.price) * item.quantity;
+    cartTotal += sub;
+    return `<div style="font-size:12px; margin-bottom:4px; text-align:left;">• ${p.title} (${item.quantity}${t('order_qty_suffix') || '개'}) - ฿${sub.toLocaleString()}</div>`;
+  }).join('');
+  
+  document.getElementById('modalProductInfo').innerHTML = `
+    <div style="font-weight:700;font-size:14px;margin-bottom:8px;text-align:left;">🛒 장바구니 상품 주문 (${cart.length}건)</div>
+    <div style="max-height:100px; overflow-y:auto; border-bottom:1px solid rgba(0,0,0,0.05); padding-bottom:8px; margin-bottom:8px;">
+      ${itemsSummary}
+    </div>
+    <div style="color:var(--gold);font-size:20px;font-weight:900;text-align:left;">총액: ฿${cartTotal.toLocaleString()}</div>
+  `;
+  
+  document.getElementById('oQty').parentElement.style.display = 'none';
+  document.getElementById('oNotes').value = '';
+  setPaymentMethod('online');
+  document.getElementById('oTotal').textContent = '฿' + cartTotal.toLocaleString();
+  document.getElementById('orderModal').classList.add('open');
+}
+
+// === REAL-TIME BUYER ORDER STATUS TRACKER ===
+async function updateBuyerOrderTracker() {
+  const tracker = document.getElementById('buyerTrackerCard');
+  if (!tracker) return;
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    tracker.style.display = 'none';
+    return;
+  }
+  
+  try {
+    const { data: orders, error } = await supabase.from('orders')
+      .select('status, deposit_confirmed')
+      .eq('buyer_id', user.id);
+      
+    if (error) throw error;
+    
+    let unpaid = 0;
+    let paid = 0;
+    let shipping = 0;
+    let completed = 0;
+    let returned = 0;
+    
+    (orders || []).forEach(o => {
+      if (o.status === 'pending') {
+        if (o.deposit_confirmed) paid++;
+        else unpaid++;
+      } else if (o.status === 'confirmed') {
+        shipping++;
+      } else if (o.status === 'completed') {
+        completed++;
+      } else if (o.status === 'cancelled') {
+        returned++;
+      }
+    });
+    
+    document.getElementById('trackUnpaid').textContent = unpaid;
+    document.getElementById('trackPaid').textContent = paid;
+    document.getElementById('trackShipping').textContent = shipping;
+    document.getElementById('trackCompleted').textContent = completed;
+    document.getElementById('trackReturned').textContent = returned;
+    
+    tracker.style.display = 'block';
+  } catch (err) {
+    console.error("Error updating order tracker:", err);
   }
 }
 
