@@ -369,12 +369,12 @@
       <div style="margin-top:12px; border-top:1px solid rgba(34,211,238,0.15); padding-top:10px;">
         <div style="font-weight:700; font-size:10px; color:var(--t3); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">태국 송금앱 바로가기 (Open App)</div>
         <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;">
-          <button type="button" class="app-link-btn" style="background:#00A950; color:#fff; border:none; cursor:pointer;" onclick="openBankApp('kplus', 'com.kasikorn.retail.mbanking.wap')" data-i18n="open_kplus_btn">K PLUS</button>
-          <button type="button" class="app-link-btn" style="background:#4E2A84; color:#fff; border:none; cursor:pointer;" onclick="openBankApp('scbeasy', 'com.scb.phone')" data-i18n="open_scb_btn">SCB Easy</button>
-          <button type="button" class="app-link-btn" style="background:#0056B3; color:#fff; border:none; cursor:pointer;" onclick="openBankApp('bualuangmbanking', 'com.bbl.mobilebanking')" data-i18n="open_bangkok_btn">Bangkok</button>
-          <button type="button" class="app-link-btn" style="background:#FFC72C; color:#333; border:none; cursor:pointer; font-weight:700;" onclick="openBankApp('kma', 'com.krungsri.kma')" data-i18n="open_krungsri_btn">Krungsri</button>
-          <button type="button" class="app-link-btn" style="background:#00A1E4; color:#fff; border:none; cursor:pointer;" onclick="openBankApp('ktbnetbank', 'krungthai.next')" data-i18n="open_krungthai_btn">Krungthai</button>
-          <button type="button" class="app-link-btn" style="background:#FF8200; color:#fff; border:none; cursor:pointer;" onclick="openBankApp('truemoney', 'th.co.truemoney.wallet')" data-i18n="open_truemoney_btn">TrueMoney</button>
+          <button type="button" class="app-link-btn" style="background:#00A950; color:#fff; border:none; cursor:pointer;" onclick="openBankApp('kplus', 'com.kasikorn.retail.mbanking.wap', '361117099')" data-i18n="open_kplus_btn">K PLUS</button>
+          <button type="button" class="app-link-btn" style="background:#4E2A84; color:#fff; border:none; cursor:pointer;" onclick="openBankApp('scbeasy', 'com.scb.phone', '1085114709')" data-i18n="open_scb_btn">SCB Easy</button>
+          <button type="button" class="app-link-btn" style="background:#0056B3; color:#fff; border:none; cursor:pointer;" onclick="openBankApp('bualuangmbanking', 'com.bbl.mobilebanking', '635483861')" data-i18n="open_bangkok_btn">Bangkok</button>
+          <button type="button" class="app-link-btn" style="background:#FFC72C; color:#333; border:none; cursor:pointer; font-weight:700;" onclick="openBankApp('kma', 'com.krungsri.kma', '1257404364')" data-i18n="open_krungsri_btn">Krungsri</button>
+          <button type="button" class="app-link-btn" style="background:#00A1E4; color:#fff; border:none; cursor:pointer;" onclick="openBankApp('ktbnetbank', 'ktbcs.netbank', '1438965706')" data-i18n="open_krungthai_btn">Krungthai</button>
+          <button type="button" class="app-link-btn" style="background:#FF8200; color:#fff; border:none; cursor:pointer;" onclick="openBankApp('truemoney', 'th.co.truemoney.wallet', '1081682855')" data-i18n="open_truemoney_btn">TrueMoney</button>
         </div>
       </div>
     </div>
@@ -972,12 +972,34 @@ function copyAccount() {
   });
 }
 
-function openBankApp(scheme, packageName) {
+function openBankApp(scheme, packageName, iosAppStoreId) {
   const isAndroid = /Android/i.test(navigator.userAgent);
   const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
   
   if (isAndroid && packageName) {
     window.location.href = `intent://#Intent;scheme=${scheme};package=${packageName};end`;
+  } else if (isIOS && iosAppStoreId) {
+    const start = Date.now();
+    let timer;
+    
+    const clearTimer = () => {
+      clearTimeout(timer);
+      window.removeEventListener('pagehide', clearTimer);
+      window.removeEventListener('visibilitychange', clearTimer);
+    };
+    
+    window.addEventListener('pagehide', clearTimer);
+    window.addEventListener('visibilitychange', clearTimer);
+    
+    window.location.href = `${scheme}://`;
+    
+    timer = setTimeout(() => {
+      const elapsed = Date.now() - start;
+      if (!document.hidden && !document.webkitHidden && elapsed < 3500) {
+        window.location.href = `https://apps.apple.com/th/app/id${iosAppStoreId}`;
+      }
+      clearTimer();
+    }, 2500);
   } else {
     window.location.href = `${scheme}://`;
   }
