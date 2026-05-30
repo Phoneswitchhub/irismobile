@@ -908,14 +908,14 @@ function updatePaymentNotice() {
           <span style="font-size:18px; color:var(--gold); font-weight:900;">฿${formattedTotal}</span>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; opacity:0.6;">
-          <span style="font-size:11px; color:var(--t3);">${t('order_cod_balance_97') || '97% COD 잔액 (물건 수취 시 지불)'}:</span>
+          <span style="font-size:11px; color:var(--t3);">${t('order_cod_balance_100') || '물건 수취 시 지불할 금액 (100% COD)'}:</span>
           <span style="font-size:11px; color:var(--t3);">฿0</span>
         </div>
       `;
     }
   } else {
     const deposit = Math.round(totalPrice * 0.03);
-    const rest = totalPrice - deposit;
+    const rest = totalPrice;
     const formattedDeposit = deposit.toLocaleString();
     const formattedRest = rest.toLocaleString();
     const amountBadge = `<br><div style="margin-top:6px; display:inline-flex; align-items:center; gap:6px; background:rgba(217,119,6,0.08); border:1px solid rgba(217,119,6,0.3); border-radius:6px; padding:6px 12px; font-size:16px; font-weight:900; color:var(--gold);">💰 예약금 (3%): ฿${formattedDeposit}</div>`;
@@ -925,7 +925,7 @@ function updatePaymentNotice() {
     if (warningDesc) {
       warningDesc = warningDesc.replace('{deposit}', formattedDeposit).replace('{rest}', formattedRest);
     } else {
-      warningDesc = `⚠️ <b>[COD 예약금 선입금 필요]</b> 노쇼 및 단순 변심 방지를 위해 기기값의 3% (<b>฿${formattedDeposit}</b>)를 본사 계좌로 선입금하셔야 배송이 시작됩니다. 나머지 97% (<b>฿${formattedRest}</b>)는 수령 시 택배 기사에게 현금으로 결제합니다.`;
+      warningDesc = `⚠️ <b>[COD 예약금 선입금 필요]</b> 노쇼 및 단순 변심 방지를 위해 기기값의 3% (<b>฿${formattedDeposit}</b>)를 본사 계좌로 선입금하셔야 배송이 시작됩니다. 기기값 100% (<b>฿${formattedRest}</b>)는 수령 시 택배 기사에게 현금으로 결제합니다.`;
     }
 
     infoBox.innerHTML = `
@@ -954,7 +954,7 @@ function updatePaymentNotice() {
           <span style="font-size:18px; color:var(--cyan); font-weight:900;">฿${formattedDeposit}</span>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:13px; color:var(--t2); font-weight:700;">${t('order_cod_balance_97') || '97% COD 잔액 (물건 수취 시 지불)'}:</span>
+          <span style="font-size:13px; color:var(--t2); font-weight:700;">${t('order_cod_balance_100') || '물건 수취 시 지불할 금액 (100% COD)'}:</span>
           <span style="font-size:14px; color:var(--t1); font-weight:800;">฿${formattedRest}</span>
         </div>
       `;
@@ -1161,7 +1161,6 @@ function calcTotal() {
 }
 
 // Submit Order (Single & Cart Checkout)
-// Submit Order (Single & Cart Checkout)
 async function submitOrder() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
@@ -1181,6 +1180,12 @@ async function submitOrder() {
   }
   if (!detailedAddr) {
     showToast(t('toast_address_required'), 'error');
+    return;
+  }
+
+  // Ask: Have they deposited?
+  const depositConfirmMsg = t('confirm_deposit_check') || "본사 계좌로 입금을 완료하셨습니까?\n입금하지 않고 주문을 진행하시는 경우, 입금 확인이 완료될 때까지 배송이 시작되지 않고 지연됩니다.";
+  if (!confirm(depositConfirmMsg)) {
     return;
   }
 
@@ -1215,7 +1220,6 @@ function openSlipPrompt() {
     `;
   } else {
     const deposit = Math.round(totalPrice * 0.03);
-    const rest = totalPrice - deposit;
     priceBox.innerHTML = `
       <div style="margin-bottom:8px;">
         <span style="font-weight:700; color:var(--purple-l);">${t('order_device_price') || '기기값 합계'}:</span>
@@ -1226,8 +1230,8 @@ function openSlipPrompt() {
         <strong style="color:var(--gold); font-size:15px;">฿${deposit.toLocaleString()}</strong>
       </div>
       <div>
-        <span style="font-weight:700; color:var(--purple-l);">${t('order_cod_balance_97') || '97% COD 잔액 (물건 수취 시 지불)'}:</span>
-        <strong style="color:var(--t1);">฿${rest.toLocaleString()}</strong>
+        <span style="font-weight:700; color:var(--purple-l);">${t('order_cod_balance_100') || '물건 수취 시 지불할 금액 (100% COD)'}:</span>
+        <strong style="color:var(--t1);">฿${totalPrice.toLocaleString()}</strong>
       </div>
     `;
   }
