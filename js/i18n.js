@@ -75,6 +75,9 @@ const TRANSLATIONS = {
     cod_step_1: "1. 아래 계좌번호를 복사합니다.",
     cod_step_2: "2. 은행/지갑 앱을 열어 송금합니다.",
     cod_step_3: "3. 입금 완료 후 아래 주문 요청 버튼을 누릅니다.",
+    btn_cancel_order: "❌ 주문 취소",
+    confirm_cancel_order: "정말 이 주문을 취소하시겠습니까? 상품 재고가 즉시 복구됩니다.",
+    toast_order_cancelled: "❌ 주문이 취소되었습니다. 상품 재고가 복구되었습니다.",,
     
     // Common / Buttons
     login: "로그인",
@@ -362,6 +365,9 @@ const TRANSLATIONS = {
     cod_step_1: "1. คัดลอกเลขบัญชีด้านล่าง",
     cod_step_2: "2. เปิดแอปธนาคาร/วอลเล็ทเพื่อทำการโอนเงิน",
     cod_step_3: "3. หลังจากโอนเงินเรียบร้อย กดปุ่มส่งคำสั่งซื้อด้านล่าง",
+    btn_cancel_order: "❌ ยกเลิกคำสั่งซื้อ",
+    confirm_cancel_order: "คุณต้องการยกเลิกคำสั่งซื้อนี้หรือไม่? จำนวนสินค้าจะถูกคืนเข้าคลังทันที",
+    toast_order_cancelled: "❌ ยกเลิกคำสั่งซื้อเรียบร้อยแล้วและคืนจำนวนสินค้าแล้ว",,
     
     // Common / Buttons
     login: "เข้าสู่ระบบ",
@@ -649,6 +655,9 @@ const TRANSLATIONS = {
     cod_step_1: "1. အောက်ပါ အကောင့်နံပါတ်ကို ကူးယူပါ။",
     cod_step_2: "2. ဘဏ် သို့မဟုတ် e-Wallet အက်ပ်ကိုဖွင့်၍ ငွေလွှဲပါ။",
     cod_step_3: "3. ငွေလွှဲပြီးပါက အောက်ပါ အော်ဒါတင်ရန်ခလုတ်ကို နှိပ်ပါ။",
+    btn_cancel_order: "❌ အော်ဒါပယ်ဖျက်မည်",
+    confirm_cancel_order: "ဤအော်ဒါကို တကယ်ပဲ ပယ်ဖျက်လိုပါသလား။ ကုန်ပစ္စည်းလက်ကျန် ပြန်လည်ဖြည့်သွင်းပါမည်။",
+    toast_order_cancelled: "❌ အော်ဒါပယ်ဖျက်ပြီးပါပြီ။ ကုန်ပစ္စည်းလက်ကျန် ပြန်လည်ဖြည့်သွင်းပြီးပါပြီ။",,
     
     // Common / Buttons
     login: "လော့ဂ်အင်ဝင်ရန်",
@@ -926,6 +935,9 @@ const TRANSLATIONS = {
     cod_step_1: "1. Copy the account number below.",
     cod_step_2: "2. Open banking/wallet app and transfer.",
     cod_step_3: "3. After transfer, click the Order button below.",
+    btn_cancel_order: "❌ Cancel Order",
+    confirm_cancel_order: "Are you sure you want to cancel this order? Product stock will be restored immediately.",
+    toast_order_cancelled: "❌ Order has been cancelled. Product stock has been restored.",,
     login: "Log In",
     logout: "Log Out",
     dashboard: "Dashboard",

@@ -369,12 +369,12 @@
       <div style="margin-top:12px; border-top:1px solid rgba(34,211,238,0.15); padding-top:10px;">
         <div style="font-weight:700; font-size:10px; color:var(--t3); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">태국 송금앱 바로가기 (Open App)</div>
         <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;">
-          <a href="kplus://" class="app-link-btn" style="background:#00A950; color:#fff;" data-i18n="open_kplus_btn">K PLUS</a>
-          <a href="scbeasy://" class="app-link-btn" style="background:#4E2A84; color:#fff;" data-i18n="open_scb_btn">SCB Easy</a>
-          <a href="bualuangmbanking://" class="app-link-btn" style="background:#0056B3; color:#fff;" data-i18n="open_bangkok_btn">Bangkok</a>
-          <a href="kma://" class="app-link-btn" style="background:#FFC72C; color:#333; font-weight:700;" data-i18n="open_krungsri_btn">Krungsri</a>
-          <a href="ktbnetbank://" class="app-link-btn" style="background:#00A1E4; color:#fff;" data-i18n="open_krungthai_btn">Krungthai</a>
-          <a href="truemoney://" class="app-link-btn" style="background:#FF8200; color:#fff;" data-i18n="open_truemoney_btn">TrueMoney</a>
+          <button type="button" class="app-link-btn" style="background:#00A950; color:#fff; border:none; cursor:pointer;" onclick="openBankApp('kplus', 'co.th.kasikorn.kplus')" data-i18n="open_kplus_btn">K PLUS</button>
+          <button type="button" class="app-link-btn" style="background:#4E2A84; color:#fff; border:none; cursor:pointer;" onclick="openBankApp('scbeasy', 'com.scb.phone')" data-i18n="open_scb_btn">SCB Easy</button>
+          <button type="button" class="app-link-btn" style="background:#0056B3; color:#fff; border:none; cursor:pointer;" onclick="openBankApp('bualuangmbanking', 'com.bbl.mobilebanking')" data-i18n="open_bangkok_btn">Bangkok</button>
+          <button type="button" class="app-link-btn" style="background:#FFC72C; color:#333; border:none; cursor:pointer; font-weight:700;" onclick="openBankApp('kma', 'com.krungsri.kma')" data-i18n="open_krungsri_btn">Krungsri</button>
+          <button type="button" class="app-link-btn" style="background:#00A1E4; color:#fff; border:none; cursor:pointer;" onclick="openBankApp('ktbnetbank', 'krungthai.next')" data-i18n="open_krungthai_btn">Krungthai</button>
+          <button type="button" class="app-link-btn" style="background:#FF8200; color:#fff; border:none; cursor:pointer;" onclick="openBankApp('truemoney', 'th.co.truemoney.wallet')" data-i18n="open_truemoney_btn">TrueMoney</button>
         </div>
       </div>
     </div>
@@ -894,6 +894,17 @@ function copyAccount() {
     console.error("Failed to copy account number:", err);
     showToast("Copy failed", 'error');
   });
+}
+
+function openBankApp(scheme, packageName) {
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  
+  if (isAndroid && packageName) {
+    window.location.href = `intent://#Intent;scheme=${scheme};package=${packageName};end`;
+  } else {
+    window.location.href = `${scheme}://`;
+  }
 }
 
 // Open Order Modal (Single item checkout)
@@ -1944,13 +1955,19 @@ async function loadMyOrders() {
         `;
       }
 
-      // Buyer actions for confirmed orders (accept or return)
+      // Buyer actions for confirmed or pending orders
       let buyerActions = '';
       if (o.status === 'confirmed') {
         buyerActions = `
           <div style="display:flex; gap:8px; margin-top:8px;">
             <button class="btn-sm btn-green" onclick="confirmOrderReceipt('${o.id}')" style="flex:1; padding:8px 12px; font-weight:700;">${t('btn_confirm_receipt') || '✅ 구매 확정'}</button>
             <button class="btn-sm btn-red" onclick="returnOrder('${o.id}')" style="flex:1; padding:8px 12px; font-weight:700;">${t('btn_reject_return') || '❌ 반송 / 거절'}</button>
+          </div>
+        `;
+      } else if (o.status === 'pending') {
+        buyerActions = `
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <button class="btn-sm btn-red" onclick="cancelOrder('${o.id}')" style="flex:1; padding:8px 12px; font-weight:700; background:rgba(239,68,68,0.1); color:var(--red); border:1px solid rgba(239,68,68,0.3);">${t('btn_cancel_order') || '❌ 주문 취소'}</button>
           </div>
         `;
       }
@@ -2017,6 +2034,25 @@ async function returnOrder(orderId) {
     
     showToast(t('toast_order_returned') || "❌ 주문이 거부되어 반송 처리되었습니다. 상품 재고가 복구되었습니다.", 'success');
     await loadMyOrders();
+    await updateBuyerOrderTracker(); // Refresh tracker counts
+  } catch (err) {
+    showToast(t('error_occurred') + err.message, 'error');
+  }
+}
+
+async function cancelOrder(orderId) {
+  if (!confirm(t('confirm_cancel_order') || "정말 이 주문을 취소하시겠습니까? 상품 재고가 즉시 복구됩니다.")) return;
+  
+  try {
+    const { error } = await supabase.from('orders')
+      .update({ status: 'cancelled' })
+      .eq('id', orderId);
+      
+    if (error) throw error;
+    
+    showToast(t('toast_order_cancelled') || "❌ 주문이 취소되었습니다. 상품 재고가 복구되었습니다.", 'success');
+    await loadMyOrders();
+    await updateBuyerOrderTracker(); // Refresh tracker counts
   } catch (err) {
     showToast(t('error_occurred') + err.message, 'error');
   }
