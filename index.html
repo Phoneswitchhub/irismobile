@@ -383,16 +383,59 @@
     <div id="paymentInfoBox" style="background:rgba(139,92,246,0.06); border:1px solid rgba(139,92,246,0.15); border-radius:var(--r-sm); padding:12px; font-size:12px; line-height:1.5; color:var(--t2); margin-bottom:18px;">
     </div>
 
+    <!-- Transfer Slip Upload (New) -->
+    <div class="form-group" style="margin-top:12px; margin-bottom:18px;">
+      <label class="form-label" style="font-weight:700; color:var(--cyan); display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span>📄 입금증 첨부 (Upload Receipt Slip)</span>
+        <span style="font-size:10px; color:var(--t3); font-weight:normal;" id="slipUploadHint">*선택사항 (입금 후 즉시 업로드 가능)</span>
+      </label>
+      <div id="slipUploadContainer" style="border:2px dashed rgba(8,145,178,0.3); border-radius:var(--r-sm); padding:16px; text-align:center; cursor:pointer; background:rgba(8,145,178,0.03); transition:var(--ease); position:relative;" onclick="triggerSlipInput()">
+        <div id="slipUploadIcon" style="font-size:24px; margin-bottom:4px;">📸</div>
+        <div id="slipUploadText" style="font-size:12px; color:var(--t2); font-weight:500;">여기를 누르거나 입금증 이미지를 선택하세요.</div>
+        <input type="file" id="oSlipInput" accept="image/*" style="display:none;" onchange="handleSlipFile(this)">
+        <img id="oSlipPreview" style="display:none; max-width:100%; max-height:120px; object-fit:contain; border-radius:6px; margin:8px auto 0; border:1px solid var(--border);">
+      </div>
+    </div>
+
     <!-- Refund / COD Disclaimer Warning -->
     <div id="orderWarningBox" data-i18n="order_warning_text" style="font-size:11px; line-height:1.4; color:var(--red); margin-bottom:18px; background:rgba(239,68,68,0.04); border:1px dashed rgba(239,68,68,0.25); border-radius:var(--r-sm); padding:10px;">
     </div>
     
-    <div style="background:var(--card);border-radius:var(--r-sm);padding:14px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;">
-      <span style="color:var(--t2);font-size:13px;" data-i18n="order_total">합계</span>
-      <span style="font-family:'Outfit',sans-serif;font-size:24px;font-weight:900;color:var(--gold);" id="oTotal">฿0</span>
+    <div id="oPriceBreakdownBox" style="background:var(--card); border-radius:var(--r-sm); padding:14px; margin-bottom:18px; text-align:left; display:flex; flex-direction:column; gap:6px;">
     </div>
     
     <button class="btn-submit" id="btnOrder" onclick="submitOrder()" data-i18n="btn_submit_order">✅ 주문 요청하기</button>
+  </div>
+</div>
+
+<!-- SLIP PROMPT DIALOG MODAL (New) -->
+<div class="modal-bg" id="slipPromptModal" style="z-index: 4000;">
+  <div class="modal" style="max-width: 420px; padding: 24px; text-align: center; border-radius: 22px;">
+    <div style="font-size: 32px; margin-bottom: 12px;">💡</div>
+    <div style="font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 800; color: var(--t1); margin-bottom: 10px;" id="slipPromptTitle" data-i18n="slip_prompt_title">입금 확인 안내</div>
+    
+    <!-- Price Summary Box -->
+    <div id="slipPromptPriceBox" style="background:rgba(139,92,246,0.04); border:1px solid rgba(139,92,246,0.15); border-radius:var(--r-sm); padding:14px; margin-bottom:18px; font-size:12.5px; text-align:left; line-height:1.6; color:var(--t2);">
+    </div>
+    
+    <div style="font-size: 12px; color: var(--t2); margin-bottom: 22px; line-height: 1.5; font-weight: 500;" id="slipPromptDesc" data-i18n="slip_prompt_desc">
+      본사에 입금 완료 후 입금증을 지금 바로 첨부하시거나, 주문을 먼저 등록한 후 마이페이지에서 나중에 등록하실 수 있습니다.
+    </div>
+    
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <!-- Hidden file input for custom slip upload inside modal -->
+      <input type="file" id="promptSlipInput" accept="image/*" style="display:none;" onchange="handlePromptSlipFile(this)">
+      
+      <button class="btn-submit" onclick="document.getElementById('promptSlipInput').click()" style="background:var(--gp); margin:0;" data-i18n="btn_upload_now">
+        📸 입금증 지금 등록하기 (Upload Now)
+      </button>
+      <button class="btn-submit" onclick="submitOrderConfirmed(null)" style="background:rgba(0,0,0,0.03); border:1px solid var(--border); color:var(--t1); box-shadow:none; margin:0;" data-i18n="btn_upload_later">
+        ⏳ 나중에 등록하기 (Upload Later)
+      </button>
+      <button onclick="closeSlipPrompt()" style="background:none; border:none; color:var(--t3); font-size:12px; cursor:pointer; padding:6px; font-weight:600; text-decoration:underline;">
+        취소 (Cancel)
+      </button>
+    </div>
   </div>
 </div>
 
@@ -504,6 +547,8 @@ let currentProd = null;
 let selectedPaymentMethod = 'online';
 let activeShopFilter = 'all';
 let isCartCheckout = false; // Flag to indicate if we are doing cart checkout
+let uploadedSlipUrl = null;
+let cartCheckoutTotal = 0;
 
 async function init() {
   // 1. Language initialized by i18n.js
@@ -821,14 +866,7 @@ function updatePaymentNotice() {
   
   let totalPrice = 0;
   if (isBulk) {
-    const cart = getCart();
-    // Sum total price of cart items from products array
-    cart.forEach(item => {
-      const p = products.find(prod => prod.id === item.product_id);
-      if (p) {
-        totalPrice += Number(p.price) * item.quantity;
-      }
-    });
+    totalPrice = cartCheckoutTotal;
   } else {
     if (!currentProd) return;
     const qty = parseInt(document.getElementById('oQty').value) || 1;
@@ -836,16 +874,19 @@ function updatePaymentNotice() {
   }
 
   const submitBtn = document.getElementById('btnOrder');
+  const breakdownBox = document.getElementById('oPriceBreakdownBox');
   
   if (selectedPaymentMethod === 'online') {
     const formattedTotal = totalPrice.toLocaleString();
-    const step2 = (t('cod_step_2') || '2. 은행/지갑 앱을 열어 송금합니다.') + ` (100%: ฿${formattedTotal})`;
+    const amountLabel = t('order_total') || '합계';
+    const amountBadge = `<br><div style="margin-top:6px; display:inline-flex; align-items:center; gap:6px; background:rgba(217,119,6,0.08); border:1px solid rgba(217,119,6,0.3); border-radius:6px; padding:6px 12px; font-size:16px; font-weight:900; color:var(--gold);">💰 ${amountLabel} (100%): ฿${formattedTotal}</div>`;
+    const step2 = (t('cod_step_2') || '2. 은행/지갑 앱을 열어 송금합니다.') + amountBadge;
     
     infoBox.innerHTML = `
       <div style="font-weight:700; color:var(--purple-l); margin-bottom:6px;">${t('cod_step_title') || '💡 송금 가이드 (Transfer Guide)'}</div>
       <div style="display:flex; flex-direction:column; gap:4px; font-size:11.5px; color:var(--t2);">
         <div>${t('cod_step_1') || '1. 아래 계좌번호를 복사합니다.'}</div>
-        <div><b>${step2}</b></div>
+        <div>${step2}</div>
         <div>${t('cod_step_3') || '3. 입금 완료 후 아래 주문 요청 버튼을 누릅니다.'}</div>
       </div>
       <div style="margin-top:10px; font-size:11px; color:var(--t3); line-height:1.4;">
@@ -855,16 +896,34 @@ function updatePaymentNotice() {
     if (submitBtn) {
       submitBtn.innerHTML = t('btn_submit_order_online') || `✅ 100% 송금 완료 및 주문 요청하기`;
     }
+
+    if (breakdownBox) {
+      breakdownBox.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:13px; color:var(--t2); font-weight:700;">${t('order_device_price') || '기기값 합계'}:</span>
+          <span style="font-size:13px; color:var(--t1); font-weight:700;">฿${formattedTotal}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:6px; margin-top:4px;">
+          <span style="font-size:14px; color:var(--gold); font-weight:800;">${t('order_total_online') || '송금 금액 (100% 지금 결제)'}:</span>
+          <span style="font-size:18px; color:var(--gold); font-weight:900;">฿${formattedTotal}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; opacity:0.6;">
+          <span style="font-size:11px; color:var(--t3);">${t('order_cod_balance_97') || '97% COD 잔액 (물건 수취 시 지불)'}:</span>
+          <span style="font-size:11px; color:var(--t3);">฿0</span>
+        </div>
+      `;
+    }
   } else {
     const deposit = Math.round(totalPrice * 0.03);
-    const rest = totalPrice;
+    const rest = totalPrice - deposit;
     const formattedDeposit = deposit.toLocaleString();
     const formattedRest = rest.toLocaleString();
-    const step2 = (t('cod_step_2') || '2. 은행/지갑 앱을 열어 송금합니다.') + ` (3%: ฿${formattedDeposit})`;
+    const amountBadge = `<br><div style="margin-top:6px; display:inline-flex; align-items:center; gap:6px; background:rgba(217,119,6,0.08); border:1px solid rgba(217,119,6,0.3); border-radius:6px; padding:6px 12px; font-size:16px; font-weight:900; color:var(--gold);">💰 예약금 (3%): ฿${formattedDeposit}</div>`;
+    const step2 = (t('cod_step_2') || '2. 은행/지갑 앱을 열어 송금합니다.') + amountBadge;
     
     let warningDesc = t('order_cod_desc');
     if (warningDesc) {
-      warningDesc = warningDesc.replace('{deposit}', formattedDeposit).replace('{rest}', formattedRest.toLocaleString());
+      warningDesc = warningDesc.replace('{deposit}', formattedDeposit).replace('{rest}', formattedRest);
     } else {
       warningDesc = `⚠️ <b>[COD 예약금 선입금 필요]</b> 노쇼 및 단순 변심 방지를 위해 기기값의 3% (<b>฿${formattedDeposit}</b>)를 본사 계좌로 선입금하셔야 배송이 시작됩니다. 나머지 97% (<b>฿${formattedRest}</b>)는 수령 시 택배 기사에게 현금으로 결제합니다.`;
     }
@@ -882,6 +941,23 @@ function updatePaymentNotice() {
     `;
     if (submitBtn) {
       submitBtn.innerHTML = t('btn_submit_order_cod') || `✅ 3% 예약금 선입금 완료 및 주문 요청하기`;
+    }
+
+    if (breakdownBox) {
+      breakdownBox.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:13px; color:var(--t2); font-weight:700;">${t('order_device_price') || '기기값 합계'}:</span>
+          <span style="font-size:13px; color:var(--t1); font-weight:700;">฿${totalPrice.toLocaleString()}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:6px; margin-top:4px;">
+          <span style="font-size:14px; color:var(--cyan); font-weight:800;">${t('order_deposit_3') || '3% 예약금 선입금 (지금 결제 완료)'}:</span>
+          <span style="font-size:18px; color:var(--cyan); font-weight:900;">฿${formattedDeposit}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:13px; color:var(--t2); font-weight:700;">${t('order_cod_balance_97') || '97% COD 잔액 (물건 수취 시 지불)'}:</span>
+          <span style="font-size:14px; color:var(--t1); font-weight:800;">฿${formattedRest}</span>
+        </div>
+      `;
     }
   }
 }
@@ -907,6 +983,120 @@ function openBankApp(scheme, packageName) {
   }
 }
 
+function triggerSlipInput() {
+  const input = document.getElementById('oSlipInput');
+  if (input) input.click();
+}
+
+async function handleSlipFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  const container = document.getElementById('slipUploadContainer');
+  const uploadText = document.getElementById('slipUploadText');
+  const uploadIcon = document.getElementById('slipUploadIcon');
+  const previewImg = document.getElementById('oSlipPreview');
+  
+  if (uploadText) uploadText.textContent = t('loading') || '업로드 중...';
+  if (uploadIcon) uploadIcon.style.display = 'none';
+  if (previewImg) previewImg.style.display = 'none';
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error(t('login_required_title'));
+    
+    // Compress image
+    const compressed = await resizeAndCompressImage(file, 1000, 0.75);
+    
+    // Path
+    const ext = file.name.split('.').pop() || 'jpg';
+    const path = `slips/${user.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    
+    // Upload to products bucket
+    const { error: upErr } = await supabase.storage.from('products').upload(path, compressed);
+    if (upErr) throw upErr;
+    
+    const { data: urlData } = supabase.storage.from('products').getPublicUrl(path);
+    uploadedSlipUrl = urlData.publicUrl;
+    
+    // Show preview
+    if (previewImg) {
+      previewImg.src = uploadedSlipUrl;
+      previewImg.style.display = 'block';
+    }
+    if (uploadText) {
+      uploadText.textContent = '✅ 입금증 등록 완료!';
+      uploadText.style.color = 'var(--green)';
+    }
+    if (container) {
+      container.style.borderStyle = 'solid';
+      container.style.borderColor = 'var(--green)';
+      container.style.background = 'rgba(16,185,129,0.03)';
+    }
+    showToast(t('toast_slip_uploaded') || '✅ 입금증이 등록되었습니다!', 'success');
+  } catch (err) {
+    console.error("Slip upload error:", err);
+    showToast(t('error_occurred') + err.message, 'error');
+    resetSlipUploadState();
+  }
+}
+
+function resetSlipUploadState() {
+  uploadedSlipUrl = null;
+  const previewImg = document.getElementById('oSlipPreview');
+  const uploadIcon = document.getElementById('slipUploadIcon');
+  const uploadText = document.getElementById('slipUploadText');
+  const slipInput = document.getElementById('oSlipInput');
+  const container = document.getElementById('slipUploadContainer');
+  if (previewImg) previewImg.style.display = 'none';
+  if (uploadIcon) uploadIcon.style.display = 'block';
+  if (uploadText) {
+    uploadText.textContent = '여기를 누르거나 입금증 이미지를 선택하세요.';
+    uploadText.style.color = 'var(--t2)';
+  }
+  if (container) {
+    container.style.borderStyle = 'dashed';
+    container.style.borderColor = 'rgba(8,145,178,0.3)';
+    container.style.background = 'rgba(8,145,178,0.03)';
+  }
+  if (slipInput) slipInput.value = '';
+}
+
+async function uploadSlipLater(orderId, input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  showToast(t('loading') || "처리 중...", 'info');
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error(t('login_required_title'));
+    
+    const compressed = await resizeAndCompressImage(file, 1000, 0.75);
+    const ext = file.name.split('.').pop() || 'jpg';
+    const path = `slips/${user.id}/${orderId}_${Date.now()}.${ext}`;
+    
+    const { error: upErr } = await supabase.storage.from('products').upload(path, compressed);
+    if (upErr) throw upErr;
+    
+    const { data: urlData } = supabase.storage.from('products').getPublicUrl(path);
+    const slipUrl = urlData.publicUrl;
+    
+    const { error: dbErr } = await supabase.from('orders')
+      .update({ slip_url: slipUrl })
+      .eq('id', orderId);
+      
+    if (dbErr) throw dbErr;
+    
+    showToast(t('toast_slip_uploaded') || "✅ 입금증이 정상적으로 등록되었습니다!", 'success');
+    await loadMyOrders();
+    await updateBuyerOrderTracker();
+  } catch (err) {
+    console.error("Slip upload error:", err);
+    showToast(t('error_occurred') + err.message, 'error');
+  }
+}
+
 // Open Order Modal (Single item checkout)
 async function openOrder(id) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -914,6 +1104,7 @@ async function openOrder(id) {
   
   isCartCheckout = false;
   document.getElementById('oQty').parentElement.style.display = 'block';
+  resetSlipUploadState();
   
   currentProd = products.find(p => p.id === id);
   if (!currentProd) {
@@ -966,12 +1157,10 @@ async function openOrder(id) {
 function calcTotal() {
   if (isCartCheckout) return;
   if (!currentProd) return;
-  const qty = parseInt(document.getElementById('oQty').value) || 1;
-  document.getElementById('oTotal').textContent = '฿' + (Number(currentProd.price) * qty).toLocaleString();
-  
   updatePaymentNotice();
 }
 
+// Submit Order (Single & Cart Checkout)
 // Submit Order (Single & Cart Checkout)
 async function submitOrder() {
   const { data: { user } } = await supabase.auth.getUser();
@@ -995,7 +1184,108 @@ async function submitOrder() {
     return;
   }
 
+  // Ask for confirmation if slip is missing
+  if (!uploadedSlipUrl) {
+    openSlipPrompt();
+    return;
+  }
+
+  await submitOrderConfirmed(uploadedSlipUrl);
+}
+
+function openSlipPrompt() {
+  const modal = document.getElementById('slipPromptModal');
+  const priceBox = document.getElementById('slipPromptPriceBox');
+  if (!modal) return;
+
+  const isBulk = isCartCheckout;
+  let totalPrice = 0;
+  if (isBulk) {
+    totalPrice = cartCheckoutTotal;
+  } else {
+    if (!currentProd) return;
+    const qty = parseInt(document.getElementById('oQty').value) || 1;
+    totalPrice = Number(currentProd.price) * qty;
+  }
+
+  if (selectedPaymentMethod === 'online') {
+    priceBox.innerHTML = `
+      <div style="font-weight:700; color:var(--purple-l); margin-bottom:4px;">${t('order_total_online') || '송금 금액 (100% 지금 결제)'}</div>
+      <div style="font-size:16px; font-weight:800; color:var(--gold);">฿${totalPrice.toLocaleString()}</div>
+    `;
+  } else {
+    const deposit = Math.round(totalPrice * 0.03);
+    const rest = totalPrice - deposit;
+    priceBox.innerHTML = `
+      <div style="margin-bottom:8px;">
+        <span style="font-weight:700; color:var(--purple-l);">${t('order_device_price') || '기기값 합계'}:</span>
+        <strong style="color:var(--t1);">฿${totalPrice.toLocaleString()}</strong>
+      </div>
+      <div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--border);">
+        <span style="font-weight:700; color:var(--cyan);">${t('order_deposit_3') || '3% 예약금 선입금 (지금 결제 완료)'}:</span>
+        <strong style="color:var(--gold); font-size:15px;">฿${deposit.toLocaleString()}</strong>
+      </div>
+      <div>
+        <span style="font-weight:700; color:var(--purple-l);">${t('order_cod_balance_97') || '97% COD 잔액 (물건 수취 시 지불)'}:</span>
+        <strong style="color:var(--t1);">฿${rest.toLocaleString()}</strong>
+      </div>
+    `;
+  }
+
+  modal.classList.add('open');
+}
+
+function closeSlipPrompt() {
+  document.getElementById('slipPromptModal').classList.remove('open');
+}
+
+async function handlePromptSlipFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  showToast(t('loading') || '업로드 중...', 'info');
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error(t('login_required_title'));
+    
+    // Compress image
+    const compressed = await resizeAndCompressImage(file, 1000, 0.75);
+    
+    // Path
+    const ext = file.name.split('.').pop() || 'jpg';
+    const path = `slips/${user.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    
+    // Upload to products bucket
+    const { error: upErr } = await supabase.storage.from('products').upload(path, compressed);
+    if (upErr) throw upErr;
+    
+    const { data: urlData } = supabase.storage.from('products').getPublicUrl(path);
+    const slipUrl = urlData.publicUrl;
+    
+    showToast(t('toast_slip_uploaded') || '✅ 입금증이 등록되었습니다!', 'success');
+    closeSlipPrompt();
+    
+    // Submit order with this slipUrl
+    await submitOrderConfirmed(slipUrl);
+  } catch (err) {
+    console.error("Slip upload error:", err);
+    showToast(t('error_occurred') + err.message, 'error');
+  } finally {
+    input.value = '';
+  }
+}
+
+async function submitOrderConfirmed(slipUrl) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  if (!isCartCheckout && !currentProd) return;
+  
+  const province = document.getElementById('oProvince').value;
+  const district = document.getElementById('oDistrict').value;
+  const detailedAddr = document.getElementById('oAddress').value.trim();
   const fullAddr = `${province} - ${district} - ${detailedAddr}`;
+  
   setLoading('btnOrder', true, t('loading'));
 
   // Get notes and prepend shipping carrier if Online Transfer
@@ -1050,7 +1340,8 @@ async function submitOrder() {
           commission_amount: commAmount,
           payout_status: 'pending',
           delivery_address: fullAddr,
-          deposit_confirmed: false
+          deposit_confirmed: false,
+          slip_url: slipUrl
         };
       });
       
@@ -1097,7 +1388,8 @@ async function submitOrder() {
         commission_amount: commAmount,
         payout_status: 'pending',
         delivery_address: fullAddr,
-        deposit_confirmed: false
+        deposit_confirmed: false,
+        slip_url: slipUrl
       });
       
       if (insertErr) throw insertErr;
@@ -1112,6 +1404,7 @@ async function submitOrder() {
     
     setLoading('btnOrder', false);
     closeModal();
+    closeSlipPrompt();
     showToast(t('success_order'), 'success');
     
     // Reload product lists and order history
@@ -1334,6 +1627,7 @@ async function checkoutAllCart() {
   
   isCartCheckout = true;
   currentProd = null;
+  resetSlipUploadState();
   
   const { data: buyerProfile } = await supabase.from('profiles')
     .select('location_province, location_district, location_address')
@@ -1380,8 +1674,8 @@ async function checkoutAllCart() {
   
   document.getElementById('oQty').parentElement.style.display = 'none';
   document.getElementById('oNotes').value = '';
+  cartCheckoutTotal = cartTotal;
   setPaymentMethod('online');
-  document.getElementById('oTotal').textContent = '฿' + cartTotal.toLocaleString();
   document.getElementById('orderModal').classList.add('open');
 }
 
@@ -1972,6 +2266,31 @@ async function loadMyOrders() {
         `;
       }
 
+      let slipSection = '';
+      if (o.status === 'pending') {
+        if (o.slip_url) {
+          slipSection = `
+            <div style="margin-top:6px; border-top:1px dashed rgba(0,0,0,0.05); padding-top:6px; display:flex; justify-content:space-between; align-items:center;">
+              <span><strong>📄 입금증:</strong> <a href="${o.slip_url}" target="_blank" style="color:var(--purple-l); text-decoration:underline; font-weight:700;">첨부됨 (보기)</a></span>
+              <button type="button" class="btn-sm" style="padding:2px 6px; font-size:10px; background:rgba(0,0,0,0.05); border:1px solid var(--border);" onclick="document.getElementById('slipInput_${o.id}').click()">재첨부</button>
+            </div>
+          `;
+        } else {
+          slipSection = `
+            <div style="margin-top:6px; border-top:1px dashed rgba(0,0,0,0.05); padding-top:6px; display:flex; flex-direction:column; gap:6px;">
+              <div style="color:var(--red); font-weight:700; font-size:10.5px;">⚠️ 입금 후 아래 버튼을 통해 입금증(Slip)을 첨부해 주세요.</div>
+              <button type="button" class="btn-sm btn-purple" style="width:100%; padding:6px; font-weight:700; font-size:11px; background:var(--cyan); border:none; color:#fff;" onclick="document.getElementById('slipInput_${o.id}').click()">📄 입금증 첨부하기 / Upload Slip</button>
+            </div>
+          `;
+        }
+      } else if (o.slip_url) {
+        slipSection = `
+          <div style="margin-top:6px; border-top:1px dashed rgba(0,0,0,0.05); padding-top:6px;">
+            <strong>📄 입금증:</strong> <a href="${o.slip_url}" target="_blank" style="color:var(--purple-l); text-decoration:underline; font-weight:700;">첨부된 입금증 보기</a>
+          </div>
+        `;
+      }
+
       return `
         <div class="card" style="padding:14px; border-radius:12px; background:var(--card); border:1px solid var(--border); display:flex; flex-direction:column; gap:10px; text-align:left;">
           <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(0,0,0,0.05); padding-bottom:8px;">
@@ -1992,7 +2311,9 @@ async function loadMyOrders() {
             <div><strong>📍 ${t('order_address')}:</strong> ${o.delivery_address}</div>
             <div><strong>💳 ${t('order_payment')}:</strong> ${paymentText}</div>
             ${o.notes ? `<div><strong>📝 ${t('order_notes')}:</strong> ${o.notes}</div>` : ''}
+            ${slipSection}
           </div>
+          <input type="file" id="slipInput_${o.id}" accept="image/*" style="display:none;" onchange="uploadSlipLater('${o.id}', this)">
           ${trackingHtml}
           ${buyerActions}
         </div>
