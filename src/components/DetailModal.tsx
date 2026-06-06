@@ -263,7 +263,7 @@ export default function DetailModal({
               style={{ margin: 0, flex: 1, minWidth: '80px', background: 'var(--gg)' }}
               disabled={isOwnProduct}
             >
-              💬 {t('btn_chat')}
+              {t('btn_chat')}
             </button>
             <button 
               className="btn-submit" 

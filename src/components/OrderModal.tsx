@@ -320,12 +320,12 @@ export default function OrderModal({
                 태국 송금앱 바로가기 (Open App)
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                <button type="button" className="app-link-btn" style={{ background: '#00A950', color: '#fff', border: 'none' }} onClick={() => openBankApp('kplus', 'com.kasikorn.retail.mbanking.wap', '361117099')}>{t('open_kplus_btn').split(' ')[0]}</button>
-                <button type="button" className="app-link-btn" style={{ background: '#4E2A84', color: '#fff', border: 'none' }} onClick={() => openBankApp('scbeasy', 'com.scb.phone', '1085114709')}>{t('open_scb_btn').split(' ')[0]}</button>
-                <button type="button" className="app-link-btn" style={{ background: '#0056B3', color: '#fff', border: 'none' }} onClick={() => openBankApp('bualuangmbanking', 'com.bbl.mobilebanking', '635483861')}>{t('open_bangkok_btn').split(' ')[0]}</button>
-                <button type="button" className="app-link-btn" style={{ background: '#FFC72C', color: '#333', border: 'none' }} onClick={() => openBankApp('kma', 'com.krungsri.kma', '1257404364')}>{t('open_krungsri_btn').split(' ')[0]}</button>
-                <button type="button" className="app-link-btn" style={{ background: '#00A1E4', color: '#fff', border: 'none' }} onClick={() => openBankApp('ktbnetbank', 'ktbcs.netbank', '1438965706')}>{t('open_krungthai_btn').split(' ')[0]}</button>
-                <button type="button" className="app-link-btn" style={{ background: '#FF8200', color: '#fff', border: 'none' }} onClick={() => openBankApp('truemoney', 'th.co.truemoney.wallet', '1081682855')}>{t('open_truemoney_btn').split(' ')[0]}</button>
+                <button type="button" className="app-link-btn" style={{ background: '#00A950', color: '#fff', border: 'none' }} onClick={() => openBankApp('kplus', 'com.kasikorn.retail.mbanking.wap', '361117099')}>🟢 K PLUS</button>
+                <button type="button" className="app-link-btn" style={{ background: '#4E2A84', color: '#fff', border: 'none' }} onClick={() => openBankApp('scbeasy', 'com.scb.phone', '1085114709')}>🟣 SCB Easy</button>
+                <button type="button" className="app-link-btn" style={{ background: '#0056B3', color: '#fff', border: 'none' }} onClick={() => openBankApp('bualuangmbanking', 'com.bbl.mobilebanking', '635483861')}>🔵 Bangkok</button>
+                <button type="button" className="app-link-btn" style={{ background: '#FFC72C', color: '#333', border: 'none' }} onClick={() => openBankApp('kma', 'com.krungsri.kma', '1257404364')}>🟡 Krungsri</button>
+                <button type="button" className="app-link-btn" style={{ background: '#00A1E4', color: '#fff', border: 'none' }} onClick={() => openBankApp('ktbnetbank', 'ktbcs.netbank', '1438965706')}>🔵 Krungthai</button>
+                <button type="button" className="app-link-btn" style={{ background: '#FF8200', color: '#fff', border: 'none' }} onClick={() => openBankApp('truemoney', 'th.co.truemoney.wallet', '1081682855')}>🟠 TrueMoney</button>
               </div>
             </div>
           </div>

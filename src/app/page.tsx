@@ -959,7 +959,7 @@ export default function Home() {
                             setSelectedProduct(p);
                           }}
                         >
-                          🔍 {t('detail_desc_title')}
+                          {t('btn_buy')}
                         </button>
                       </div>
                     </div>
@@ -1072,7 +1072,7 @@ export default function Home() {
                             setSelectedProduct(p);
                           }}
                         >
-                          🔍 {t('detail_desc_title')}
+                          {t('btn_buy')}
                         </button>
                       </div>
                     </div>
