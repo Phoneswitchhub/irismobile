@@ -423,6 +423,9 @@ export default function AdminDashboard() {
   // 5. Product actions
   const handleDeleteProduct = async (id: string) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
+    const product = allProducts.find((p: any) => p.id === id);
+    const imagesToDelete = product?.images || [];
+
     const { error } = await supabase.from('products').delete().eq('id', id);
 
     if (error) {
@@ -443,6 +446,17 @@ export default function AdminDashboard() {
         showToast('❌ Delete failed: ' + error.message, 'error');
       }
       return;
+    }
+
+    if (imagesToDelete.length > 0) {
+      const pathsToDelete = imagesToDelete.map((url: string) => {
+        const parts = url.split('/products/');
+        return parts.length > 1 ? parts[1] : null;
+      }).filter(Boolean) as string[];
+
+      if (pathsToDelete.length > 0) {
+        await supabase.storage.from('products').remove(pathsToDelete);
+      }
     }
 
     showToast('🗑️ Product deleted.');

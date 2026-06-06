@@ -435,6 +435,9 @@ export default function SellerDashboard() {
 
   const handleDeleteProduct = async (productId: string) => {
     if (!confirm(t('confirm_delete') || 'Delete this product?')) return;
+    const product = myProducts.find((p: any) => p.id === productId);
+    const imagesToDelete = product?.images || [];
+
     const { error } = await supabase
       .from('products')
       .delete()
@@ -444,6 +447,18 @@ export default function SellerDashboard() {
       showToast('❌ Delete failed.', 'error');
       return;
     }
+
+    if (imagesToDelete.length > 0) {
+      const pathsToDelete = imagesToDelete.map((url: string) => {
+        const parts = url.split('/products/');
+        return parts.length > 1 ? parts[1] : null;
+      }).filter(Boolean) as string[];
+
+      if (pathsToDelete.length > 0) {
+        await supabase.storage.from('products').remove(pathsToDelete);
+      }
+    }
+
     showToast(t('toast_product_deleted'), 'success');
     refreshAllData();
   };
