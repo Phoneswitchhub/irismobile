@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import MobileLayout from '@/components/MobileLayout';
 import Navbar from '@/components/Navbar';
 import { INTEREST_TABLE, getClosestPrice } from '@/lib/interestTable';
+import { supabase } from '@/lib/supabase';
 
 export default function ContractPage() {
   const router = useRouter();
@@ -67,6 +68,21 @@ export default function ContractPage() {
   // Extract installment day
   const installmentDay = firstInstallmentDate ? parseInt(firstInstallmentDate.split('-')[2]) || 7 : 7;
 
+  // 5b. Seller Authentication & Profile States
+  const [user, setUser] = useState<any>(null);
+  const [sellerProfile, setSellerProfile] = useState<any>(null);
+  const [loadingSeller, setLoadingSeller] = useState(true);
+
+  // 5c. Sidebar Tabs: 'create' | 'history'
+  const [sidebarTab, setSidebarTab] = useState<'create' | 'history'>('create');
+  const [sentContracts, setSentContracts] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // 5d. Link Generation Modal States
+  const [generatedLink, setGeneratedLink] = useState('');
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+
   // 6. Signature Pad Modal State & Logic
   const [showSignModal, setShowSignModal] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(null);
@@ -74,6 +90,248 @@ export default function ContractPage() {
 
   // 6b. Installment Months Modal State
   const [showMonthsModal, setShowMonthsModal] = useState(false);
+
+  // Check login and fetch profile details
+  useEffect(() => {
+    const checkUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setUser(user);
+          const { data: p } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+          if (p) {
+            setSellerProfile(p);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching user profile:', err);
+      } finally {
+        setLoadingSeller(false);
+      }
+    };
+    checkUser();
+  }, []);
+
+  const hasInventoryAccess = useMemo(() => {
+    if (!user) return true; // Preview / Dev mode (allows autocomplete when not logged in)
+    return (
+      sellerProfile?.store_type === 'direct' ||
+      sellerProfile?.store_name?.toLowerCase().includes('iris') ||
+      sellerProfile?.store_name?.includes('아이ริ스') ||
+      sellerProfile?.role === 'admin'
+    );
+  }, [user, sellerProfile]);
+
+  const loadHistory = async () => {
+    if (!user) return;
+    setLoadingHistory(true);
+    try {
+      const { data } = await supabase
+        .from('contracts')
+        .select('*')
+        .eq('seller_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (data) {
+        setSentContracts(data);
+      }
+    } catch (err) {
+      console.error('Failed to load contract history:', err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user && sidebarTab === 'history') {
+      loadHistory();
+    }
+  }, [user, sidebarTab]);
+
+  useEffect(() => {
+    if (!user || sidebarTab !== 'history') return;
+
+    // Listen to realtime changes on 'contracts' table for this seller
+    const channel = supabase
+      .channel('public:contracts')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'contracts',
+          filter: `seller_id=eq.${user.id}`
+        },
+        (payload) => {
+          const newRow = payload.new as any;
+          if (newRow && newRow.id) {
+            setSentContracts((prev) =>
+              prev.map((c) => (c.id === newRow.id ? newRow : c))
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, sidebarTab]);
+
+  const doSaveContractDraft = async () => {
+    if (!user) {
+      alert('กรุณาเข้าสู่ระบบก่อนสร้างลิงก์ (Please log in to generate links)');
+      router.push('/auth');
+      return;
+    }
+
+    setSavingDraft(true);
+    try {
+      const contractData = {
+        contract_no: contractNo,
+        contract_date: contractDate,
+        store_name: storeName,
+        store_address: storeAddress,
+        
+        customer_name: customerName,
+        nationality: nationality,
+        id_card_no: idCardNo,
+        passport_no: passportNo,
+        customer_address: customerAddress,
+        workplace: workplace,
+        phone_no: phoneNo,
+        facebook: facebook,
+        line_id: lineId,
+        
+        guarantor_name: guarantorName,
+        guarantor_id_card: guarantorIdCard,
+        guarantor_phone: guarantorPhone,
+        relationship: relationship,
+        
+        product_name: productName,
+        model: model,
+        color: color,
+        capacity: capacity,
+        serial_no: serialNo,
+        imei: imei,
+        selling_price: sellingPrice === '' ? 0 : Number(sellingPrice),
+        
+        down_payment: downPayment === '' ? 0 : Number(downPayment),
+        installments_count: installmentsCount === '' ? 4 : Number(installmentsCount),
+        installment_amount: installmentAmount === '' ? 0 : Number(installmentAmount),
+        down_payment_date: downPaymentDate,
+        first_installment_date: firstInstallmentDate,
+        
+        status: 'pending_signature',
+        seller_id: user.id
+      };
+
+      const { data, error } = await supabase
+        .from('contracts')
+        .insert(contractData)
+        .select('id')
+        .single();
+
+      if (error) {
+        alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + error.message + '\n\n💡 Supabase에 contracts 테이블이 생성되었는지 확인해 주세요. (SQL 스키마는 walkthrough.md에 있습니다)');
+      } else if (data) {
+        const link = `${window.location.origin}/contract/sign/${data.id}`;
+        setGeneratedLink(link);
+        setShowLinkModal(true);
+        loadHistory();
+      }
+    } catch (err: any) {
+      alert('เกิดข้อผิดพลาด: ' + err.message);
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
+  const loadContractIntoEditor = (c: any) => {
+    setContractNo(c.contract_no || '');
+    setContractDate(c.contract_date || '');
+    setStoreName(c.store_name || '');
+    setStoreAddress(c.store_address || '');
+    
+    setCustomerName(c.customer_name || '');
+    setNationality(c.nationality || '');
+    setIdCardNo(c.id_card_no || '');
+    setPassportNo(c.passport_no || '');
+    setCustomerAddress(c.customer_address || '');
+    setWorkplace(c.workplace || '');
+    setPhoneNo(c.phone_no || '');
+    setFacebook(c.facebook || '');
+    setLineId(c.line_id || '');
+    
+    setGuarantorName(c.guarantor_name || '');
+    setGuarantorIdCard(c.guarantor_id_card || '');
+    setGuarantorPhone(c.guarantor_phone || '');
+    setRelationship(c.relationship || '');
+    
+    setProductName(c.product_name || '');
+    setModel(c.model || '');
+    setColor(c.color || '');
+    setCapacity(c.capacity || '');
+    setSerialNo(c.serial_no || '');
+    setImei(c.imei || '');
+    setSellingPrice(c.selling_price || 0);
+    
+    setDownPayment(c.down_payment || 0);
+    setInstallmentsCount(c.installments_count || 4);
+    setInstallmentAmount(c.installment_amount || 0);
+    setDownPaymentDate(c.down_payment_date || '');
+    setFirstInstallmentDate(c.first_installment_date || '');
+    
+    if (c.signature_data) {
+      setSignatureData(c.signature_data);
+    } else {
+      setSignatureData(null);
+    }
+
+    setSidebarTab('create');
+  };
+
+  const resetFormFields = () => {
+    setContractNo('IRISBUY' + Math.floor(1000 + Math.random() * 9000));
+    setContractDate(new Date().toISOString().split('T')[0]);
+    setCustomerName('');
+    setNationality('ไทย');
+    setIdCardNo('');
+    setPassportNo('');
+    setCustomerAddress('');
+    setWorkplace('');
+    setPhoneNo('');
+    setFacebook('');
+    setLineId('');
+    
+    setGuarantorName('');
+    setGuarantorIdCard('');
+    setGuarantorPhone('');
+    setRelationship('');
+    
+    setProductName('โทรศัพท์มือถือ');
+    setModel('');
+    setColor('');
+    setCapacity('');
+    setSerialNo('');
+    setImei('');
+    setSellingPrice(0);
+    
+    setDownPayment(0);
+    setInstallmentsCount(4);
+    setInstallmentAmount(0);
+    setDownPaymentDate(new Date().toISOString().split('T')[0]);
+    
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1);
+    setFirstInstallmentDate(d.toISOString().split('T')[0]);
+
+    setSignatureData(null);
+  };
 
   // Resize canvas and bind direct DOM events for smooth zero-lag drawing when modal opens
   useEffect(() => {
@@ -182,7 +440,7 @@ export default function ContractPage() {
   const handleImeiChange = (val: string) => {
     setImei(val);
     const cleanVal = val.trim();
-    if (cleanVal.length >= 2) {
+    if (hasInventoryAccess && cleanVal.length >= 2) {
       const filtered = inventory.filter((item) =>
         item.imei.includes(cleanVal)
       );
@@ -319,11 +577,46 @@ export default function ContractPage() {
         {/* LEFT COLUMN: Input form (Hidden on Print) */}
         <div className="sidebar no-print">
           <div className="sidebar-header">
-            <h3>📝 เขียนสัญญาเช่าซื้อ (Fill Contract)</h3>
-            <p>กรอกข้อมูลเพื่อเติมลงในเอกสารสัญญาเช่าซื้อโดยอัตโนมัติ</p>
+            <h3>📝 เขียนสัญญาเช่าซื้อ (Contract Tool)</h3>
+            <p>กรอกข้อมูลและจัดส่งสัญญาเช่าซื้อให้ลูกค้าลงลายมือชื่อ</p>
           </div>
 
-          <div className="form-sections-wrapper">
+          {/* Tab Selection */}
+          {user && (
+            <div className="sidebar-tabs">
+              <button 
+                className={`tab-btn ${sidebarTab === 'create' ? 'active' : ''}`}
+                onClick={() => setSidebarTab('create')}
+              >
+                ✍️ 계약서 작성 (Create)
+              </button>
+              <button 
+                className={`tab-btn ${sidebarTab === 'history' ? 'active' : ''}`}
+                onClick={() => setSidebarTab('history')}
+              >
+                📋 보낸 내역 (Sent)
+              </button>
+            </div>
+          )}
+
+          {!user && !loadingSeller && (
+            <div className="login-banner">
+              <p>로그인하시면 고객에게 전송하는 서명 링크를 만들고 관리할 수 있습니다.</p>
+              <button className="btn-login-redirect" onClick={() => router.push('/auth')}>
+                🔑 로그인하러 가기 (Go to Login)
+              </button>
+            </div>
+          )}
+
+          {sidebarTab === 'create' ? (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+                <button className="btn-reset" onClick={resetFormFields}>
+                  ✨ 새 계약서 작성 (New)
+                </button>
+              </div>
+
+              <div className="form-sections-wrapper">
             {/* 1. Contract Info */}
             <div className="form-section-card">
               <h4>📋 ข้อมูลสัญญา (Contract Details)</h4>
@@ -529,11 +822,80 @@ export default function ContractPage() {
             </div>
           </div>
 
-          <div style={{ marginTop: '20px' }}>
-            <button className="btn-print" onClick={handlePrint}>
-              🖨️ พิมพ์เอกสารสัญญา (Print Contract)
-            </button>
-          </div>
+              <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {user ? (
+                  <button 
+                    className="btn-send-link" 
+                    onClick={doSaveContractDraft}
+                    disabled={savingDraft}
+                  >
+                    {savingDraft ? 'กำลังบันทึก... (Saving...)' : '🔗 고객 서명 링크 생성 (Create Sign Link)'}
+                  </button>
+                ) : (
+                  <button 
+                    className="btn-send-link disabled" 
+                    onClick={() => router.push('/auth')}
+                  >
+                    🔑 로그인 후 서명 링크 만들기
+                  </button>
+                )}
+                
+                <button className="btn-print" onClick={handlePrint}>
+                  🖨️ พิมพ์เอกสารสัญญา (Print Contract)
+                </button>
+              </div>
+            </>
+          ) : (
+            /* Tab 2: History List */
+            <div className="history-wrapper">
+              <h4>📋 최근 보낸 계약서 목록</h4>
+              {loadingHistory ? (
+                <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
+                  กำลังโหลดข้อมูล... (Loading...)
+                </div>
+              ) : sentContracts.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '30px', color: '#64748b', fontSize: '13px' }}>
+                  ยังไม่มีประวัติการส่งสัญญา (No contracts sent yet)
+                </div>
+              ) : (
+                <div className="history-list">
+                  {sentContracts.map((c) => (
+                    <div 
+                      key={c.id} 
+                      className={`history-item ${c.status === 'signed' ? 'signed' : 'pending'}`}
+                      onClick={() => loadContractIntoEditor(c)}
+                    >
+                      <div className="history-item-top">
+                        <span className="cust-name">👤 {c.customer_name || 'ไม่ระบุชื่อ'}</span>
+                        <span className={`status-badge ${c.status}`}>
+                          {c.status === 'signed' ? '🟢 서명완료' : '⏳ 대기중'}
+                        </span>
+                      </div>
+                      <div className="history-item-details">
+                        <div>รุ่น: {c.model} {c.capacity}</div>
+                        <div>IMEI: {c.imei}</div>
+                        <div>วันที่: {c.contract_date}</div>
+                      </div>
+                      
+                      {c.status === 'pending_signature' && (
+                        <button 
+                          className="btn-copy-history"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const link = `${window.location.origin}/contract/sign/${c.id}`;
+                            navigator.clipboard.writeText(link);
+                            alert('คัดลอกลิงก์เรียบร้อยแล้ว! (Link copied to clipboard!)');
+                          }}
+                        >
+                          📋 링크 복사 (Copy Link)
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* RIGHT COLUMN: Real A4 Document Preview */}
@@ -826,6 +1188,57 @@ export default function ContractPage() {
         </div>
       )}
 
+      {/* GENERATED LINK MODAL */}
+      {showLinkModal && (
+        <div className="months-modal-overlay" onClick={() => setShowLinkModal(false)}>
+          <div className="months-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="months-modal-header">
+              <span style={{ color: '#10b981' }}>🔗 ลิงก์สำหรับส่งให้ลูกค้า (Client Sign Link)</span>
+              <button 
+                onClick={() => setShowLinkModal(false)} 
+                style={{ background: 'none', border: 'none', fontSize: '22px', cursor: 'pointer', color: '#94a3b8' }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <p className="months-modal-desc">
+              คัดลอกลิงก์ด้านล่างแล้วส่งให้ลูกค้าเพื่อทำการลงลายมือชื่อ (Copy and send this link to the customer)
+            </p>
+
+            <div className="generated-link-box">
+              <input 
+                type="text" 
+                readOnly 
+                value={generatedLink} 
+                className="generated-link-input"
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+              <button 
+                className="btn-print"
+                style={{ flex: 1, background: '#10b981' }}
+                onClick={() => {
+                  navigator.clipboard.writeText(generatedLink);
+                  alert('คัดลอกลิงก์เรียบร้อยแล้ว! (Link copied to clipboard!)');
+                }}
+              >
+                📋 คัดลอกลิงก์ (Copy Link)
+              </button>
+              <button 
+                className="months-modal-close-btn"
+                style={{ flex: 1 }}
+                onClick={() => setShowLinkModal(false)}
+              >
+                닫기 (Close)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* STYLES EMBEDDED TO RENDER SIDEBAR LAYOUT AND PRINT VIEW */}
       <style jsx global>{`
         .contract-container {
@@ -866,6 +1279,187 @@ export default function ContractPage() {
           flex-direction: column;
           gap: 16px;
           flex: 1;
+        }
+
+        /* Sidebar Tab Selection */
+        .sidebar-tabs {
+          display: flex;
+          background: #0b0f19;
+          border: 1px solid #1e293b;
+          border-radius: 8px;
+          padding: 3px;
+          margin-bottom: 16px;
+        }
+        .tab-btn {
+          flex: 1;
+          background: none;
+          border: none;
+          color: #94a3b8;
+          padding: 8px;
+          font-size: 12.5px;
+          font-weight: 700;
+          cursor: pointer;
+          border-radius: 6px;
+          transition: all 0.2s;
+        }
+        .tab-btn.active {
+          background: #1e293b;
+          color: #22d3ee;
+        }
+
+        /* Buttons and Banners */
+        .btn-reset {
+          background: none;
+          border: 1px solid #334155;
+          color: #94a3b8;
+          padding: 6px 10px;
+          font-size: 11px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 600;
+          transition: all 0.2s;
+        }
+        .btn-reset:hover {
+          border-color: #22d3ee;
+          color: #f1f5f9;
+        }
+        .btn-send-link {
+          width: 100%;
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: #ffffff;
+          border: none;
+          padding: 12px;
+          border-radius: 8px;
+          font-weight: 700;
+          cursor: pointer;
+          font-size: 14px;
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+          transition: all 0.2s;
+        }
+        .btn-send-link:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+        }
+        .btn-send-link.disabled {
+          background: #1e293b;
+          color: #64748b;
+          cursor: pointer;
+          box-shadow: none;
+        }
+        .login-banner {
+          background: rgba(34, 211, 238, 0.05);
+          border: 1px dashed rgba(34, 211, 238, 0.2);
+          border-radius: 8px;
+          padding: 12px;
+          margin-bottom: 16px;
+          font-size: 11px;
+          color: #94a3b8;
+          text-align: center;
+        }
+        .btn-login-redirect {
+          background: #22d3ee;
+          color: #0b0f19;
+          border: none;
+          padding: 6px 12px;
+          border-radius: 4px;
+          font-weight: 700;
+          margin-top: 8px;
+          cursor: pointer;
+          font-size: 11px;
+        }
+
+        /* History Items */
+        .history-wrapper {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          text-align: left;
+        }
+        .history-wrapper h4 {
+          font-size: 13px;
+          font-weight: 700;
+          color: #e2e8f0;
+          margin: 0;
+          padding-bottom: 6px;
+          border-bottom: 1px solid #1e293b;
+        }
+        .history-list {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .history-item {
+          background: #131b2e;
+          border: 1px solid #1e293b;
+          border-radius: 10px;
+          padding: 12px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .history-item:hover {
+          border-color: #22d3ee;
+          background: #17223b;
+        }
+        .history-item-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 8px;
+        }
+        .cust-name {
+          font-size: 13px;
+          font-weight: 700;
+          color: #f1f5f9;
+        }
+        .status-badge {
+          font-size: 10px;
+          font-weight: 800;
+          padding: 2px 6px;
+          border-radius: 4px;
+        }
+        .status-badge.pending_signature {
+          background: rgba(245, 158, 11, 0.1);
+          color: #f59e0b;
+        }
+        .status-badge.signed {
+          background: rgba(16, 185, 129, 0.1);
+          color: #10b981;
+        }
+        .history-item-details {
+          font-size: 11.5px;
+          color: #94a3b8;
+          line-height: 1.5;
+        }
+        .btn-copy-history {
+          width: 100%;
+          background: #1e293b;
+          border: 1px solid #334155;
+          color: #e2e8f0;
+          margin-top: 10px;
+          padding: 6px;
+          border-radius: 6px;
+          font-size: 11px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .btn-copy-history:hover {
+          background: #334155;
+          border-color: #22d3ee;
+        }
+
+        /* Generated Link Box */
+        .generated-link-box {
+          margin: 12px 0;
+        }
+        .generated-link-input {
+          width: 100%;
+          background: #0b0f19;
+          border: 1px solid #1e293b;
+          border-radius: 6px;
+          padding: 10px;
+          color: #22d3ee;
+          font-size: 12px;
+          text-align: center;
         }
 
         .form-section-card {
