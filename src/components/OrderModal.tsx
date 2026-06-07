@@ -299,12 +299,12 @@ export default function OrderModal({
           {/* Company Bank Box */}
           <div style={{ background: 'rgba(34,211,238,0.06)', border: '1px solid rgba(34,211,238,0.15)', borderRadius: '10px', padding: '12px', fontSize: '11px', lineHeight: '1.5', color: 'var(--t2)', marginBottom: '16px', textAlign: 'left' }}>
             <div style={{ fontWeight: 700, color: 'var(--cyan)', marginBottom: '6px' }}>
-              🏦 본사 안심 입금 계좌 (Head Office Account)
+              {t('bank_title')}
             </div>
-            <div>은행 / Bank: <b>Kasikornbank (KBank)</b></div>
-            <div>예금주 / Name: <b>Phone Switch Hub</b></div>
+            <div>{t('bank_label_bank')}: <b>Kasikornbank (KBank)</b></div>
+            <div>{t('bank_label_name')}: <b>Phone Switch Hub</b></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', background: 'rgba(34,211,238,0.1)', padding: '6px 10px', borderRadius: '4px' }}>
-              <div>계좌번호 / Account: <b style={{ fontSize: '13px', color: 'var(--cyan)' }}>220-2-61971-4</b></div>
+              <div>{t('bank_label_account')}: <b style={{ fontSize: '13px', color: 'var(--cyan)' }}>220-2-61971-4</b></div>
               <button 
                 type="button" 
                 onClick={copyAccount}

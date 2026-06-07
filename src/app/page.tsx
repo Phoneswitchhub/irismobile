@@ -1009,27 +1009,39 @@ export default function Home() {
             </div>
 
             {/* Budget price range filter */}
-            <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '12px', color: 'var(--t2)', fontWeight: 700, minWidth: '60px' }}>
-                {t('budget_range')}
-              </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
+            <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'left' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '12px', color: 'var(--t2)', fontWeight: 700 }}>
+                  {t('budget_range')}
+                </span>
+                <span style={{ fontSize: '12px', color: 'var(--gold)', fontWeight: 700 }}>
+                  {searchMaxPrice ? `0 ~ ฿${Number(searchMaxPrice).toLocaleString()}` : `0 ~ ฿80,000+ (${t('all') || '전체'})`}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <input 
-                  type="number" 
-                  className="form-input" 
-                  value={searchMinPrice}
-                  onChange={(e) => setSearchMinPrice(e.target.value)}
-                  placeholder={t('min_price')} 
-                  style={{ flex: 1, padding: '8px 10px', fontSize: '12px' }}
-                />
-                <span style={{ color: 'var(--t3)', fontSize: '12px' }}>~</span>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  value={searchMaxPrice}
-                  onChange={(e) => setSearchMaxPrice(e.target.value)}
-                  placeholder={t('max_price')} 
-                  style={{ flex: 1, padding: '8px 10px', fontSize: '12px' }}
+                  type="range" 
+                  min="0" 
+                  max="80000" 
+                  step="1000"
+                  value={searchMaxPrice || '80000'}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '80000') {
+                      setSearchMaxPrice(''); // No limit
+                    } else {
+                      setSearchMaxPrice(val);
+                    }
+                  }}
+                  style={{ 
+                    flex: 1, 
+                    accentColor: 'var(--gold)',
+                    cursor: 'pointer',
+                    height: '6px',
+                    borderRadius: '3px',
+                    background: 'var(--border)',
+                    outline: 'none'
+                  }}
                 />
               </div>
             </div>
