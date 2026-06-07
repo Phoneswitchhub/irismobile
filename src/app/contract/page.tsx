@@ -759,6 +759,14 @@ export default function ContractPage() {
           transition: background-color 5000s ease-in-out 0s;
         }
 
+        /* Force number input spin buttons to show on supported browsers (Chrome, Android, etc.) */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+          -webkit-appearance: inner-spin-button !important;
+          display: block !important;
+          opacity: 1 !important;
+        }
+
         .btn-print {
           width: 100%;
           background: linear-gradient(135deg, #06b6d4, #0891b2);
@@ -977,9 +985,9 @@ export default function ContractPage() {
         }
         .company-seal-stamp {
           position: absolute;
-          width: 220px;
+          width: 450px;
           height: auto;
-          bottom: -45px;
+          bottom: -90px;
           left: 50%;
           transform: translateX(-50%);
           opacity: 0.85;
