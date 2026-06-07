@@ -68,6 +68,47 @@ export default function ContractPage() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
+  // 7. Google Sheets Inventory Autocomplete
+  const [inventory, setInventory] = useState<any[]>([]);
+  const [filteredInventory, setFilteredInventory] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/inventory')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setInventory(data);
+        }
+      })
+      .catch((err) => console.error('Failed to load inventory:', err));
+  }, []);
+
+  const handleImeiChange = (val: string) => {
+    setImei(val);
+    const cleanVal = val.trim();
+    if (cleanVal.length >= 2) {
+      const filtered = inventory.filter((item) =>
+        item.imei.startsWith(cleanVal)
+      );
+      setFilteredInventory(filtered);
+      setShowSuggestions(filtered.length > 0);
+    } else {
+      setFilteredInventory([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const selectItem = (item: any) => {
+    setImei(item.imei);
+    setModel(item.model);
+    setColor(item.color);
+    setSerialNo(item.serialNo);
+    setSellingPrice(item.price);
+    setDownPayment(Math.round(item.price * 0.3));
+    setShowSuggestions(false);
+  };
+
   // Date Formatter helper
   const formatThaiDate = (dateString: string) => {
     if (!dateString) return '';
@@ -291,9 +332,38 @@ export default function ContractPage() {
                   <label className="form-label">Serial No.</label>
                   <input type="text" className="form-input" value={serialNo} onChange={(e) => setSerialNo(e.target.value)} />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">IMEI</label>
-                  <input type="text" className="form-input" value={imei} onChange={(e) => setImei(e.target.value)} />
+                <div className="form-group" style={{ position: 'relative' }}>
+                  <label className="form-label">IMEI (자동완성 / Autocomplete)</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="Type IMEI..." 
+                    value={imei} 
+                    onChange={(e) => handleImeiChange(e.target.value)} 
+                    onFocus={() => {
+                      if (imei.trim().length >= 2 && filteredInventory.length > 0) {
+                        setShowSuggestions(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      // Small delay to allow suggestion click
+                      setTimeout(() => setShowSuggestions(false), 200);
+                    }}
+                  />
+                  {showSuggestions && (
+                    <div className="suggestions-dropdown no-print">
+                      {filteredInventory.map((item, idx) => (
+                        <div 
+                          key={idx} 
+                          className="suggestion-item" 
+                          onMouseDown={() => selectItem(item)}
+                        >
+                          <div className="sug-imei">🔍 {item.imei}</div>
+                          <div className="sug-details">{item.model} • {item.color} • {item.price.toLocaleString()}฿</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="form-grid-2">
@@ -1037,6 +1107,44 @@ export default function ContractPage() {
           .contract-document {
             zoom: 0.45;
           }
+        }
+
+        /* Suggestions Autocomplete Dropdown Styling */
+        .suggestions-dropdown {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          background: #0f172a;
+          border: 1px solid #1e293b;
+          border-radius: 8px;
+          max-height: 200px;
+          overflow-y: auto;
+          z-index: 100;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+        }
+        .suggestion-item {
+          padding: 8px 12px;
+          cursor: pointer;
+          border-bottom: 1px solid #1e293b;
+          transition: background 0.15s;
+          text-align: left;
+        }
+        .suggestion-item:last-child {
+          border-bottom: none;
+        }
+        .suggestion-item:hover {
+          background: #1e293b;
+        }
+        .sug-imei {
+          font-weight: bold;
+          font-size: 12.5px;
+          color: #22d3ee;
+        }
+        .sug-details {
+          font-size: 10.5px;
+          color: #94a3b8;
+          margin-top: 2px;
         }
       `}</style>
     </MobileLayout>
