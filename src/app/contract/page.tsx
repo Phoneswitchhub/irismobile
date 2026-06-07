@@ -40,11 +40,10 @@ export default function ContractPage() {
   const [capacity, setCapacity] = useState('');
   const [serialNo, setSerialNo] = useState('');
   const [imei, setImei] = useState('');
-  const [sellingPrice, setSellingPrice] = useState(0);
-
   // 5. Payment Details States
   const [downPayment, setDownPayment] = useState(0);
-  const [installmentsCount, setInstallmentsCount] = useState(3);
+  const [installmentsCount, setInstallmentsCount] = useState(4);
+  const [installmentAmount, setInstallmentAmount] = useState(0);
   const [downPaymentDate, setDownPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [firstInstallmentDate, setFirstInstallmentDate] = useState(() => {
     const d = new Date();
@@ -52,13 +51,11 @@ export default function ContractPage() {
     return d.toISOString().split('T')[0];
   });
 
-  // Client-side image processing states
-  const [logoSrc, setLogoSrc] = useState<string>('');
-  const [stampSrc, setStampSrc] = useState<string>('');
-
-  // Automatically compute calculations
-  const remainingBalance = Math.max(0, sellingPrice - downPayment);
-  const installmentAmount = installmentsCount > 0 ? Math.round(remainingBalance / installmentsCount) : 0;
+  // Automatically compute calculations based on user input
+  // 3번 (ราคาส่วนที่เหลือชำระ) = 4번 * 5번
+  const remainingBalance = installmentsCount * installmentAmount;
+  // 1번 (ราคาทีทำสัญญา) = 2번 + 3번
+  const sellingPrice = downPayment + remainingBalance;
   
   // Extract installment day
   const installmentDay = firstInstallmentDate ? parseInt(firstInstallmentDate.split('-')[2]) || 7 : 7;
@@ -68,74 +65,6 @@ export default function ContractPage() {
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-
-  // Auto-fill down payment as 30% of price initially, or update on price change
-  useEffect(() => {
-    if (sellingPrice > 0 && downPayment === 0) {
-      setDownPayment(Math.round(sellingPrice * 0.3));
-    }
-  }, [sellingPrice]);
-
-  // Client-side Logo Cropping & Stamp Transparency Processing
-  useEffect(() => {
-    // 1. Crop Logo from contract_template.png
-    const logoImg = new Image();
-    logoImg.src = '/contract_template.png';
-    logoImg.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = 140;
-        canvas.height = 95;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          // Crop from top-left area: sx=35, sy=30, sw=140, sh=95
-          ctx.drawImage(logoImg, 35, 30, 140, 95, 0, 0, 140, 95);
-          setLogoSrc(canvas.toDataURL());
-        }
-      } catch (err) {
-        console.error('Error cropping logo:', err);
-      }
-    };
-
-    // 2. Remove stamp background to make it transparent (누끼따기)
-    const stampImg = new Image();
-    stampImg.src = '/company_stamp.png';
-    stampImg.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = stampImg.width;
-        canvas.height = stampImg.height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(stampImg, 0, 0);
-          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const data = imgData.data;
-          
-          for (let i = 0; i < data.length; i += 4) {
-            const r = data[i];
-            const g = data[i + 1];
-            const b = data[i + 2];
-            // If the pixel is very bright (white/gray paper), set alpha to 0 (transparent)
-            if (r > 185 && g > 185 && b > 185) {
-              data[i + 3] = 0; // Alpha = 0
-            } else {
-              // Boost blue ink color slightly for realistic stamp look
-              const avg = (r + g + b) / 3;
-              if (avg < 155) {
-                data[i] = Math.max(0, r - 30);
-                data[i + 1] = Math.max(0, g - 20);
-                data[i + 2] = Math.min(255, b + 40);
-              }
-            }
-          }
-          ctx.putImageData(imgData, 0, 0);
-          setStampSrc(canvas.toDataURL());
-        }
-      } catch (err) {
-        console.error('Error processing stamp transparency:', err);
-      }
-    };
-  }, []);
 
   // Date Formatter helper
   const formatThaiDate = (dateString: string) => {
@@ -365,9 +294,15 @@ export default function ContractPage() {
                   <input type="text" className="form-input" value={imei} onChange={(e) => setImei(e.target.value)} />
                 </div>
               </div>
-              <div className="form-group">
-                <label className="form-label">ราคา 현금가격 (Price - Cash Price)</label>
-                <input type="number" className="form-input" value={sellingPrice} onChange={(e) => setSellingPrice(Math.max(0, parseInt(e.target.value) || 0))} />
+              <div className="form-grid-2">
+                <div className="form-group">
+                  <label className="form-label">총금액 (Total Price - Calculated)</label>
+                  <input type="text" className="form-input" value={sellingPrice ? sellingPrice.toLocaleString() + ' บาท' : '0 บาท'} disabled style={{ opacity: 0.8, cursor: 'not-allowed' }} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">เงินดาวน์ (Down Payment) *</label>
+                  <input type="number" className="form-input" value={downPayment || ''} onChange={(e) => setDownPayment(Math.max(0, parseInt(e.target.value) || 0))} />
+                </div>
               </div>
             </div>
 
@@ -376,12 +311,12 @@ export default function ContractPage() {
               <h4>💵 รายละเอียดผ่อนชำระ (Installment Parameters)</h4>
               <div className="form-grid-2">
                 <div className="form-group">
-                  <label className="form-label">เงินดาวน์ (Down Payment)</label>
-                  <input type="number" className="form-input" value={downPayment} onChange={(e) => setDownPayment(Math.max(0, parseInt(e.target.value) || 0))} />
+                  <label className="form-label">จำนวนงวดที่ผ่อนชำระ (Installments) *</label>
+                  <input type="number" className="form-input" value={installmentsCount || ''} onChange={(e) => setInstallmentsCount(Math.max(1, parseInt(e.target.value) || 1))} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">จำนวนงวดที่ผ่อนชำระ (Installments)</label>
-                  <input type="number" className="form-input" value={installmentsCount} onChange={(e) => setInstallmentsCount(Math.max(1, parseInt(e.target.value) || 1))} />
+                  <label className="form-label">ชำระงวดละ (Monthly Installment) *</label>
+                  <input type="number" className="form-input" value={installmentAmount || ''} onChange={(e) => setInstallmentAmount(Math.max(0, parseInt(e.target.value) || 0))} />
                 </div>
               </div>
               <div className="form-grid-2">
@@ -411,14 +346,14 @@ export default function ContractPage() {
             {/* Header Brand Area */}
             <div className="doc-header">
               <div style={{ display: 'flex', alignItems: 'center' }}>
-                {logoSrc ? (
-                  <img src={logoSrc} alt="IRIS MOBILE" style={{ width: '65px', height: 'auto', borderRadius: '4px', objectFit: 'contain' }} />
-                ) : (
-                  <div className="logo-box">
-                    <div className="logo-icon">IRIS</div>
-                    <div className="logo-text">MOBILE</div>
-                  </div>
-                )}
+                <img 
+                  src="/iris_logo_official.png" 
+                  alt="IRIS MOBILE" 
+                  style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'contain' }} 
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
               </div>
               
               <div className="title-box">
@@ -575,14 +510,12 @@ export default function ContractPage() {
                   <div className="sig-label">ลงชื่อ</div>
                   <div className="sig-line-wrapper">
                     <div style={{ height: '40px', borderBottom: '1px solid #000', width: '200px', margin: '0 auto' }} />
-                    {/* Official Transparent Company Seal */}
-                    {stampSrc && (
-                      <img 
-                        src={stampSrc} 
-                        alt="Company Seal Stamp" 
-                        className="company-seal-stamp" 
-                      />
-                    )}
+                    {/* Official transparent company stamp seal */}
+                    <img 
+                      src="/company_stamp_transparent.png" 
+                      alt="Company Seal Stamp" 
+                      className="company-seal-stamp" 
+                    />
                   </div>
                   <div className="sig-name">
                     ( บริษัท โฟน สวิตช์ ฮับ จำกัด )
@@ -724,17 +657,30 @@ export default function ContractPage() {
         }
         .form-input, .form-select, .form-textarea {
           width: 100%;
-          background: #0b0f19;
+          background: #0b0f19 !important;
           border: 1px solid #1e293b;
           border-radius: 6px;
           padding: 8px 10px;
-          color: #f1f5f9;
+          color: #f1f5f9 !important;
           font-size: 12.5px;
           font-family: inherit;
         }
         .form-input:focus, .form-select:focus, .form-textarea:focus {
           border-color: #22d3ee;
           outline: none;
+        }
+        /* Override Chrome/Safari/iOS autofill background with dark theme color and light text */
+        .form-input:-webkit-autofill,
+        .form-input:-webkit-autofill:hover, 
+        .form-input:-webkit-autofill:focus, 
+        .form-input:-webkit-autofill:active,
+        .form-textarea:-webkit-autofill,
+        .form-textarea:-webkit-autofill:hover,
+        .form-textarea:-webkit-autofill:focus,
+        .form-textarea:-webkit-autofill:active {
+          -webkit-text-fill-color: #f1f5f9 !important;
+          -webkit-box-shadow: 0 0 0 30px #0b0f19 inset !important;
+          transition: background-color 5000s ease-in-out 0s;
         }
 
         .btn-print {
@@ -773,7 +719,7 @@ export default function ContractPage() {
           min-height: 297mm;
           background: #ffffff;
           color: #333333;
-          padding: 14mm 12mm;
+          padding: 12mm 10mm;
           box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
           font-family: 'Sarabun', 'Helvetica Neue', Arial, sans-serif;
           font-size: 11px;
@@ -986,55 +932,46 @@ export default function ContractPage() {
             height: 297mm !important;
             margin: 0 !important;
             padding: 0 !important;
-            overflow: hidden !important;
+            overflow: visible !important;
+            position: static !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
           
-          .app-shell {
+          /* Hide everything except the contract document */
+          body * {
+            visibility: hidden !important;
+          }
+          #printable-contract-area, #printable-contract-area * {
+            visibility: visible !important;
+          }
+          
+          /* Reset layout constraints of all ancestors so they don't restrict print width or add margins */
+          .app-shell, 
+          .contract-container, 
+          .preview-container {
+            display: block !important;
+            position: static !important;
             max-width: none !important;
             width: 100% !important;
+            height: auto !important;
             margin: 0 !important;
             padding: 0 !important;
             border: none !important;
-            background: #ffffff !important;
-            min-height: auto !important;
+            box-shadow: none !important;
+            background: transparent !important;
+            transform: none !important;
           }
-
-          .no-print {
-            display: none !important;
-          }
-
-          .contract-container {
-            background: #ffffff !important;
-            min-height: auto !important;
-            display: block !important;
-            max-width: none !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-
-          .sidebar {
-            display: none !important;
-          }
-
-          .preview-container {
-            padding: 0 !important;
-            margin: 0 !important;
-            background: #ffffff !important;
-            overflow: visible !important;
-            max-height: none !important;
-            display: block !important;
-            width: 100% !important;
-            max-width: none !important;
-          }
-
-          .contract-document {
+          
+          #printable-contract-area {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
             width: 210mm !important;
             height: 297mm !important;
-            margin: 0 auto !important;
-            padding: 10mm 12mm !important;
+            margin: 0 !important;
+            padding: 12mm 15mm !important;
+            box-sizing: border-box !important;
             box-shadow: none !important;
             border: none !important;
             border-radius: 0 !important;
@@ -1042,7 +979,9 @@ export default function ContractPage() {
             color: #000000 !important;
             page-break-after: avoid !important;
             page-break-before: avoid !important;
-            box-sizing: border-box !important;
+            display: block !important;
+            transform: none !important;
+            zoom: 1 !important;
           }
           
           .parties-grid {
@@ -1061,8 +1000,8 @@ export default function ContractPage() {
           }
         }
 
-        /* Mobile Styles */
-        @media (max-width: 991px) {
+        /* Responsive Screen Styles (Excludes Print) */
+        @media screen and (max-width: 991px) {
           .contract-container {
             flex-direction: column;
           }
@@ -1083,12 +1022,12 @@ export default function ContractPage() {
             transform-origin: top left;
           }
         }
-        @media (max-width: 767px) {
+        @media screen and (max-width: 767px) {
           .contract-document {
             zoom: 0.65;
           }
         }
-        @media (max-width: 479px) {
+        @media screen and (max-width: 479px) {
           .contract-document {
             zoom: 0.45;
           }
