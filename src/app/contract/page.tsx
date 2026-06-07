@@ -40,12 +40,12 @@ export default function ContractPage() {
   const [capacity, setCapacity] = useState('');
   const [serialNo, setSerialNo] = useState('');
   const [imei, setImei] = useState('');
-  const [sellingPrice, setSellingPrice] = useState(0);
+  const [sellingPrice, setSellingPrice] = useState<number | string>(0);
 
   // 5. Payment Details States
-  const [downPayment, setDownPayment] = useState(0);
-  const [installmentsCount, setInstallmentsCount] = useState(4);
-  const [installmentAmount, setInstallmentAmount] = useState(0);
+  const [downPayment, setDownPayment] = useState<number | string>(0);
+  const [installmentsCount, setInstallmentsCount] = useState<number | string>(4);
+  const [installmentAmount, setInstallmentAmount] = useState<number | string>(0);
   const [downPaymentDate, setDownPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [firstInstallmentDate, setFirstInstallmentDate] = useState(() => {
     const d = new Date();
@@ -53,11 +53,15 @@ export default function ContractPage() {
     return d.toISOString().split('T')[0];
   });
 
-  // Automatically compute calculations based on user input
+  // Automatically compute calculations based on user input (converting empty string to 0)
+  const numDownPayment = downPayment === '' ? 0 : Number(downPayment);
+  const numInstallmentsCount = installmentsCount === '' ? 0 : Number(installmentsCount);
+  const numInstallmentAmount = installmentAmount === '' ? 0 : Number(installmentAmount);
+
   // 3번 (ราคาส่วนที่เหลือชำระ) = 4번 * 5번
-  const remainingBalance = installmentsCount * installmentAmount;
+  const remainingBalance = numInstallmentsCount * numInstallmentAmount;
   // 1번 (ราคาทีทำสัญญา) = 2번 + 3번 (This is what is displayed on the printed document)
-  const sellingPriceDoc = downPayment + remainingBalance;
+  const sellingPriceDoc = numDownPayment + remainingBalance;
   
   // Extract installment day
   const installmentDay = firstInstallmentDate ? parseInt(firstInstallmentDate.split('-')[2]) || 7 : 7;
@@ -369,15 +373,17 @@ export default function ContractPage() {
               <div className="form-grid-2">
                 <div className="form-group">
                   <label className="form-label">총금액 (Total Price) *</label>
-                  <input type="number" className="form-input" value={sellingPrice || ''} onChange={(e) => {
-                    const val = Math.max(0, parseInt(e.target.value) || 0);
+                  <input type="number" className="form-input" value={sellingPrice} onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0);
                     setSellingPrice(val);
-                    setDownPayment(Math.round(val * 0.3));
+                    setDownPayment(val === '' ? '' : Math.round(Number(val) * 0.3));
                   }} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">เงินดาวน์ (Down Payment) *</label>
-                  <input type="number" className="form-input" value={downPayment || ''} onChange={(e) => setDownPayment(Math.max(0, parseInt(e.target.value) || 0))} />
+                  <input type="number" className="form-input" value={downPayment} onChange={(e) => {
+                    setDownPayment(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0));
+                  }} />
                 </div>
               </div>
             </div>
@@ -388,11 +394,15 @@ export default function ContractPage() {
               <div className="form-grid-2">
                 <div className="form-group">
                   <label className="form-label">จำนวนงวดที่ผ่อนชำระ (Installments) *</label>
-                  <input type="number" className="form-input" value={installmentsCount || ''} onChange={(e) => setInstallmentsCount(Math.max(1, parseInt(e.target.value) || 1))} />
+                  <input type="number" className="form-input" value={installmentsCount} onChange={(e) => {
+                    setInstallmentsCount(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0));
+                  }} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">ชำระงวดละ (Monthly Installment) *</label>
-                  <input type="number" className="form-input" value={installmentAmount || ''} onChange={(e) => setInstallmentAmount(Math.max(0, parseInt(e.target.value) || 0))} />
+                  <input type="number" className="form-input" value={installmentAmount} onChange={(e) => {
+                    setInstallmentAmount(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0));
+                  }} />
                 </div>
               </div>
               <div className="form-grid-2">
