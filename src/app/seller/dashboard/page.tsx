@@ -36,6 +36,10 @@ export default function SellerDashboard() {
   const [chatRooms, setChatRooms] = useState<any[]>([]);
   const [hasUnreadChats, setHasUnreadChats] = useState(false);
 
+  // Contracts state
+  const [myContracts, setMyContracts] = useState<any[]>([]);
+  const [loadingContracts, setLoadingContracts] = useState(false);
+
   // Profile Form States
   const [profName, setProfName] = useState('');
   const [profStore, setProfStore] = useState('');
@@ -240,21 +244,64 @@ export default function SellerDashboard() {
     }
   }, [sellerProfile]);
 
+  const loadMyContracts = useCallback(async () => {
+    if (!sellerProfile) return;
+    setLoadingContracts(true);
+    try {
+      const { data, error } = await supabase
+        .from('contracts')
+        .select('*')
+        .eq('seller_id', sellerProfile.id)
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        setMyContracts(data);
+      }
+    } catch (e) {
+      console.error('Failed to load seller contracts:', e);
+    } finally {
+      setLoadingContracts(false);
+    }
+  }, [sellerProfile]);
+
+  const handleDeleteSellerContract = async (id: string) => {
+    if (!confirm('정말 이 할부계약서를 영구 삭제하시겠습니까? 삭제 후에는 복구할 수 없습니다.')) return;
+    const { error } = await supabase
+      .from('contracts')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      showToast('❌ 삭제 실패: ' + error.message, 'error');
+      return;
+    }
+    showToast('🗑️ 할부계약서가 삭제되었습니다.', 'success');
+    loadMyContracts();
+  };
+
   const refreshAllData = useCallback(async () => {
     if (!sellerProfile) return;
     await Promise.all([
       loadStats(),
       loadOrders(),
       loadProducts(),
-      loadChatRooms()
+      loadChatRooms(),
+      loadMyContracts()
     ]);
-  }, [sellerProfile, loadStats, loadOrders, loadProducts, loadChatRooms]);
+  }, [sellerProfile, loadStats, loadOrders, loadProducts, loadChatRooms, loadMyContracts]);
 
   useEffect(() => {
     if (sellerProfile) {
       refreshAllData();
     }
   }, [sellerProfile, refreshAllData]);
+
+  // Load contracts when tab becomes active
+  useEffect(() => {
+    if (sellerProfile && activeTab === 'contracts') {
+      loadMyContracts();
+    }
+  }, [activeTab, sellerProfile, loadMyContracts]);
 
   // Periodically refresh chat rooms badge
   useEffect(() => {
@@ -1423,6 +1470,83 @@ export default function SellerDashboard() {
         </div>
       )}
 
+      {/* ==================== VIEW 6: CONTRACTS ==================== */}
+      {activeTab === 'contracts' && (
+        <div className="view-section active animate-slide-up">
+          <div className="main-hd">
+            <h1>✍️ 할부계약서 보관함</h1>
+            <button 
+              className="btn-nav" 
+              onClick={() => router.push('/contract')}
+              style={{ padding: '6px 12px', fontSize: '11px' }}
+            >
+              📝 새 계약서 작성
+            </button>
+          </div>
+
+          <div className="main-body" style={{ textAlign: 'left' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {loadingContracts ? (
+                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--t3)' }}>Loading...</div>
+              ) : myContracts.length === 0 ? (
+                <div className="empty">
+                  <div className="empty-ico">📄</div>
+                  <div className="empty-ttl">보관된 할부계약서가 없습니다.</div>
+                  <button className="btn btn-secondary" onClick={() => router.push('/contract')} style={{ margin: '12px auto 0' }}>
+                    계약서 작성하러 가기
+                  </button>
+                </div>
+              ) : (
+                myContracts.map((c) => {
+                  const isSigned = c.status === 'signed';
+                  const dateStr = new Date(c.created_at).toLocaleDateString();
+                  return (
+                    <div key={c.id} className="card" style={{ padding: '14px', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--card)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--t3)' }}>계약번호: {c.contract_no}</span>
+                        <span className={`badge ${isSigned ? 'bg-green' : 'bg-yellow'}`}>
+                          {isSigned ? '🟢 서명완료' : '⏳ 서명대기'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--t1)' }}>
+                        고객명: {c.customer_name || '미입력'}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--t2)' }}>
+                        기기: {c.model} {c.color} ({c.capacity}) | IMEI: {c.imei || '—'}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--t2)' }}>
+                        할부정보: ฿{c.selling_price?.toLocaleString()} (다운 ฿{c.down_payment?.toLocaleString()} / 월 ฿{c.installment_amount?.toLocaleString()} x {c.installments_count}개월)
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--t3)' }}>
+                        작성일: {dateStr}
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                        <a 
+                          href={`/contract?id=${c.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-sm btn-purple" 
+                          style={{ flex: 1, padding: '8px', fontSize: '11px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          👁️ 보기 / 인쇄
+                        </a>
+                        <button 
+                          className="btn-sm btn-red" 
+                          style={{ padding: '8px 12px', fontSize: '11px' }}
+                          onClick={() => handleDeleteSellerContract(c.id)}
+                        >
+                          🗑️ 삭제
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* BOTTOM TAB BAR */}
       <div className="tab-bar">
         <div className={`tab-item ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => { handleCloseActiveChatPanel(); setActiveTab('overview'); }}>
@@ -1445,6 +1569,10 @@ export default function SellerDashboard() {
         <div className={`tab-item ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => { handleCloseActiveChatPanel(); setActiveTab('orders'); }}>
           <span className="tab-item-icon">📦</span>
           <span>{t('tab_orders_history') || '주문 내역'}</span>
+        </div>
+        <div className={`tab-item ${activeTab === 'contracts' ? 'active' : ''}`} onClick={() => { handleCloseActiveChatPanel(); setActiveTab('contracts'); }}>
+          <span className="tab-item-icon">✍️</span>
+          <span>할부 계약</span>
         </div>
         <div className={`tab-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => { handleCloseActiveChatPanel(); setActiveTab('profile'); }}>
           <span className="tab-item-icon">👤</span>

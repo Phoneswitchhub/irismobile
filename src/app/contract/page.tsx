@@ -116,15 +116,24 @@ export default function ContractPage() {
     checkUser();
   }, []);
 
-  const hasInventoryAccess = useMemo(() => {
-    if (!user) return true; // Preview / Dev mode (allows autocomplete when not logged in)
+  const isAuthorized = useMemo(() => {
+    if (!user) return false;
     return (
       sellerProfile?.store_type === 'direct' ||
-      sellerProfile?.store_name?.toLowerCase().includes('iris') ||
-      sellerProfile?.store_name?.includes('아이ริ스') ||
       sellerProfile?.role === 'admin'
     );
   }, [user, sellerProfile]);
+
+  useEffect(() => {
+    if (!loadingSeller && !user) {
+      router.push('/auth');
+    }
+  }, [user, loadingSeller, router]);
+
+  const hasInventoryAccess = useMemo(() => {
+    if (!user) return true; // Preview / Dev mode (allows autocomplete when not logged in)
+    return isAuthorized;
+  }, [user, isAuthorized]);
 
   const loadHistory = async () => {
     if (!user) return;
@@ -294,6 +303,30 @@ export default function ContractPage() {
 
     setSidebarTab('create');
   };
+
+  // Auto-load contract from URL parameter (?id=...)
+  useEffect(() => {
+    if (loadingSeller) return;
+    const loadContractFromUrl = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const contractId = urlParams.get('id');
+      if (contractId) {
+        try {
+          const { data, error } = await supabase
+            .from('contracts')
+            .select('*')
+            .eq('id', contractId)
+            .single();
+          if (!error && data) {
+            loadContractIntoEditor(data);
+          }
+        } catch (e) {
+          console.error('Failed to load contract from URL:', e);
+        }
+      }
+    };
+    loadContractFromUrl();
+  }, [user, loadingSeller]);
 
   const resetFormFields = () => {
     setContractNo('IRISBUY' + Math.floor(1000 + Math.random() * 9000));
@@ -564,6 +597,53 @@ export default function ContractPage() {
   const handlePrint = () => {
     window.print();
   };
+
+  if (loadingSeller) {
+    return (
+      <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', color: 'var(--t1)' }}>
+        <div style={{ color: 'var(--purple-l)', fontWeight: 700 }}>Checking credentials...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  if (!isAuthorized) {
+    return (
+      <MobileLayout paddingBottom="0" paddingTop="68px">
+        <div className="no-print">
+          <Navbar onLogoClick={() => router.push('/')} />
+        </div>
+        <div style={{ 
+          padding: '40px 20px', 
+          textAlign: 'center', 
+          color: 'var(--t1)', 
+          maxWidth: '480px', 
+          margin: '40px auto 0',
+          background: 'var(--bg3)',
+          borderRadius: 'var(--r)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow)'
+        }}>
+          <div style={{ fontSize: '56px', marginBottom: '16px' }}>🚫</div>
+          <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px', color: 'var(--red)' }}>접근 권한 없음</h3>
+          <p style={{ fontSize: '13px', color: 'var(--t2)', marginBottom: '24px', lineHeight: 1.5 }}>
+            이 페이지는 본사 직영점(Direct Store) 또는 관리자만 접근할 수 있습니다.<br />
+            일반 가맹점/협력사는 이용할 수 없습니다.
+          </p>
+          <button 
+            className="btn-submit" 
+            style={{ margin: 0, width: '100%', justifyContent: 'center' }}
+            onClick={() => router.push('/')}
+          >
+            🏠 메인 홈으로 이동
+          </button>
+        </div>
+      </MobileLayout>
+    );
+  }
 
   return (
     <MobileLayout paddingBottom="0" paddingTop="68px">

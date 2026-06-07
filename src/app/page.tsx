@@ -1551,8 +1551,6 @@ function HomeContent() {
           <a href="/terms" style={{ color: 'var(--t3)', textDecoration: 'underline' }}>{t('footer_terms_of_service')}</a>
           <span style={{ color: 'var(--border)' }}>|</span>
           <a href="/privacy" style={{ color: 'var(--t3)', textDecoration: 'underline' }}>{t('footer_privacy_policy')}</a>
-          <span style={{ color: 'var(--border)' }}>|</span>
-          <a href="/contract" style={{ color: 'var(--cyan)', textDecoration: 'underline', fontWeight: 'bold' }}>✍️ {t('btn_installment_contract')}</a>
         </div>
 
         <div className="footer-copy">© 2026 Phone Switch Hub. All rights reserved.</div>

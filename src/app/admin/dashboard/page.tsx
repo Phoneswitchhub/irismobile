@@ -39,6 +39,12 @@ export default function AdminDashboard() {
   const [chatRooms, setChatRooms] = useState<any[]>([]);
   const [chatMedia, setChatMedia] = useState<any[]>([]);
 
+  // Contracts state
+  const [allContracts, setAllContracts] = useState<any[]>([]);
+  const [loadingContracts, setLoadingContracts] = useState(false);
+  const [contractsSearch, setContractsSearch] = useState('');
+  const [contractsSellerFilter, setContractsSellerFilter] = useState('all');
+
   // Filters
   const [productSellerFilter, setProductSellerFilter] = useState('all');
   const [productCategoryFilter, setProductCategoryFilter] = useState('all');
@@ -250,6 +256,24 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  const loadAllContracts = useCallback(async () => {
+    setLoadingContracts(true);
+    try {
+      const { data, error } = await supabase
+        .from('contracts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        setAllContracts(data);
+      }
+    } catch (e) {
+      console.error('Failed to load contracts:', e);
+    } finally {
+      setLoadingContracts(false);
+    }
+  }, []);
+
   const refreshAllData = useCallback(async () => {
     if (!isAdmin) return;
     await Promise.all([
@@ -258,9 +282,10 @@ export default function AdminDashboard() {
       loadSellers(),
       loadBuyers(),
       loadAllProducts(),
-      loadAllOrders()
+      loadAllOrders(),
+      loadAllContracts()
     ]);
-  }, [isAdmin, loadStats, loadRecentOrders, loadSellers, loadBuyers, loadAllProducts, loadAllOrders]);
+  }, [isAdmin, loadStats, loadRecentOrders, loadSellers, loadBuyers, loadAllProducts, loadAllOrders, loadAllContracts]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -274,8 +299,10 @@ export default function AdminDashboard() {
       loadChatRooms();
     } else if (activePage === 'media') {
       loadChatMedia();
+    } else if (activePage === 'contracts') {
+      loadAllContracts();
     }
-  }, [activePage, loadChatRooms, loadChatMedia]);
+  }, [activePage, loadChatRooms, loadChatMedia, loadAllContracts]);
 
   // 3. User operations
   const handleApproveSeller = async (id: string) => {
@@ -335,6 +362,41 @@ export default function AdminDashboard() {
     }
     showToast('🗑️ User deleted successfully.');
     refreshAllData();
+  };
+
+  const handleToggleDirectStore = async (id: string, currentStoreType: string) => {
+    const nextType = currentStoreType === 'direct' ? 'franchise' : 'direct';
+    const msg = nextType === 'direct' 
+      ? '이 판매자를 직영점으로 지정하시겠습니까? (할부계약서 작성 권한이 부여됩니다)' 
+      : '이 판매자의 직영점 지정을 해제하시겠습니까?';
+    if (!confirm(msg)) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ store_type: nextType })
+      .eq('id', id);
+
+    if (error) {
+      showToast('❌ 변경 실패: ' + error.message, 'error');
+      return;
+    }
+    showToast(`✅ ${nextType === 'direct' ? '직영점으로 지정되었습니다.' : '직영점이 해제되었습니다.'}`, 'success');
+    refreshAllData();
+  };
+
+  const handleDeleteContract = async (id: string) => {
+    if (!confirm('정말 이 할부계약서를 영구 삭제하시겠습니까? 삭제 후에는 복구할 수 없습니다.')) return;
+    const { error } = await supabase
+      .from('contracts')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      showToast('❌ 삭제 실패: ' + error.message, 'error');
+      return;
+    }
+    showToast('🗑️ 할부계약서가 삭제되었습니다.', 'success');
+    loadAllContracts();
   };
 
   const handleResetPin = async (userId: string, phone: string) => {
@@ -820,6 +882,12 @@ export default function AdminDashboard() {
           >
             <span className="ico">🖼️</span> 채팅 미디어 관리
           </button>
+          <button 
+            className={`sb-link ${activePage === 'contracts' ? 'active' : ''}`} 
+            onClick={() => setActivePage('contracts')}
+          >
+            <span className="ico">✍️</span> 할부계약서 관리
+          </button>
           
           <div className="sb-sec-lbl">바로가기</div>
           <button className="sb-link" onClick={() => router.push('/')}>
@@ -1055,6 +1123,13 @@ export default function AdminDashboard() {
                               ) : (
                                 <span className="badge bg-purple">입점 협력사</span>
                               )}
+                              <div style={{ marginTop: '4px' }}>
+                                {s.store_type === 'direct' ? (
+                                  <span className="badge bg-green" style={{ background: '#10b981', color: '#fff', fontSize: '9px', padding: '2px 4px' }}>🏢 본사직영점</span>
+                                ) : (
+                                  <span className="badge bg-gray" style={{ background: '#6b7280', color: '#fff', fontSize: '9px', padding: '2px 4px' }}>🏪 일반대리점</span>
+                                )}
+                              </div>
                             </td>
                             <td style={{ fontSize: '11px', color: 'var(--t2)' }}>
                               <div>📍 {locText}</div>
@@ -1068,6 +1143,21 @@ export default function AdminDashboard() {
                             <td>
                               <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                                 <button className="btn-sm btn-purple" onClick={() => handleOpenPartnerConfig(s)}>⚙️ 설정</button>
+                                <button 
+                                  className="btn-sm" 
+                                  style={{
+                                    background: s.store_type === 'direct' ? '#6b7280' : '#10b981',
+                                    color: '#fff',
+                                    border: 'none',
+                                    padding: '4px 8px',
+                                    fontSize: '11px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer'
+                                  }} 
+                                  onClick={() => handleToggleDirectStore(s.id, s.store_type)}
+                                >
+                                  {s.store_type === 'direct' ? '직영 해제' : '직영 지정'}
+                                </button>
                                 <button className="btn-sm btn-green" onClick={() => handleResetPin(s.id, s.phone)}>🔑 PIN</button>
                                 <button className="btn-sm btn-red" onClick={() => handleSuspendSeller(s.id)}>🚫 정지</button>
                                 <button 
@@ -1547,6 +1637,139 @@ export default function AdminDashboard() {
                             <td style={{ fontSize: '12px', color: 'var(--t3)' }}>{formatDate(m.created_at)}</td>
                             <td>
                               <button className="btn-sm btn-red" onClick={() => handleDeleteChatMedia(m.id, fileUrl)}>🗑️ 삭제</button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== INSTALLMENT CONTRACTS MANAGEMENT PAGE ===== */}
+        {activePage === 'contracts' && (
+          <div className="animate-slide-up">
+            <div className="main-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '24px' }}>
+              <h1>✍️ 할부계약서 관리</h1>
+              <span className="badge bg-purple">{allContracts.length}개</span>
+            </div>
+
+            <div className="main-body" style={{ textAlign: 'left' }}>
+              {/* Search and Filters */}
+              <div style={{ marginBottom: '16px', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <input 
+                  type="text" 
+                  className="form-input"
+                  style={{ width: '240px', padding: '8px 12px', fontSize: '13px' }}
+                  placeholder="고객명 또는 기기 검색..." 
+                  value={contractsSearch}
+                  onChange={(e) => setContractsSearch(e.target.value)}
+                />
+                
+                <select 
+                  className="form-input"
+                  style={{ width: '200px', padding: '8px 12px', fontSize: '13px' }}
+                  value={contractsSellerFilter}
+                  onChange={(e) => setContractsSellerFilter(e.target.value)}
+                >
+                  <option value="all">전체 판매자</option>
+                  {approvedSellers.map(s => (
+                    <option key={s.id} value={s.id}>{s.store_name || s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="tbl-wrap">
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th>계약번호</th>
+                      <th>작성 매장 (판매자)</th>
+                      <th>고객 정보</th>
+                      <th>기기 정보</th>
+                      <th>할부 내용</th>
+                      <th>작성일</th>
+                      <th>서명 상태</th>
+                      <th>처리</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allContracts.filter(c => {
+                      if (contractsSearch.trim()) {
+                        const keyword = contractsSearch.toLowerCase();
+                        const customerMatch = c.customer_name?.toLowerCase().includes(keyword);
+                        const modelMatch = c.model?.toLowerCase().includes(keyword);
+                        const contractNoMatch = c.contract_no?.toLowerCase().includes(keyword);
+                        if (!customerMatch && !modelMatch && !contractNoMatch) return false;
+                      }
+                      if (contractsSellerFilter !== 'all' && c.seller_id !== contractsSellerFilter) {
+                        return false;
+                      }
+                      return true;
+                    }).length === 0 ? (
+                      <tr><td colSpan={8} style={{ textAlign: 'center', padding: '30px', color: 'var(--t3)' }}>내역이 없습니다.</td></tr>
+                    ) : (
+                      allContracts.filter(c => {
+                        if (contractsSearch.trim()) {
+                          const keyword = contractsSearch.toLowerCase();
+                          const customerMatch = c.customer_name?.toLowerCase().includes(keyword);
+                          const modelMatch = c.model?.toLowerCase().includes(keyword);
+                          const contractNoMatch = c.contract_no?.toLowerCase().includes(keyword);
+                          if (!customerMatch && !modelMatch && !contractNoMatch) return false;
+                        }
+                        if (contractsSellerFilter !== 'all' && c.seller_id !== contractsSellerFilter) {
+                          return false;
+                        }
+                        return true;
+                      }).map((c) => {
+                        const isSigned = c.status === 'signed';
+                        const seller = approvedSellers.find(s => s.id === c.seller_id) || pendingSellers.find(s => s.id === c.seller_id);
+                        const sellerDisplay = seller ? `${seller.store_name || seller.name} (${seller.name})` : '알 수 없는 판매자';
+                        
+                        return (
+                          <tr key={c.id}>
+                            <td style={{ fontSize: '11px', color: 'var(--t3)' }}>
+                              <b>{c.contract_no}</b>
+                            </td>
+                            <td>
+                              <div style={{ fontWeight: 600 }}>{sellerDisplay}</div>
+                            </td>
+                            <td>
+                              <div style={{ fontWeight: 600 }}>{c.customer_name || '미입력'}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{c.phone_no || '연락처 없음'}</div>
+                            </td>
+                            <td>
+                              <div style={{ fontWeight: 500 }}>{c.model} {c.color} {c.capacity}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--t3)' }}>IMEI: {c.imei || '—'}</div>
+                            </td>
+                            <td style={{ fontSize: '12px' }}>
+                              총액: <b>฿{c.selling_price?.toLocaleString()}</b><br />
+                              <small style={{ color: 'var(--t2)' }}>다운 ฿{c.down_payment?.toLocaleString()} / 월 ฿{c.installment_amount?.toLocaleString()} x {c.installments_count}개월</small>
+                            </td>
+                            <td style={{ fontSize: '12px', color: 'var(--t3)' }}>
+                              {new Date(c.created_at).toLocaleDateString()}
+                            </td>
+                            <td>
+                              <span className={`badge ${isSigned ? 'bg-green' : 'bg-yellow'}`}>
+                                {isSigned ? '서명완료' : '대기중'}
+                              </span>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', gap: '4px' }}>
+                                <a 
+                                  href={`/contract?id=${c.id}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="btn-sm btn-purple"
+                                  style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                  👁️ 미리보기
+                                </a>
+                                <button className="btn-sm btn-red" onClick={() => handleDeleteContract(c.id)}>🗑️ 삭제</button>
+                              </div>
                             </td>
                           </tr>
                         );
