@@ -72,6 +72,25 @@ export default function ContractPage() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
+  // Resize canvas when modal opens to fill the container resolution dynamically
+  useEffect(() => {
+    if (showSignModal && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const parent = canvas.parentElement;
+      if (parent) {
+        canvas.width = parent.clientWidth;
+        canvas.height = parent.clientHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 4;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+        }
+      }
+    }
+  }, [showSignModal]);
+
   // 7. Google Sheets Inventory Autocomplete
   const [inventory, setInventory] = useState<any[]>([]);
   const [filteredInventory, setFilteredInventory] = useState<any[]>([]);
@@ -616,49 +635,44 @@ export default function ContractPage() {
 
       </div>
 
-      {/* DRAWING SIGNATURE MODAL */}
+      {/* DRAWING SIGNATURE MODAL - FULL SCREEN */}
       {showSignModal && (
-        <div className="modal-bg open" style={{ zIndex: 9999, display: 'flex' }}>
-          <div className="modal" style={{ maxWidth: '500px', width: '90%', padding: '24px', borderRadius: '22px', background: '#ffffff', color: '#333333' }}>
-            <div className="modal-hd" style={{ marginBottom: '16px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
-              <span className="modal-title" style={{ color: '#333', fontSize: '18px', fontWeight: 800 }}>🖊️ เซ็นชื่ออิเล็กทรอนิกส์ (E-Signature)</span>
-              <button className="modal-x" onClick={() => setShowSignModal(false)} style={{ color: '#666' }}>✕</button>
-            </div>
-            
-            <p style={{ fontSize: '12px', color: '#666', marginBottom: '14px', textAlign: 'left' }}>
-              ใช้นิ้วหรือสไตลัสเขียนลงในกรอบสีเทาด้านล่าง (Draw your signature inside the gray box below)
-            </p>
+        <div className="signature-modal-overlay">
+          <div className="signature-modal-header">
+            <span style={{ color: '#333', fontSize: '18px', fontWeight: 800 }}>🖊️ เซ็นชื่ออิเล็กทรอนิกส์ (E-Signature)</span>
+            <button onClick={() => setShowSignModal(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#666' }}>✕</button>
+          </div>
+          
+          <p style={{ fontSize: '12.5px', color: '#666', marginBottom: '10px', textAlign: 'left' }}>
+            ใช้นิ้วหรือสไตลัสเขียนลงในกรอบด้านล่าง (Draw your signature inside the box below)
+          </p>
 
-            <div style={{ border: '2px dashed #cccccc', borderRadius: '12px', overflow: 'hidden', background: '#f9f9f9', display: 'flex', justifyContent: 'center' }}>
-              <canvas
-                ref={canvasRef}
-                width={440}
-                height={200}
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                onTouchStart={startDrawing}
-                onTouchMove={draw}
-                onTouchEnd={stopDrawing}
-                style={{ cursor: 'crosshair', maxWidth: '100%' }}
-              />
-            </div>
+          <div className="signature-canvas-container">
+            <canvas
+              ref={canvasRef}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={startDrawing}
+              onTouchMove={draw}
+              onTouchEnd={stopDrawing}
+            />
+          </div>
 
-            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-              <button 
-                onClick={clearCanvas} 
-                style={{ flex: 1, background: '#f0f0f0', border: '1px solid #ccc', color: '#333', padding: '10px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
-              >
-                🧹 ล้างข้อมูล (Clear)
-              </button>
-              <button 
-                onClick={saveSignature} 
-                style={{ flex: 1, background: '#00A950', border: 'none', color: '#fff', padding: '10px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
-              >
-                ✔️ บันทึก (Save)
-              </button>
-            </div>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '15px' }}>
+            <button 
+              onClick={clearCanvas} 
+              style={{ flex: 1, background: '#f0f0f0', border: '1px solid #ccc', color: '#333', padding: '12px', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', fontSize: '14px' }}
+            >
+              🧹 ล้างข้อมูล (Clear)
+            </button>
+            <button 
+              onClick={saveSignature} 
+              style={{ flex: 1, background: '#00A950', border: 'none', color: '#fff', padding: '12px', borderRadius: '10px', fontWeight: 700, cursor: 'pointer', fontSize: '14px' }}
+            >
+              ✔️ บันทึก (Save)
+            </button>
           </div>
         </div>
       )}
@@ -1065,7 +1079,7 @@ export default function ContractPage() {
             width: 210mm !important;
             height: 297mm !important;
             margin: 0 !important;
-            padding: 12mm 15mm !important;
+            padding: 6mm 6mm !important;
             box-sizing: border-box !important;
             box-shadow: none !important;
             border: none !important;
@@ -1165,6 +1179,44 @@ export default function ContractPage() {
           color: #94a3b8;
           margin-top: 2px;
         }
+
+        /* Full Screen E-Signature Modal Styling */
+        .signature-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: #ffffff;
+          z-index: 99999;
+          display: flex;
+          flex-direction: column;
+          padding: 20px;
+          box-sizing: border-box;
+        }
+        .signature-modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+          border-bottom: 1px solid #eeeeee;
+          padding-bottom: 8px;
+        }
+        .signature-canvas-container {
+          flex: 1;
+          border: 2px dashed #cccccc;
+          border-radius: 12px;
+          background: #f9f9f9;
+          overflow: hidden;
+          position: relative;
+        }
+        .signature-canvas-container canvas {
+          display: block;
+          width: 100%;
+          height: 100%;
+          cursor: crosshair;
+        }
+
       `}</style>
     </MobileLayout>
   );
