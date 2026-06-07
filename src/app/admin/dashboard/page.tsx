@@ -820,7 +820,7 @@ export default function AdminDashboard() {
   if (loadingAdmin) {
     return (
       <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', background: '#eaedf2' }}>
-        <div style={{ color: 'var(--purple-l)', fontWeight: 700 }}>Checking administrator permissions...</div>
+        <div style={{ color: 'var(--purple-l)', fontWeight: 700 }}>{t('checking_admin_perms')}</div>
       </div>
     );
   }
@@ -1183,7 +1183,7 @@ export default function AdminDashboard() {
         {activePage === 'buyers' && (
           <div className="animate-slide-up">
             <div className="main-hd" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '24px' }}>
-              <h1>👥 구매자 관리</h1>
+              <h1>👥 {t('admin_menu_buyers')}</h1>
             </div>
 
             <div className="main-body">
@@ -1191,16 +1191,16 @@ export default function AdminDashboard() {
                 <table className="tbl">
                   <thead>
                     <tr>
-                      <th>이름</th>
-                      <th>전화번호</th>
-                      <th>가입일</th>
-                      <th>주문관리</th>
-                      <th>처리</th>
+                      <th>{t('register_name_label')}</th>
+                      <th>{t('phone_number')}</th>
+                      <th>{t('created_date_label')}</th>
+                      <th>{t('admin_order_manage')}</th>
+                      <th>{t('admin_action')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {buyers.length === 0 ? (
-                      <tr><td colSpan={5} style={{ textAlign: 'center', padding: '30px', color: 'var(--t3)' }}>구매자가 없습니다.</td></tr>
+                      <tr><td colSpan={5} style={{ textAlign: 'center', padding: '30px', color: 'var(--t3)' }}>{t('admin_no_buyers')}</td></tr>
                     ) : (
                       buyers.map((b) => {
                         const orderCount = b.orders?.length || 0;
@@ -1214,13 +1214,13 @@ export default function AdminDashboard() {
                                 className="btn-sm btn-purple" 
                                 onClick={() => setSelectedBuyerForOrders({ id: b.id, name: b.name, orders: b.orders || [] })}
                               >
-                                📦 주문 내역 ({orderCount}건)
+                                📦 {t('admin_order_history_count', { count: orderCount })}
                               </button>
                             </td>
                             <td>
                               <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
                                 <button className="btn-sm btn-green" onClick={() => handleResetPin(b.id, b.phone)}>🔑 PIN</button>
-                                <button className="btn-sm btn-red" onClick={() => handleDeleteUser(b.id)}>🗑️ 삭제</button>
+                                <button className="btn-sm btn-red" onClick={() => handleDeleteUser(b.id)}>🗑️ {t('btn_delete')}</button>
                               </div>
                             </td>
                           </tr>
@@ -1238,38 +1238,38 @@ export default function AdminDashboard() {
         {activePage === 'products' && (
           <div className="animate-slide-up">
             <div className="main-hd" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '24px' }}>
-              <h1>📱 전체 상품 목록</h1>
+              <h1>📱 {t('admin_menu_products')}</h1>
             </div>
 
             <div className="main-body" style={{ textAlign: 'left' }}>
               <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--t2)' }}>판매자 필터:</span>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--t2)' }}>{t('seller_filter')}:</span>
                   <select 
                     value={productSellerFilter} 
                     onChange={(e) => setProductSellerFilter(e.target.value)}
                     className="form-input" 
                     style={{ width: '180px', padding: '8px 12px', fontSize: '13px' }}
                   >
-                    <option value="all">전체 판매자</option>
+                    <option value="all">{t('all_sellers_filter')}</option>
                     {productSellerOptions.map(([id, name]) => (
                       <option key={id} value={id}>{name}</option>
                     ))}
                   </select>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--t2)' }}>카테고리 필터:</span>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--t2)' }}>{t('category_filter')}:</span>
                   <select 
                     value={productCategoryFilter} 
                     onChange={(e) => setProductCategoryFilter(e.target.value)}
                     className="form-input" 
                     style={{ width: '180px', padding: '8px 12px', fontSize: '13px' }}
                   >
-                    <option value="all">전체 카테고리</option>
+                    <option value="all">{t('all_categories_filter')}</option>
                     <option value="iPhone">🍎 iPhone</option>
                     <option value="Samsung">🌟 Samsung</option>
                     <option value="Xiaomi">🔴 Xiaomi</option>
-                    <option value="Other">📦 기타</option>
+                    <option value="Other">📦 {t('category_other')}</option>
                   </select>
                 </div>
               </div>
@@ -1278,20 +1278,20 @@ export default function AdminDashboard() {
                 <table className="tbl">
                   <thead>
                     <tr>
-                      <th>상품명</th>
-                      <th>등급</th>
-                      <th>판매자</th>
-                      <th>카테고리</th>
-                      <th>가격</th>
-                      <th>재고</th>
-                      <th>상태</th>
-                      <th>등록일</th>
-                      <th>처리</th>
+                      <th>{t('product_name_label')}</th>
+                      <th>{t('grade_label')}</th>
+                      <th>{t('product_seller')}</th>
+                      <th>{t('product_category_label')}</th>
+                      <th>{t('product_price_label')}</th>
+                      <th>{t('product_stock_label')}</th>
+                      <th>{t('product_condition')}</th>
+                      <th>{t('created_date_label')}</th>
+                      <th>{t('admin_action')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredProducts.length === 0 ? (
-                      <tr><td colSpan={9} style={{ textAlign: 'center', padding: '30px', color: 'var(--t3)' }}>상품 내역이 없습니다.</td></tr>
+                      <tr><td colSpan={9} style={{ textAlign: 'center', padding: '30px', color: 'var(--t3)' }}>{t('empty_products')}</td></tr>
                     ) : (
                       filteredProducts.map((p) => {
                         const store = p.profiles?.store_name || p.profiles?.name || '—';
@@ -1305,7 +1305,7 @@ export default function AdminDashboard() {
                             <td>{p.stock}</td>
                             <td>
                               <span className={`badge ${p.status === 'active' ? 'bg-green' : 'bg-gray'}`}>
-                                {p.status === 'active' ? '판매중' : p.status === 'hidden' ? '숨김' : p.status}
+                                {p.status === 'active' ? t('product_status_active') : p.status === 'hidden' ? t('product_status_hidden') : p.status}
                               </span>
                             </td>
                             <td style={{ fontSize: '12px', color: 'var(--t3)' }}>{formatDate(p.created_at)}</td>
@@ -1327,19 +1327,19 @@ export default function AdminDashboard() {
         {activePage === 'orders' && (
           <div className="animate-slide-up">
             <div className="main-hd" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '24px' }}>
-              <h1>📦 전체 주문 및 수수료 정산</h1>
+              <h1>📦 {t('admin_menu_orders')}</h1>
             </div>
 
             <div className="main-body" style={{ textAlign: 'left' }}>
               <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--t2)' }}>판매자 필터:</span>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--t2)' }}>{t('seller_filter')}:</span>
                 <select 
                   value={orderSellerFilter}
                   onChange={(e) => setOrderSellerFilter(e.target.value)}
                   className="form-input" 
                   style={{ width: '220px', padding: '8px 12px', fontSize: '13px' }}
                 >
-                  <option value="all">전체 판매자</option>
+                  <option value="all">{t('all_sellers_filter')}</option>
                   {orderSellerOptions.map(([id, name]) => (
                     <option key={id} value={id}>{name}</option>
                   ))}
@@ -1351,40 +1351,40 @@ export default function AdminDashboard() {
                   <table className="tbl">
                     <thead>
                       <tr>
-                        <th>주문번호</th>
-                        <th>구매자/배송지</th>
-                        <th>판매자(정산처)</th>
-                        <th>상품/수량</th>
-                        <th>총금액</th>
-                        <th>결제방식/수수료</th>
-                        <th>정산상태</th>
-                        <th>날짜</th>
-                        <th>주문상태</th>
-                        <th>주문관리</th>
-                        <th>정산처리</th>
-                        <th>삭제</th>
+                        <th>{t('order_id_label')}</th>
+                        <th>{t('order_buyer_address')}</th>
+                        <th>{t('order_seller_payout')}</th>
+                        <th>{t('order_product_qty')}</th>
+                        <th>{t('order_total')}</th>
+                        <th>{t('order_payment_comm')}</th>
+                        <th>{t('payout_label')}</th>
+                        <th>{t('created_date_label')}</th>
+                        <th>{t('order_status')}</th>
+                        <th>{t('admin_order_manage')}</th>
+                        <th>{t('admin_payout_manage')}</th>
+                        <th>{t('btn_delete')}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredOrders.length === 0 ? (
-                        <tr><td colSpan={12} style={{ textAlign: 'center', padding: '30px', color: 'var(--t3)' }}>주문 내역이 없습니다.</td></tr>
+                        <tr><td colSpan={12} style={{ textAlign: 'center', padding: '30px', color: 'var(--t3)' }}>{t('admin_no_orders')}</td></tr>
                       ) : (
                         filteredOrders.map((o) => {
                           const buyerName = o.buyer?.name || '—';
                           const buyerPhone = o.buyer?.phone ? '+66 ' + o.buyer.phone : '';
-                          const delivery = o.delivery_address || '주소 정보 없음';
+                          const delivery = o.delivery_address || t('no_address_info');
                           const store = o.seller?.store_name || o.seller?.name || '—';
-                          const pType = o.seller?.partner_type === 'subsidiary' ? '직영' : '협력';
+                          const pType = o.seller?.partner_type === 'subsidiary' ? t('partner_subsidiary_short') : t('partner_merchant_short');
                           const isCOD = o.payment_method === 'cod';
                           const comm = o.commission_amount ? `฿${Number(o.commission_amount).toLocaleString()}` : '฿0';
                           
                           const depositRequired = isCOD ? Math.round(Number(o.total_price) * 0.03) : Number(o.total_price);
                           const depositConfirmedBadge = o.deposit_confirmed ? (
-                            <div style={{ marginTop: '4px' }}><span className="badge bg-green" style={{ fontSize: '10px', padding: '2px 6px' }}>✅ 입금확인됨</span></div>
+                            <div style={{ marginTop: '4px' }}><span className="badge bg-green" style={{ fontSize: '10px', padding: '2px 6px' }}>✅ {t('order_deposit_confirmed')}</span></div>
                           ) : (
                             <div style={{ marginTop: '4px' }}>
                               <span className="badge bg-yellow" style={{ fontSize: '10px', padding: '2px 6px', fontWeight: 700 }}>
-                                ⏳ 대기: ฿{depositRequired.toLocaleString()} ({isCOD ? '3%' : '100%'})
+                                ⏳ {t('order_deposit_waiting')}: ฿{depositRequired.toLocaleString()} ({isCOD ? '3%' : '100%'})
                               </span>
                             </div>
                           );
@@ -1394,23 +1394,23 @@ export default function AdminDashboard() {
                             if (!o.deposit_confirmed) {
                               adminActions = (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                  <button className="btn-sm btn-green" style={{ padding: '4px 8px', fontSize: '11px', background: 'var(--purple-l)', borderColor: 'var(--purple-l)' }} onClick={() => handleConfirmOrderDeposit(o.id)}>💰 입금 확인</button>
-                                  <button className="btn-sm btn-red" style={{ padding: '4px 8px', fontSize: '11px' }} onClick={() => handleUpdateOrderStatus(o.id, 'cancelled')}>주문취소</button>
+                                  <button className="btn-sm btn-green" style={{ padding: '4px 8px', fontSize: '11px', background: 'var(--purple-l)', borderColor: 'var(--purple-l)' }} onClick={() => handleConfirmOrderDeposit(o.id)}>💰 {t('btn_confirm_deposit')}</button>
+                                  <button className="btn-sm btn-red" style={{ padding: '4px 8px', fontSize: '11px' }} onClick={() => handleUpdateOrderStatus(o.id, 'cancelled')}>{t('order_cancel')}</button>
                                 </div>
                               );
                             } else {
                               adminActions = (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                  <button className="btn-sm btn-green" style={{ padding: '4px 8px', fontSize: '11px' }} onClick={() => handleUpdateOrderStatus(o.id, 'confirmed')}>수락/배송</button>
-                                  <button className="btn-sm btn-red" style={{ padding: '4px 8px', fontSize: '11px' }} onClick={() => handleUpdateOrderStatus(o.id, 'cancelled')}>주문취소</button>
+                                  <button className="btn-sm btn-green" style={{ padding: '4px 8px', fontSize: '11px' }} onClick={() => handleUpdateOrderStatus(o.id, 'confirmed')}>{t('order_confirm')}</button>
+                                  <button className="btn-sm btn-red" style={{ padding: '4px 8px', fontSize: '11px' }} onClick={() => handleUpdateOrderStatus(o.id, 'cancelled')}>{t('order_cancel')}</button>
                                 </div>
                               );
                             }
                           } else if (o.status === 'confirmed') {
                             adminActions = (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <button className="btn-sm btn-blue" style={{ padding: '4px 8px', fontSize: '11px', background: 'rgba(34,211,238,.15)', color: 'var(--cyan)', border: '1px solid rgba(34,211,238,.3)' }} onClick={() => handleUpdateOrderStatus(o.id, 'completed')}>구매승인</button>
-                                <button className="btn-sm btn-red" style={{ padding: '4px 8px', fontSize: '11px' }} onClick={() => handleUpdateOrderStatus(o.id, 'cancelled')}>반송/취소</button>
+                                  <button className="btn-sm btn-blue" style={{ padding: '4px 8px', fontSize: '11px', background: 'rgba(34,211,238,.15)', color: 'var(--cyan)', border: '1px solid rgba(34,211,238,.3)' }} onClick={() => handleUpdateOrderStatus(o.id, 'completed')}>{t('btn_approve_purchase')}</button>
+                                  <button className="btn-sm btn-red" style={{ padding: '4px 8px', fontSize: '11px' }} onClick={() => handleUpdateOrderStatus(o.id, 'cancelled')}>{t('btn_reject_return')}</button>
                               </div>
                             );
                           }
@@ -1422,7 +1422,7 @@ export default function AdminDashboard() {
                               : Number(o.total_price) - Number(o.commission_amount);
                             payoutAmountText = (
                               <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--gold)', marginTop: '2px' }}>
-                                정산액: ฿{payoutAmount.toLocaleString()}
+                                {t('payout_amount')}: ฿{payoutAmount.toLocaleString()}
                               </div>
                             );
                           }
@@ -1434,7 +1434,7 @@ export default function AdminDashboard() {
                                 <div style={{ fontWeight: 600 }}>{buyerName}</div>
                                 <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{buyerPhone}</div>
                                 <div style={{ fontSize: '10px', color: 'var(--t3)', marginTop: '2px', whiteSpace: 'normal', lineHeight: 1.2 }}>🏠 {delivery}</div>
-                                {o.notes && <div style={{ fontSize: '10px', color: 'var(--purple-l)', marginTop: '4px', whiteSpace: 'normal', lineHeight: 1.2, background: 'rgba(139,92,246,0.06)', borderRadius: '4px', padding: '4px 6px' }}>💬 <b>요청:</b> {o.notes}</div>}
+                                {o.notes && <div style={{ fontSize: '10px', color: 'var(--purple-l)', marginTop: '4px', whiteSpace: 'normal', lineHeight: 1.2, background: 'rgba(139,92,246,0.06)', borderRadius: '4px', padding: '4px 6px' }}>💬 <b>{t('order_notes')}:</b> {o.notes}</div>}
                               </td>
                               <td>
                                 <div style={{ fontWeight: 600 }}>{store}</div>
@@ -1442,26 +1442,26 @@ export default function AdminDashboard() {
                               </td>
                               <td>
                                 <div style={{ fontWeight: 500, fontSize: '12px' }}>{o.products?.title || '—'}</div>
-                                <div style={{ fontSize: '11px', color: 'var(--t3)' }}>{o.quantity} 개</div>
+                                <div style={{ fontSize: '11px', color: 'var(--t3)' }}>{o.quantity} {t('order_qty_suffix')}</div>
                               </td>
                               <td style={{ color: 'var(--gold)', fontWeight: 700 }}>{formatPrice(o.total_price)}</td>
                               <td>
-                                <span className={`badge ${isCOD ? 'bg-red' : 'bg-green'}`}>{isCOD ? 'COD 현장결제' : '온라인 송금'}</span>
+                                <span className={`badge ${isCOD ? 'bg-red' : 'bg-green'}`}>{isCOD ? t('order_pay_cod') : t('order_pay_online')}</span>
                                 {depositConfirmedBadge}
                                 {o.slip_url ? (
                                   <div style={{ marginTop: '4px' }}>
                                     <a href={o.slip_url} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 700, color: 'var(--purple-d)', textDecoration: 'underline', fontSize: '11px' }}>
-                                      📄 입금증 보기
+                                      📄 {t('view_slip')}
                                     </a>
                                   </div>
                                 ) : (
-                                  <div style={{ marginTop: '4px', fontSize: '10px', color: 'var(--t3)' }}>📄 입금증 없음</div>
+                                  <div style={{ marginTop: '4px', fontSize: '10px', color: 'var(--t3)' }}>📄 {t('no_slip')}</div>
                                 )}
-                                <div style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '2px' }}>수수료: <b>{comm}</b></div>
+                                <div style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '2px' }}>{t('commission_label')}: <b>{comm}</b></div>
                               </td>
                               <td>
                                 <span className={`badge ${o.payout_status === 'completed' ? 'bg-green' : 'bg-yellow'}`}>
-                                  {o.payout_status === 'completed' ? '정산완료' : '정산대기'}
+                                  {o.payout_status === 'completed' ? t('payout_status_completed') : t('payout_status_pending')}
                                 </span>
                               </td>
                               <td style={{ fontSize: '12px', color: 'var(--t3)' }}>{formatDate(o.created_at)}</td>
@@ -1469,7 +1469,7 @@ export default function AdminDashboard() {
                               <td>{adminActions}</td>
                               <td>
                                 {o.status === 'completed' && o.payout_status !== 'completed' ? (
-                                  <button className="btn-sm btn-green" onClick={() => handleCompletePayout(o.id)}>정산처리</button>
+                                  <button className="btn-sm btn-green" onClick={() => handleCompletePayout(o.id)}>{t('admin_payout_complete')}</button>
                                 ) : (
                                   '—'
                                 )}
@@ -1481,7 +1481,7 @@ export default function AdminDashboard() {
                                   style={{ background: 'rgba(239,68,68,.1)', color: 'var(--red)', border: '1px solid rgba(239,68,68,.2)' }}
                                   onClick={() => handleDeleteOrder(o.id)}
                                 >
-                                  🗑️ 삭제
+                                  🗑️ {t('btn_delete')}
                                 </button>
                               </td>
                             </tr>
@@ -1500,7 +1500,7 @@ export default function AdminDashboard() {
         {activePage === 'chat-rooms' && (
           <div className="animate-slide-up">
             <div className="main-hd" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '24px' }}>
-              <h1>💬 채팅방 관리</h1>
+              <h1>💬 {t('admin_menu_chat')}</h1>
             </div>
 
             <div className="main-body">
@@ -1509,17 +1509,17 @@ export default function AdminDashboard() {
                   <table className="tbl">
                     <thead>
                       <tr>
-                        <th>방 번호 (Room ID)</th>
-                        <th>관련 상품</th>
-                        <th>구매자</th>
-                        <th>판매자</th>
-                        <th>마지막 대화일</th>
-                        <th>처리</th>
+                        <th>{t('chat_room_id')}</th>
+                        <th>{t('chat_related_product')}</th>
+                        <th>{t('role_buyer')}</th>
+                        <th>{t('product_seller')}</th>
+                        <th>{t('chat_last_message_date')}</th>
+                        <th>{t('admin_action')}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {chatRooms.length === 0 ? (
-                        <tr><td colSpan={6} style={{ textAlign: 'center', padding: '30px', color: 'var(--t3)' }}>채팅방 내역이 없습니다.</td></tr>
+                        <tr><td colSpan={6} style={{ textAlign: 'center', padding: '30px', color: 'var(--t3)' }}>{t('admin_no_chat_rooms')}</td></tr>
                       ) : (
                         chatRooms.map((r) => {
                           const buyerInfo = r.buyer ? (
@@ -1549,8 +1549,8 @@ export default function AdminDashboard() {
                               <td style={{ fontSize: '12px', color: 'var(--t3)' }}>{formatDate(r.updated_at || r.created_at)}</td>
                               <td>
                                 <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                                  <button className="btn-sm btn-purple" onClick={() => handleViewChatHistory(r)}>💬 대화 보기</button>
-                                  <button className="btn-sm btn-red" onClick={() => handleDeleteChatRoom(r.id)}>🗑️ 삭제</button>
+                                  <button className="btn-sm btn-purple" onClick={() => handleViewChatHistory(r)}>💬 {t('btn_view_chat')}</button>
+                                  <button className="btn-sm btn-red" onClick={() => handleDeleteChatRoom(r.id)}>🗑️ {t('btn_delete')}</button>
                                 </div>
                               </td>
                             </tr>
@@ -1569,33 +1569,33 @@ export default function AdminDashboard() {
         {activePage === 'media' && (
           <div className="animate-slide-up">
             <div className="main-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '24px' }}>
-              <h1>🖼️ 채팅 미디어 관리</h1>
-              <span className="badge bg-purple">{chatMedia.length}개</span>
+              <h1>🖼️ {t('admin_menu_media')}</h1>
+              <span className="badge bg-purple">{chatMedia.length}{t('order_qty_suffix')}</span>
             </div>
 
             <div className="main-body" style={{ textAlign: 'left' }}>
               <div className="card" style={{ padding: '18px', marginBottom: '20px', background: 'rgba(139, 92, 246, 0.05)', border: '1px dashed var(--border2)', fontSize: '13px', color: 'var(--t2)', lineHeight: '1.5' }}>
-                💡 대화방에 업로드된 사진 및 동영상을 오래된 순으로 검토하고 수동으로 영구 삭제하여 서버 스토리지 용량을 확보할 수 있습니다.
+                💡 {t('admin_media_desc')}
               </div>
 
               <div className="tbl-wrap">
                 <table className="tbl">
                   <thead>
                     <tr>
-                      <th>미디어 파일</th>
-                      <th>유형</th>
-                      <th>대화방 정보</th>
-                      <th>등록한 사람</th>
-                      <th>등록 날짜</th>
-                      <th>처리</th>
+                      <th>{t('media_file')}</th>
+                      <th>{t('media_type')}</th>
+                      <th>{t('media_room_info')}</th>
+                      <th>{t('media_sender')}</th>
+                      <th>{t('created_date_label')}</th>
+                      <th>{t('admin_action')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {chatMedia.length === 0 ? (
-                      <tr><td colSpan={6} style={{ textAlign: 'center', padding: '35px', color: 'var(--t3)' }}>미디어가 존재하지 않습니다.</td></tr>
+                      <tr><td colSpan={6} style={{ textAlign: 'center', padding: '35px', color: 'var(--t3)' }}>{t('admin_no_media')}</td></tr>
                     ) : (
                       chatMedia.map((m) => {
-                        const typeText = m.message_type === 'image' ? '📸 이미지' : '🎥 비디오';
+                        const typeText = m.message_type === 'image' ? `📸 ${t('media_type_image')}` : `🎥 ${t('media_type_video')}`;
                         const fileUrl = m.media_url || m.message;
                         const senderName = m.profiles?.name || '—';
                         const senderPhone = m.profiles?.phone ? '+66 ' + m.profiles.phone : '';
@@ -1617,12 +1617,12 @@ export default function AdminDashboard() {
 
                         const roomInfo = m.room ? (
                           <div>
-                            <div><b>{m.room.products?.title || '상품 정보 없음'}</b></div>
+                            <div><b>{m.room.products?.title || t('no_product_info')}</b></div>
                             <small style={{ color: 'var(--t3)', display: 'block', marginTop: '2px' }}>
-                              구매: {m.room.buyer?.name || '—'} / 판매: {m.room.seller?.store_name || m.room.seller?.name || '—'}
+                              {t('role_buyer')}: {m.room.buyer?.name || '—'} / {t('product_seller')}: {m.room.seller?.store_name || m.room.seller?.name || '—'}
                             </small>
                           </div>
-                        ) : <span style={{ color: 'var(--t3)' }}>대화방 정보 없음</span>;
+                        ) : <span style={{ color: 'var(--t3)' }}>{t('no_room_info')}</span>;
 
                         return (
                           <tr key={m.id}>
@@ -1635,7 +1635,7 @@ export default function AdminDashboard() {
                             </td>
                             <td style={{ fontSize: '12px', color: 'var(--t3)' }}>{formatDate(m.created_at)}</td>
                             <td>
-                              <button className="btn-sm btn-red" onClick={() => handleDeleteChatMedia(m.id, fileUrl)}>🗑️ 삭제</button>
+                              <button className="btn-sm btn-red" onClick={() => handleDeleteChatMedia(m.id, fileUrl)}>🗑️ {t('btn_delete')}</button>
                             </td>
                           </tr>
                         );
@@ -1652,8 +1652,8 @@ export default function AdminDashboard() {
         {activePage === 'contracts' && (
           <div className="animate-slide-up">
             <div className="main-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '24px' }}>
-              <h1>✍️ 할부계약서 관리</h1>
-              <span className="badge bg-purple">{allContracts.length}개</span>
+              <h1>✍️ {t('admin_menu_contracts')}</h1>
+              <span className="badge bg-purple">{allContracts.length}{t('order_qty_suffix')}</span>
             </div>
 
             <div className="main-body" style={{ textAlign: 'left' }}>
@@ -1663,7 +1663,7 @@ export default function AdminDashboard() {
                   type="text" 
                   className="form-input"
                   style={{ width: '240px', padding: '8px 12px', fontSize: '13px' }}
-                  placeholder="고객명 또는 기기 검색..." 
+                  placeholder={t('search_contracts_placeholder')} 
                   value={contractsSearch}
                   onChange={(e) => setContractsSearch(e.target.value)}
                 />
@@ -1674,7 +1674,7 @@ export default function AdminDashboard() {
                   value={contractsSellerFilter}
                   onChange={(e) => setContractsSellerFilter(e.target.value)}
                 >
-                  <option value="all">전체 판매자</option>
+                  <option value="all">{t('all_sellers_filter')}</option>
                   {approvedSellers.map(s => (
                     <option key={s.id} value={s.id}>{s.store_name || s.name}</option>
                   ))}
@@ -1685,14 +1685,14 @@ export default function AdminDashboard() {
                 <table className="tbl">
                   <thead>
                     <tr>
-                      <th>계약번호</th>
-                      <th>작성 매장 (판매자)</th>
-                      <th>고객 정보</th>
-                      <th>기기 정보</th>
-                      <th>할부 내용</th>
-                      <th>작성일</th>
-                      <th>서명 상태</th>
-                      <th>처리</th>
+                      <th>{t('contract_no')}</th>
+                      <th>{t('contract_store_seller')}</th>
+                      <th>{t('contract_customer_info')}</th>
+                      <th>{t('contract_device_info')}</th>
+                      <th>{t('contract_installment_details')}</th>
+                      <th>{t('created_date_label')}</th>
+                      <th>{t('contract_signature_status')}</th>
+                      <th>{t('admin_action')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1709,7 +1709,7 @@ export default function AdminDashboard() {
                       }
                       return true;
                     }).length === 0 ? (
-                      <tr><td colSpan={8} style={{ textAlign: 'center', padding: '30px', color: 'var(--t3)' }}>내역이 없습니다.</td></tr>
+                      <tr><td colSpan={8} style={{ textAlign: 'center', padding: '30px', color: 'var(--t3)' }}>{t('no_contracts')}</td></tr>
                     ) : (
                       allContracts.filter(c => {
                         if (contractsSearch.trim()) {
@@ -1726,7 +1726,7 @@ export default function AdminDashboard() {
                       }).map((c) => {
                         const isSigned = c.status === 'signed';
                         const seller = approvedSellers.find(s => s.id === c.seller_id) || pendingSellers.find(s => s.id === c.seller_id);
-                        const sellerDisplay = seller ? `${seller.store_name || seller.name} (${seller.name})` : '알 수 없는 판매자';
+                        const sellerDisplay = seller ? `${seller.store_name || seller.name} (${seller.name})` : t('unknown_seller');
                         
                         return (
                           <tr key={c.id}>
@@ -1737,23 +1737,23 @@ export default function AdminDashboard() {
                               <div style={{ fontWeight: 600 }}>{sellerDisplay}</div>
                             </td>
                             <td>
-                              <div style={{ fontWeight: 600 }}>{c.customer_name || '미입력'}</div>
-                              <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{c.phone_no || '연락처 없음'}</div>
+                              <div style={{ fontWeight: 600 }}>{c.customer_name || t('unfilled')}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{c.phone_no || t('no_phone_no')}</div>
                             </td>
                             <td>
                               <div style={{ fontWeight: 500 }}>{c.model} {c.color} {c.capacity}</div>
                               <div style={{ fontSize: '11px', color: 'var(--t3)' }}>IMEI: {c.imei || '—'}</div>
                             </td>
                             <td style={{ fontSize: '12px' }}>
-                              총액: <b>฿{c.selling_price?.toLocaleString()}</b><br />
-                              <small style={{ color: 'var(--t2)' }}>다운 ฿{c.down_payment?.toLocaleString()} / 월 ฿{c.installment_amount?.toLocaleString()} x {c.installments_count}개월</small>
+                              {t('total_amount_label')}: <b>฿{c.selling_price?.toLocaleString()}</b><br />
+                              <small style={{ color: 'var(--t2)' }}>{t('down_payment_short')} ฿{c.down_payment?.toLocaleString()} / {t('monthly_amount')} ฿{c.installment_amount?.toLocaleString()} x {c.installments_count}{t('months_unit')}</small>
                             </td>
                             <td style={{ fontSize: '12px', color: 'var(--t3)' }}>
                               {new Date(c.created_at).toLocaleDateString()}
                             </td>
                             <td>
                               <span className={`badge ${isSigned ? 'bg-green' : 'bg-yellow'}`}>
-                                {isSigned ? '서명완료' : '대기중'}
+                                {isSigned ? t('status_signed') : t('status_waiting')}
                               </span>
                             </td>
                             <td>
@@ -1765,9 +1765,9 @@ export default function AdminDashboard() {
                                   className="btn-sm btn-purple"
                                   style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                 >
-                                  👁️ 미리보기
+                                  👁️ {t('btn_preview')}
                                 </a>
-                                <button className="btn-sm btn-red" onClick={() => handleDeleteContract(c.id)}>🗑️ 삭제</button>
+                                <button className="btn-sm btn-red" onClick={() => handleDeleteContract(c.id)}>🗑️ {t('btn_delete')}</button>
                               </div>
                             </td>
                           </tr>
@@ -1787,12 +1787,12 @@ export default function AdminDashboard() {
         <div className="modal-bg open" style={{ display: 'flex', zIndex: 3000 }}>
           <div className="modal animate-slide-up" style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-hd">
-              <span className="modal-title">🏪 판매 파트너 설정</span>
+              <span className="modal-title">🏪 {t('modal_partner_config_title')}</span>
               <button className="modal-x" onClick={() => setSelectedSellerForConfig(null)}>✕</button>
             </div>
             <div style={{ textAlign: 'left' }}>
               <div className="form-group">
-                <label className="form-label">매장명</label>
+                <label className="form-label">{t('store_name_label')}</label>
                 <input 
                   type="text" 
                   className="form-input" 
@@ -1802,19 +1802,19 @@ export default function AdminDashboard() {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">파트너 구분</label>
+                <label className="form-label">{t('modal_partner_type')}</label>
                 <select 
                   className="form-input" 
                   value={confPartnerType}
                   onChange={(e) => setConfPartnerType(e.target.value)}
                 >
-                  <option value="subsidiary">본사 직영점 (자회사)</option>
-                  <option value="partner">외부 입점 대리점 (협력사)</option>
+                  <option value="subsidiary">{t('partner_subsidiary_long')}</option>
+                  <option value="partner">{t('partner_merchant_long')}</option>
                 </select>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 <div className="form-group">
-                  <label className="form-label">수수료율 (%)</label>
+                  <label className="form-label">{t('modal_commission_rate')}</label>
                   <input 
                     type="number" 
                     className="form-input" 
@@ -1824,46 +1824,46 @@ export default function AdminDashboard() {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">정산 방식</label>
+                  <label className="form-label">{t('payout_label')}</label>
                   <select 
                     className="form-input"
                     value={confPayoutMethod}
                     onChange={(e) => setConfPayoutMethod(e.target.value)}
                   >
-                    <option value="parent_payment">플랫폼 직접 수금 후 정산</option>
-                    <option value="cod_commission">COD 배송후 협력사에서 송금</option>
+                    <option value="parent_payment">{t('modal_payout_parent')}</option>
+                    <option value="cod_commission">{t('modal_payout_cod')}</option>
                   </select>
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">매장 소속 지역 (Province)</label>
+                <label className="form-label">{t('store_province')}</label>
                 <select 
                   className="form-input"
                   value={confProvince}
                   onChange={(e) => setConfProvince(e.target.value)}
                 >
-                  <option value="">선택해주세요</option>
+                  <option value="">{t('select_province')}</option>
                   {THAILAND_PROVINCES.map(p => (
                     <option key={p.id} value={p.name_en}>{p.name_en} ({p.name_th})</option>
                   ))}
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">매장 소속 구/군 (District)</label>
+                <label className="form-label">{t('store_district')}</label>
                 <select 
                   className="form-input"
                   value={confDistrict}
                   onChange={(e) => setConfDistrict(e.target.value)}
                   disabled={!confProvince}
                 >
-                  <option value="">선택해주세요</option>
+                  <option value="">{t('select_district')}</option>
                   {districtsList.map(d => (
                     <option key={d.id} value={d.name_en}>{d.name_en} ({d.name_th})</option>
                   ))}
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">매장 주소</label>
+                <label className="form-label">{t('store_detailed_address')}</label>
                 <textarea 
                   className="form-textarea"
                   value={confAddress}
@@ -1871,7 +1871,7 @@ export default function AdminDashboard() {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">지도 GPS 좌표</label>
+                <label className="form-label">{t('store_coords')}</label>
                 <input 
                   type="text" 
                   className="form-input" 
@@ -1882,8 +1882,8 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
-              <button className="btn-submit" onClick={handleSavePartnerConfig} style={{ flex: 1, margin: 0 }}>💾 설정 저장</button>
-              <button className="btn-sm btn-red" onClick={() => setSelectedSellerForConfig(null)} style={{ padding: '14px 20px', borderRadius: 'var(--r)' }}>취소</button>
+              <button className="btn-submit" onClick={handleSavePartnerConfig} style={{ flex: 1, margin: 0 }}>💾 {t('save_btn')}</button>
+              <button className="btn-sm btn-red" onClick={() => setSelectedSellerForConfig(null)} style={{ padding: '14px 20px', borderRadius: 'var(--r)' }}>{t('cancel')}</button>
             </div>
           </div>
         </div>
@@ -1894,23 +1894,23 @@ export default function AdminDashboard() {
         <div className="modal-bg open" style={{ display: 'flex', zIndex: 3000 }}>
           <div className="modal animate-slide-up" style={{ maxWidth: '800px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-hd">
-              <span className="modal-title">📦 {selectedBuyerForOrders.name}님의 주문 내역</span>
+              <span className="modal-title">📦 {t('modal_buyer_orders_title', { name: selectedBuyerForOrders.name })}</span>
               <button className="modal-x" onClick={() => setSelectedBuyerForOrders(null)}>✕</button>
             </div>
             <div className="tbl-wrap" style={{ maxHeight: '400px', overflowY: 'auto' }}>
               <table className="tbl">
                 <thead>
                   <tr>
-                    <th>주문일자</th>
-                    <th>상품명</th>
-                    <th>총 금액</th>
-                    <th>상태</th>
-                    <th>주문관리</th>
+                    <th>{t('created_date_label')}</th>
+                    <th>{t('product_name_label')}</th>
+                    <th>{t('order_total')}</th>
+                    <th>{t('order_status')}</th>
+                    <th>{t('admin_order_manage')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {selectedBuyerForOrders.orders.length === 0 ? (
-                    <tr><td colSpan={5} style={{ textAlign: 'center', padding: '20px', color: 'var(--t3)' }}>주문 내역이 없습니다.</td></tr>
+                    <tr><td colSpan={5} style={{ textAlign: 'center', padding: '20px', color: 'var(--t3)' }}>{t('admin_no_orders')}</td></tr>
                   ) : (
                     [...selectedBuyerForOrders.orders]
                       .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -1923,23 +1923,23 @@ export default function AdminDashboard() {
                           if (!o.deposit_confirmed) {
                             actionButtons = (
                               <div style={{ display: 'flex', gap: '4px' }}>
-                                <button className="btn-sm btn-green" style={{ background: 'var(--purple-l)', borderColor: 'var(--purple-l)' }} onClick={() => handleConfirmOrderDeposit(o.id)}>💰 입금 확인</button>
-                                <button className="btn-sm btn-red" onClick={() => handleUpdateOrderStatus(o.id, 'cancelled')}>취소</button>
+                                <button className="btn-sm btn-green" style={{ background: 'var(--purple-l)', borderColor: 'var(--purple-l)' }} onClick={() => handleConfirmOrderDeposit(o.id)}>💰 {t('btn_confirm_deposit')}</button>
+                                <button className="btn-sm btn-red" onClick={() => handleUpdateOrderStatus(o.id, 'cancelled')}>{t('cancel')}</button>
                               </div>
                             );
                           } else {
                             actionButtons = (
                               <div style={{ display: 'flex', gap: '4px' }}>
-                                <button className="btn-sm btn-green" onClick={() => handleUpdateOrderStatus(o.id, 'confirmed')}>수락/배송</button>
-                                <button className="btn-sm btn-red" onClick={() => handleUpdateOrderStatus(o.id, 'cancelled')}>취소</button>
+                                <button className="btn-sm btn-green" onClick={() => handleUpdateOrderStatus(o.id, 'confirmed')}>{t('btn_ship_start')}</button>
+                                <button className="btn-sm btn-red" onClick={() => handleUpdateOrderStatus(o.id, 'cancelled')}>{t('cancel')}</button>
                               </div>
                             );
                           }
                         } else if (o.status === 'confirmed') {
                           actionButtons = (
                             <div style={{ display: 'flex', gap: '4px' }}>
-                              <button className="btn-sm btn-blue" style={{ background: 'rgba(34,211,238,.15)', color: 'var(--cyan)', border: '1px solid rgba(34,211,238,.3)' }} onClick={() => handleUpdateOrderStatus(o.id, 'completed')}>구매승인</button>
-                              <button className="btn-sm btn-red" onClick={() => handleUpdateOrderStatus(o.id, 'cancelled')}>반송/취소</button>
+                              <button className="btn-sm btn-blue" style={{ background: 'rgba(34,211,238,.15)', color: 'var(--cyan)', border: '1px solid rgba(34,211,238,.3)' }} onClick={() => handleUpdateOrderStatus(o.id, 'completed')}>{t('btn_approve_purchase')}</button>
+                              <button className="btn-sm btn-red" onClick={() => handleUpdateOrderStatus(o.id, 'cancelled')}>{t('btn_reject_return')}</button>
                             </div>
                           );
                         }
@@ -1948,9 +1948,9 @@ export default function AdminDashboard() {
                           <tr key={o.id}>
                             <td style={{ fontSize: '12px', color: 'var(--t3)' }}>{formatDate(o.created_at)}</td>
                             <td style={{ fontWeight: 600, textAlign: 'left' }}>
-                              <div>{o.products?.title || '알 수 없는 상품'}</div>
+                              <div>{o.products?.title || t('unknown_product')}</div>
                               {o.notes && <div style={{ fontSize: '10px', color: 'var(--purple-l)', marginTop: '2px', lineHeight: 1.2 }}>💬 {o.notes}</div>}
-                              {o.slip_url && <div style={{ fontSize: '10px', color: 'var(--purple-d)', marginTop: '2px' }}>📄 <a href={o.slip_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', fontWeight: 700 }}>입금증 보기</a></div>}
+                              {o.slip_url && <div style={{ fontSize: '10px', color: 'var(--purple-d)', marginTop: '2px' }}>📄 <a href={o.slip_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', fontWeight: 700 }}>{t('view_slip')}</a></div>}
                             </td>
                             <td style={{ color: 'var(--gold)', fontWeight: 700 }}>{formatPrice(o.total_price)}</td>
                             <td><span className={`badge ${getStatusBadgeClass(o.status)}`}>{getStatusText(o.status).split(' ')[0]}</span></td>
@@ -1963,7 +1963,7 @@ export default function AdminDashboard() {
               </table>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-              <button className="btn-sm btn-red" onClick={() => setSelectedBuyerForOrders(null)} style={{ padding: '10px 20px', borderRadius: 'var(--r)' }}>닫기</button>
+              <button className="btn-sm btn-red" onClick={() => setSelectedBuyerForOrders(null)} style={{ padding: '10px 20px', borderRadius: 'var(--r)' }}>{t('close')}</button>
             </div>
           </div>
         </div>
@@ -1974,19 +1974,19 @@ export default function AdminDashboard() {
         <div className="modal-bg open" style={{ display: 'flex', zIndex: 3000 }}>
           <div className="modal" style={{ maxWidth: '600px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-hd">
-              <span className="modal-title">{selectedChatRoomForHistory.buyerName} &amp; {selectedChatRoomForHistory.sellerName} 대화 기록</span>
+              <span className="modal-title">{t('modal_chat_history_title', { buyer: selectedChatRoomForHistory.buyerName, seller: selectedChatRoomForHistory.sellerName })}</span>
               <button className="modal-x" onClick={() => setSelectedChatRoomForHistory(null)}>✕</button>
             </div>
             <div 
               style={{ maxHeight: '450px', overflowY: 'auto', padding: '12px', background: 'var(--bg)', borderRadius: 'var(--r-sm)', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}
             >
               {loadingChatHistory ? (
-                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--t3)' }}>대화 내용을 가져오는 중...</div>
+                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--t3)' }}>{t('chat_loading')}</div>
               ) : chatMessagesHistory.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--t3)' }}>나눈 메시지가 없습니다.</div>
+                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--t3)' }}>{t('chat_start')}</div>
               ) : (
                 chatMessagesHistory.map((m) => {
-                  const sender = m.profiles?.name || '알수없음';
+                  const sender = m.profiles?.name || t('unknown');
                   const isSeller = m.profiles?.role === 'seller';
                   const fileUrl = m.media_url || m.message;
                   return (
@@ -1994,7 +1994,7 @@ export default function AdminDashboard() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed rgba(0,0,0,0.05)', paddingBottom: '4px', marginBottom: '4px' }}>
                         <div style={{ fontWeight: 700, fontSize: '12px' }}>
                           <span style={{ fontSize: '10px', color: isSeller ? 'var(--purple-l)' : 'var(--cyan)', background: isSeller ? 'rgba(139,92,246,.15)' : 'rgba(34,211,238,.15)', padding: '1px 4px', borderRadius: '4px', marginRight: '4px' }}>
-                            {isSeller ? '판매자' : '구매자'}
+                            {isSeller ? t('role_seller') : t('role_buyer')}
                           </span>
                           {sender}
                         </div>
@@ -2018,7 +2018,7 @@ export default function AdminDashboard() {
               )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button className="btn-sm btn-red" onClick={() => setSelectedChatRoomForHistory(null)} style={{ padding: '10px 20px', borderRadius: 'var(--r)' }}>닫기</button>
+              <button className="btn-sm btn-red" onClick={() => setSelectedChatRoomForHistory(null)} style={{ padding: '10px 20px', borderRadius: 'var(--r)' }}>{t('close')}</button>
             </div>
           </div>
         </div>

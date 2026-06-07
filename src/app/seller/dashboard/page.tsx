@@ -97,6 +97,16 @@ export default function SellerDashboard() {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
+  const getStatusText = useCallback((status: string) => {
+    const map: Record<string, string> = {
+      pending: `${t('status_pending')} (Pending)`,
+      confirmed: `${t('status_confirmed')} (Shipping)`,
+      completed: `${t('status_completed')} (Completed)`,
+      cancelled: `${t('status_cancelled')} (Cancelled)`
+    };
+    return map[status] || status;
+  }, [t]);
+
   // 1. Auth check guard
   useEffect(() => {
     const checkSeller = async () => {
@@ -265,17 +275,17 @@ export default function SellerDashboard() {
   }, [sellerProfile]);
 
   const handleDeleteSellerContract = async (id: string) => {
-    if (!confirm('정말 이 할부계약서를 영구 삭제하시겠습니까? 삭제 후에는 복구할 수 없습니다.')) return;
+    if (!confirm(t('confirm_delete_contract'))) return;
     const { error } = await supabase
       .from('contracts')
       .delete()
       .eq('id', id);
 
     if (error) {
-      showToast('❌ 삭제 실패: ' + error.message, 'error');
+      showToast(t('error_occurred') + error.message, 'error');
       return;
     }
-    showToast('🗑️ 할부계약서가 삭제되었습니다.', 'success');
+    showToast('🗑️ ' + t('btn_delete'), 'success');
     loadMyContracts();
   };
 
@@ -529,7 +539,7 @@ export default function SellerDashboard() {
 
   const handleSaveShippingInfo = async () => {
     if (!shipTrackingNum.trim()) {
-      showToast('송장 번호를 입력해주세요.', 'error');
+      showToast(t('toast_enter_tracking'), 'error');
       return;
     }
 
@@ -557,7 +567,7 @@ export default function SellerDashboard() {
   };
 
   const handleCancelOrder = async (orderId: string) => {
-    if (!confirm(t('confirm_delete') || '정말 이 주문을 취소하시겠습니까? 상품 재고가 즉시 복구됩니다.')) return;
+    if (!confirm(t('confirm_cancel_order_seller'))) return;
     try {
       const { error } = await supabase
         .from('orders')
@@ -565,7 +575,7 @@ export default function SellerDashboard() {
         .eq('id', orderId);
 
       if (error) throw error;
-      showToast(t('toast_order_returned') || '주문이 취소되어 재고가 복구되었습니다.', 'success');
+      showToast(t('toast_order_returned'), 'success');
       refreshAllData();
     } catch (e: any) {
       showToast(t('error_occurred') + e.message, 'error');
@@ -973,14 +983,14 @@ export default function SellerDashboard() {
                       <div key={o.id} className="mobile-order-card" style={{ background: 'rgba(0,0,0,0.015)' }}>
                         <div className="mobile-order-header">
                           <span style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 700 }}>#{o.id.slice(0, 8)}</span>
-                          <span className={`badge ${statusBadge(o.status)}`}>{statusText(o.status)}</span>
+                          <span className={`badge ${statusBadge(o.status)}`}>{getStatusText(o.status)}</span>
                         </div>
                         <div className="mobile-order-body">
                           <div style={{ fontWeight: 700, color: 'var(--t1)', fontSize: '13px', marginBottom: '6px' }}>
                             {o.products?.title || '—'}
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '12px' }}>
-                            <span>{t('order_qty')}: {o.quantity}개</span>
+                            <span>{t('order_qty')}: {o.quantity}{t('order_qty_suffix')}</span>
                             <span style={{ color: 'var(--gold)', fontWeight: 800, fontSize: '14px' }}>{formatPrice(o.total_price)}</span>
                           </div>
                           <div style={{ background: 'rgba(0,0,0,0.02)', borderRadius: '6px', padding: '8px', fontSize: '11px', marginBottom: '8px' }}>
@@ -988,8 +998,8 @@ export default function SellerDashboard() {
                             <div style={{ marginTop: '4px', color: 'var(--t3)', lineHeight: 1.3 }}>📍 {deliveryAddr}</div>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px' }}>
-                            <div>결제: <span className={`badge ${isCOD ? 'bg-red' : 'bg-green'}`}>{isCOD ? 'COD' : '온라인'}</span></div>
-                            <div style={{ opacity: 0.8 }}>수수료: <b>{commAmount}</b></div>
+                            <div>{t('payment_label')}: <span className={`badge ${isCOD ? 'bg-red' : 'bg-green'}`}>{isCOD ? 'COD' : t('pay_online')}</span></div>
+                            <div style={{ opacity: 0.8 }}>{t('commission_label')}: <b>{commAmount}</b></div>
                           </div>
                         </div>
                       </div>
@@ -1140,7 +1150,7 @@ export default function SellerDashboard() {
                       onClick={handleCloseActiveChatPanel}
                       style={{ background: 'transparent', border: 'none', color: 'var(--purple-l)', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                     >
-                      ◀ <span>{t('cancel') || '목록'}</span>
+                      ◀ <span>{t('cancel')}</span>
                     </button>
                     <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--t1)' }}>
                       {activeChatRoom.buyerName} ({activeChatRoom.productTitle})
@@ -1304,7 +1314,7 @@ export default function SellerDashboard() {
                     <div key={o.id} className="mobile-order-card">
                       <div className="mobile-order-header">
                         <span style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 700 }}>{t('order_id_label')} #{o.id.slice(0, 8)}</span>
-                        <span className={`badge ${statusBadge(o.status)}`}>{statusText(o.status)}</span>
+                        <span className={`badge ${statusBadge(o.status)}`}>{getStatusText(o.status)}</span>
                       </div>
                       <div className="mobile-order-body">
                         <div style={{ fontWeight: 700, color: 'var(--t1)', fontSize: '13px', marginBottom: '6px' }}>
@@ -1314,14 +1324,14 @@ export default function SellerDashboard() {
                           </span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '12px' }}>
-                          <span>{t('order_qty')}: {o.quantity}개</span>
+                          <span>{t('order_qty')}: {o.quantity}{t('order_qty_suffix')}</span>
                           <span style={{ color: 'var(--gold)', fontWeight: 800, fontSize: '14px' }}>{formatPrice(o.total_price)}</span>
                         </div>
                         <div style={{ background: 'rgba(0,0,0,0.02)', borderRadius: '6px', padding: '8px', fontSize: '11px', marginBottom: '8px' }}>
                           <div>👤 <b>{buyerName}</b> ({buyerPhone})</div>
                           <div style={{ marginTop: '4px', color: 'var(--t3)', lineHeight: 1.3 }}>📍 {deliveryAddr}</div>
-                          {o.notes && <div style={{ marginTop: '6px', color: 'var(--purple-l)', background: 'rgba(139,92,246,0.06)', border: '1px dashed rgba(139,92,246,0.15)', borderRadius: '4px', padding: '4px 6px', lineHeight: 1.2 }}>💬 <b>{t('order_notes') || '요청사항'}:</b> {o.notes}</div>}
-                          {o.slip_url && <div style={{ marginTop: '6px', fontSize: '10px' }}>📄 <a href={o.slip_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--purple-d)', textDecoration: 'underline', fontWeight: 700 }}>{t('slip_upload_success') || '입금증 확인'}</a></div>}
+                          {o.notes && <div style={{ marginTop: '6px', color: 'var(--purple-l)', background: 'rgba(139,92,246,0.06)', border: '1px dashed rgba(139,92,246,0.15)', borderRadius: '4px', padding: '4px 6px', lineHeight: 1.2 }}>💬 <b>{t('order_notes')}:</b> {o.notes}</div>}
+                          {o.slip_url && <div style={{ marginTop: '6px', fontSize: '10px' }}>📄 <a href={o.slip_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--purple-d)', textDecoration: 'underline', fontWeight: 700 }}>{t('view_slip')}</a></div>}
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px' }}>
                           <div dangerouslySetInnerHTML={{ __html: `${t('payment_label')}: ${payBadge} / ${t('commission_label')}: ${comm}` }} />
@@ -1474,26 +1484,26 @@ export default function SellerDashboard() {
       {activeTab === 'contracts' && (
         <div className="view-section active animate-slide-up">
           <div className="main-hd">
-            <h1>✍️ 할부계약서 보관함</h1>
+            <h1>✍️ {t('contracts_archive_title')}</h1>
             <button 
               className="btn-nav" 
               onClick={() => router.push('/contract')}
               style={{ padding: '6px 12px', fontSize: '11px' }}
             >
-              📝 새 계약서 작성
+              📝 {t('btn_new_contract')}
             </button>
           </div>
 
           <div className="main-body" style={{ textAlign: 'left' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {loadingContracts ? (
-                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--t3)' }}>Loading...</div>
+                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--t3)' }}>{t('loading_data')}</div>
               ) : myContracts.length === 0 ? (
                 <div className="empty">
                   <div className="empty-ico">📄</div>
-                  <div className="empty-ttl">보관된 할부계약서가 없습니다.</div>
+                  <div className="empty-ttl">{t('no_contracts')}</div>
                   <button className="btn btn-secondary" onClick={() => router.push('/contract')} style={{ margin: '12px auto 0' }}>
-                    계약서 작성하러 가기
+                    {t('go_create_contract')}
                   </button>
                 </div>
               ) : (
@@ -1503,22 +1513,22 @@ export default function SellerDashboard() {
                   return (
                     <div key={c.id} className="card" style={{ padding: '14px', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--card)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '11px', color: 'var(--t3)' }}>계약번호: {c.contract_no}</span>
+                        <span style={{ fontSize: '11px', color: 'var(--t3)' }}>{t('contract_no')}: {c.contract_no}</span>
                         <span className={`badge ${isSigned ? 'bg-green' : 'bg-yellow'}`}>
-                          {isSigned ? '🟢 서명완료' : '⏳ 서명대기'}
+                          {isSigned ? `🟢 ${t('status_signed')}` : `⏳ ${t('status_pending_sign')}`}
                         </span>
                       </div>
                       <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--t1)' }}>
-                        고객명: {c.customer_name || '미입력'}
+                        {t('customer_name_label')}: {c.customer_name || t('unfilled')}
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--t2)' }}>
-                        기기: {c.model} {c.color} ({c.capacity}) | IMEI: {c.imei || '—'}
+                        {t('device_label')}: {c.model} {c.color} ({c.capacity}) | IMEI: {c.imei || '—'}
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--t2)' }}>
-                        할부정보: ฿{c.selling_price?.toLocaleString()} (다운 ฿{c.down_payment?.toLocaleString()} / 월 ฿{c.installment_amount?.toLocaleString()} x {c.installments_count}개월)
+                        {t('installment_info_label')}: ฿{c.selling_price?.toLocaleString()} ({t('down_payment_short')} ฿{c.down_payment?.toLocaleString()} / {t('monthly_amount')} ฿{c.installment_amount?.toLocaleString()} x {c.installments_count}{t('months_unit')})
                       </div>
                       <div style={{ fontSize: '11px', color: 'var(--t3)' }}>
-                        작성일: {dateStr}
+                        {t('created_date_label')}: {dateStr}
                       </div>
                       <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                         <a 
@@ -1528,14 +1538,14 @@ export default function SellerDashboard() {
                           className="btn-sm btn-purple" 
                           style={{ flex: 1, padding: '8px', fontSize: '11px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                         >
-                          👁️ 보기 / 인쇄
+                          👁️ {t('btn_view_print')}
                         </a>
                         <button 
                           className="btn-sm btn-red" 
                           style={{ padding: '8px 12px', fontSize: '11px' }}
                           onClick={() => handleDeleteSellerContract(c.id)}
                         >
-                          🗑️ 삭제
+                          🗑️ {t('btn_delete')}
                         </button>
                       </div>
                     </div>
@@ -1551,11 +1561,11 @@ export default function SellerDashboard() {
       <div className="tab-bar">
         <div className={`tab-item ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => { handleCloseActiveChatPanel(); setActiveTab('overview'); }}>
           <span className="tab-item-icon">📊</span>
-          <span>{t('tab_overview') || '개요'}</span>
+          <span>{t('tab_overview')}</span>
         </div>
         <div className={`tab-item ${activeTab === 'products' ? 'active' : ''}`} onClick={() => { handleCloseActiveChatPanel(); setActiveTab('products'); }}>
           <span className="tab-item-icon">📱</span>
-          <span>{t('tab_my_products') || '내 상품'}</span>
+          <span>{t('tab_my_products')}</span>
         </div>
         <div className={`tab-item ${activeTab === 'chats' ? 'active' : ''}`} onClick={() => setActiveTab('chats')}>
           <span className="tab-item-icon" style={{ position: 'relative' }}>
@@ -1564,19 +1574,19 @@ export default function SellerDashboard() {
               <span style={{ position: 'absolute', top: '-4px', right: '-6px', background: 'var(--red)', width: '8px', height: '8px', borderRadius: '50%' }} />
             )}
           </span>
-          <span>{t('tab_customer_chat') || '문의 채팅'}</span>
+          <span>{t('tab_customer_chat')}</span>
         </div>
         <div className={`tab-item ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => { handleCloseActiveChatPanel(); setActiveTab('orders'); }}>
           <span className="tab-item-icon">📦</span>
-          <span>{t('tab_orders_history') || '주문 내역'}</span>
+          <span>{t('tab_orders_history')}</span>
         </div>
         <div className={`tab-item ${activeTab === 'contracts' ? 'active' : ''}`} onClick={() => { handleCloseActiveChatPanel(); setActiveTab('contracts'); }}>
           <span className="tab-item-icon">✍️</span>
-          <span>할부 계약</span>
+          <span>{t('tab_contracts')}</span>
         </div>
         <div className={`tab-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => { handleCloseActiveChatPanel(); setActiveTab('profile'); }}>
           <span className="tab-item-icon">👤</span>
-          <span>{t('tab_store_profile') || '프로필'}</span>
+          <span>{t('tab_store_profile')}</span>
         </div>
       </div>
 
@@ -1605,7 +1615,7 @@ export default function SellerDashboard() {
                     <option value="iPhone">🍎 iPhone</option>
                     <option value="Samsung">🌟 Samsung</option>
                     <option value="Xiaomi">🔴 Xiaomi</option>
-                    <option value="Other">{t('all_categories') || '기타'}</option>
+                    <option value="Other">{t('category_other')}</option>
                   </select>
                 </div>
               </div>
@@ -1639,7 +1649,7 @@ export default function SellerDashboard() {
                   style={{ padding: '20px', cursor: 'pointer', border: '2px dashed var(--border)', borderRadius: '10px', textAlign: 'center' }}
                 >
                   <div style={{ fontSize: '24px', marginBottom: '4px' }}>📷</div>
-                  <div style={{ fontSize: '11px' }}>{t('click_to_select_images')} <span>(max 10장)</span></div>
+                  <div style={{ fontSize: '11px' }}>{t('click_to_select_images')} <span>(max 10{t('order_qty_suffix')})</span></div>
                 </div>
                 <input type="file" id="pImgInput" accept="image/*" multiple style={{ display: 'none' }} onChange={handleNewImagesSelect} />
                 
@@ -1789,15 +1799,6 @@ export default function SellerDashboard() {
 }
 
 // Helpers
-function statusText(s: string) {
-  const map: Record<string, string> = {
-    pending: '주문 대기 (Pending)',
-    confirmed: '배송 중 (Shipping)',
-    completed: '구매 확정 (Completed)',
-    cancelled: '취소/반송 (Cancelled)'
-  };
-  return map[s] || s;
-}
 
 function statusBadge(s: string) {
   const map: Record<string, string> = {

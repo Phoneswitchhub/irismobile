@@ -818,7 +818,7 @@ export default function ContractPage() {
                   <input type="text" className="form-input" value={serialNo} onChange={(e) => setSerialNo(e.target.value)} />
                 </div>
                 <div className="form-group" style={{ position: 'relative' }}>
-                  <label className="form-label">IMEI (자동완성 / Autocomplete)</label>
+                  <label className="form-label">IMEI ({t('autocomplete')} / Autocomplete)</label>
                   <input 
                     type="text" 
                     className="form-input" 
@@ -853,7 +853,7 @@ export default function ContractPage() {
               </div>
               <div className="form-grid-2">
                 <div className="form-group">
-                  <label className="form-label">총금액 (Total Price) *</label>
+                  <label className="form-label">{t('total_amount_label')} (Total Price) *</label>
                   <input type="number" className="form-input" value={sellingPrice} onChange={(e) => handleSellingPriceChange(e.target.value)} />
                 </div>
                 <div className="form-group">
@@ -877,7 +877,7 @@ export default function ContractPage() {
                   >
                     <span>
                       {installmentsCount 
-                        ? `${installmentsCount} 개월 (${installmentsCount} Months)` 
+                        ? `${installmentsCount} ${t('months_unit')} (${installmentsCount} Months)` 
                         : 'เลือกจำนวนงวด (Select Months)'}
                     </span>
                     <span className="dropdown-arrow">▼</span>
@@ -1230,7 +1230,7 @@ export default function ContractPage() {
                   const closest = getClosestPrice(price);
                   const row = INTEREST_TABLE[closest];
                   if (row) {
-                    previewAmount = `${row[m as 3 | 4 | 6 | 8 | 10].toLocaleString()} ฿/월`;
+                    previewAmount = `${row[m as 3 | 4 | 6 | 8 | 10].toLocaleString()} ฿/${t('month_short')}`;
                   }
                 }
 
@@ -1247,7 +1247,7 @@ export default function ContractPage() {
                   >
                     <div className="option-title">
                       <span className="option-check">{isSelected ? '✓ ' : ''}</span>
-                      {m} 개월 ({m} Months)
+                      {m} ${t('months_unit')} ({m} Months)
                     </div>
                     {previewAmount && (
                       <div className="option-subtitle">
@@ -1263,7 +1263,7 @@ export default function ContractPage() {
               className="months-modal-close-btn"
               onClick={() => setShowMonthsModal(false)}
             >
-              닫기 (Close)
+              {t('close')} (Close)
             </button>
           </div>
         </div>
@@ -1313,7 +1313,7 @@ export default function ContractPage() {
                 style={{ flex: 1 }}
                 onClick={() => setShowLinkModal(false)}
               >
-                닫기 (Close)
+                {t('close')} (Close)
               </button>
             </div>
           </div>
