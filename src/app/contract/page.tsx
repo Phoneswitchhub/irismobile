@@ -52,6 +52,10 @@ export default function ContractPage() {
     return d.toISOString().split('T')[0];
   });
 
+  // Client-side image processing states
+  const [logoSrc, setLogoSrc] = useState<string>('');
+  const [stampSrc, setStampSrc] = useState<string>('');
+
   // Automatically compute calculations
   const remainingBalance = Math.max(0, sellingPrice - downPayment);
   const installmentAmount = installmentsCount > 0 ? Math.round(remainingBalance / installmentsCount) : 0;
@@ -71,6 +75,67 @@ export default function ContractPage() {
       setDownPayment(Math.round(sellingPrice * 0.3));
     }
   }, [sellingPrice]);
+
+  // Client-side Logo Cropping & Stamp Transparency Processing
+  useEffect(() => {
+    // 1. Crop Logo from contract_template.png
+    const logoImg = new Image();
+    logoImg.src = '/contract_template.png';
+    logoImg.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 140;
+        canvas.height = 95;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          // Crop from top-left area: sx=35, sy=30, sw=140, sh=95
+          ctx.drawImage(logoImg, 35, 30, 140, 95, 0, 0, 140, 95);
+          setLogoSrc(canvas.toDataURL());
+        }
+      } catch (err) {
+        console.error('Error cropping logo:', err);
+      }
+    };
+
+    // 2. Remove stamp background to make it transparent (누끼따기)
+    const stampImg = new Image();
+    stampImg.src = '/company_stamp.png';
+    stampImg.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = stampImg.width;
+        canvas.height = stampImg.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(stampImg, 0, 0);
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imgData.data;
+          
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            // If the pixel is very bright (white/gray paper), set alpha to 0 (transparent)
+            if (r > 185 && g > 185 && b > 185) {
+              data[i + 3] = 0; // Alpha = 0
+            } else {
+              // Boost blue ink color slightly for realistic stamp look
+              const avg = (r + g + b) / 3;
+              if (avg < 155) {
+                data[i] = Math.max(0, r - 30);
+                data[i + 1] = Math.max(0, g - 20);
+                data[i + 2] = Math.min(255, b + 40);
+              }
+            }
+          }
+          ctx.putImageData(imgData, 0, 0);
+          setStampSrc(canvas.toDataURL());
+        }
+      } catch (err) {
+        console.error('Error processing stamp transparency:', err);
+      }
+    };
+  }, []);
 
   // Date Formatter helper
   const formatThaiDate = (dateString: string) => {
@@ -345,9 +410,15 @@ export default function ContractPage() {
             
             {/* Header Brand Area */}
             <div className="doc-header">
-              <div className="logo-box">
-                <div className="logo-icon">IRIS</div>
-                <div className="logo-text">MOBILE</div>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                {logoSrc ? (
+                  <img src={logoSrc} alt="IRIS MOBILE" style={{ width: '65px', height: 'auto', borderRadius: '4px', objectFit: 'contain' }} />
+                ) : (
+                  <div className="logo-box">
+                    <div className="logo-icon">IRIS</div>
+                    <div className="logo-text">MOBILE</div>
+                  </div>
+                )}
               </div>
               
               <div className="title-box">
@@ -405,7 +476,7 @@ export default function ContractPage() {
               </div>
 
               {/* Standard text */}
-              <p className="indented-text" style={{ fontSize: '11px', margin: '10px 0 8px', lineHeight: 1.4 }}>
+              <p className="indented-text" style={{ fontSize: '10.5px', margin: '10px 0 8px', lineHeight: 1.4 }}>
                 ซึ่งต่อไปในสัญญาจะเรียกว่า <b>"ผู้เช่าซื้อ"</b> อีกฝ่ายหนึ่ง ทั้งสองฝ่ายตกลงให้เช่าซื้อและเช่าซื้อทรัพย์สินตามรายการทรัพย์สินเช่าซื้อในบัญชีรายการเช่าซื้อด้านล่างนี้ (รวมทั้งส่วนควบ เครื่องอุปกรณ์ อะไหล่ สิ่งที่นำมาแทนของเดิม หรืออื่นๆ)
               </p>
 
@@ -504,12 +575,14 @@ export default function ContractPage() {
                   <div className="sig-label">ลงชื่อ</div>
                   <div className="sig-line-wrapper">
                     <div style={{ height: '40px', borderBottom: '1px solid #000', width: '200px', margin: '0 auto' }} />
-                    {/* Official Company Seal */}
-                    <img 
-                      src="/company_stamp.png" 
-                      alt="Company Seal Stamp" 
-                      className="company-seal-stamp" 
-                    />
+                    {/* Official Transparent Company Seal */}
+                    {stampSrc && (
+                      <img 
+                        src={stampSrc} 
+                        alt="Company Seal Stamp" 
+                        className="company-seal-stamp" 
+                      />
+                    )}
                   </div>
                   <div className="sig-name">
                     ( บริษัท โฟน สวิตช์ ฮับ จำกัด )
@@ -703,7 +776,7 @@ export default function ContractPage() {
           padding: 14mm 12mm;
           box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
           font-family: 'Sarabun', 'Helvetica Neue', Arial, sans-serif;
-          font-size: 11.5px;
+          font-size: 11px;
           line-height: 1.35;
           position: relative;
           box-sizing: border-box;
@@ -715,8 +788,8 @@ export default function ContractPage() {
           justify-content: space-between;
           align-items: flex-start;
           border-bottom: 2px solid #333;
-          padding-bottom: 10px;
-          margin-bottom: 12px;
+          padding-bottom: 8px;
+          margin-bottom: 10px;
         }
 
         /* Logo box replica */
@@ -882,11 +955,11 @@ export default function ContractPage() {
         }
         .company-seal-stamp {
           position: absolute;
-          width: 80px;
+          width: 85px;
           height: auto;
-          bottom: -10px;
-          right: 30px;
-          opacity: 0.85;
+          bottom: -15px;
+          right: 35px;
+          opacity: 0.9;
           pointer-events: none;
         }
         .sig-name {
@@ -901,25 +974,51 @@ export default function ContractPage() {
 
         /* CSS Print Styles */
         @media print {
-          body {
+          @page {
+            size: A4 portrait;
+            margin: 0;
+          }
+          
+          html, body {
             background: #ffffff !important;
             color: #000000 !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
+          
           .app-shell {
-            padding-top: 0 !important;
-            padding-bottom: 0 !important;
+            max-width: none !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            background: #ffffff !important;
+            min-height: auto !important;
           }
+
           .no-print {
             display: none !important;
           }
+
           .contract-container {
             background: #ffffff !important;
             min-height: auto !important;
             display: block !important;
+            max-width: none !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
+
           .sidebar {
             display: none !important;
           }
+
           .preview-container {
             padding: 0 !important;
             margin: 0 !important;
@@ -927,29 +1026,38 @@ export default function ContractPage() {
             overflow: visible !important;
             max-height: none !important;
             display: block !important;
+            width: 100% !important;
+            max-width: none !important;
           }
+
           .contract-document {
             width: 210mm !important;
             height: 297mm !important;
-            margin: 0 !important;
-            padding: 10mm 10mm !important;
+            margin: 0 auto !important;
+            padding: 10mm 12mm !important;
             box-shadow: none !important;
             border: none !important;
             border-radius: 0 !important;
             background: #ffffff !important;
             color: #000000 !important;
-            page-break-after: avoid;
-            page-break-before: avoid;
+            page-break-after: avoid !important;
+            page-break-before: avoid !important;
+            box-sizing: border-box !important;
           }
+          
           .parties-grid {
             background: none !important;
             border: 1px solid #333333 !important;
           }
+          
           .asset-details-box {
             background: none !important;
+            border: 1px solid #333333 !important;
           }
+          
           .calc-row {
             background: none !important;
+            border-bottom: 1px solid #333333 !important;
           }
         }
 
