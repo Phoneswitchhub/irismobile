@@ -1509,9 +1509,50 @@ function HomeContent() {
       )}
 
       {/* FOOTER */}
-      <footer className="footer" style={{ marginTop: '40px' }}>
+      <footer className="footer" style={{ marginTop: '40px', padding: '32px 16px 24px' }}>
         <div className="footer-logo">💎 {t('app_title')}</div>
-        <div className="footer-sub">{t('parent_company')}</div>
+        
+        {/* Company info section */}
+        <div style={{ 
+          fontSize: '12px', 
+          color: 'var(--t2)', 
+          lineHeight: '1.8', 
+          marginBottom: '20px', 
+          maxWidth: '400px', 
+          margin: '0 auto 20px',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--t1)', marginBottom: '4px' }}>
+            {t('parent_company')}
+          </div>
+          <div>{t('footer_registration')}: <b>0105568203279</b></div>
+          <div>
+            {t('footer_address')}: <b>Bangkok, Thailand</b>
+          </div>
+          <div>
+            {t('footer_email')}: <a href="mailto:irismobile.th@gmail.com" style={{ color: 'var(--cyan)', textDecoration: 'none' }}><b>irismobile.th@gmail.com</b></a>
+          </div>
+          <div>
+            {t('footer_phone')}: <a href="tel:0641422271" style={{ color: 'var(--cyan)', textDecoration: 'none' }}><b>064-142-2271</b></a>, <a href="tel:0932351236" style={{ color: 'var(--cyan)', textDecoration: 'none' }}><b>093-235-1236</b></a>
+          </div>
+        </div>
+
+        {/* Policy links */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          gap: '16px', 
+          flexWrap: 'wrap',
+          marginBottom: '20px',
+          fontSize: '11px'
+        }}>
+          <a href="/refund" style={{ color: 'var(--t3)', textDecoration: 'underline' }}>{t('footer_refund_policy')}</a>
+          <span style={{ color: 'var(--border)' }}>|</span>
+          <a href="/terms" style={{ color: 'var(--t3)', textDecoration: 'underline' }}>{t('footer_terms_of_service')}</a>
+          <span style={{ color: 'var(--border)' }}>|</span>
+          <a href="/privacy" style={{ color: 'var(--t3)', textDecoration: 'underline' }}>{t('footer_privacy_policy')}</a>
+        </div>
+
         <div className="footer-copy">© 2026 Phone Switch Hub. All rights reserved.</div>
       </footer>
 

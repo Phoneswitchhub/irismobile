@@ -94,18 +94,20 @@ export default function OrderModal({
       const timer = setTimeout(() => {
         // Only redirect to App Store if the page remains in the foreground (app didn't open)
         if (document.hasFocus() && Date.now() - start < 3000) {
-          window.location.href = `https://apps.apple.com/app/id${iosId}`;
+          window.location.href = `https://apps.apple.com/th/app/id${iosId}`;
         }
       }, 2500);
 
-      // Clear the timer if the page is hidden (meaning the app was successfully opened)
+      // Clear the timer if the page is hidden or blurred (meaning app opened or prompt appeared)
       const clearTimer = () => {
         clearTimeout(timer);
         window.removeEventListener('pagehide', clearTimer);
         window.removeEventListener('visibilitychange', clearTimer);
+        window.removeEventListener('blur', clearTimer);
       };
       window.addEventListener('pagehide', clearTimer);
       window.addEventListener('visibilitychange', clearTimer);
+      window.addEventListener('blur', clearTimer);
 
       window.location.href = `${scheme}://`;
     } else {
