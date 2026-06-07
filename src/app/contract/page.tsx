@@ -40,6 +40,8 @@ export default function ContractPage() {
   const [capacity, setCapacity] = useState('');
   const [serialNo, setSerialNo] = useState('');
   const [imei, setImei] = useState('');
+  const [sellingPrice, setSellingPrice] = useState(0);
+
   // 5. Payment Details States
   const [downPayment, setDownPayment] = useState(0);
   const [installmentsCount, setInstallmentsCount] = useState(4);
@@ -54,8 +56,8 @@ export default function ContractPage() {
   // Automatically compute calculations based on user input
   // 3번 (ราคาส่วนที่เหลือชำระ) = 4번 * 5번
   const remainingBalance = installmentsCount * installmentAmount;
-  // 1번 (ราคาทีทำสัญญา) = 2번 + 3번
-  const sellingPrice = downPayment + remainingBalance;
+  // 1번 (ราคาทีทำสัญญา) = 2번 + 3번 (This is what is displayed on the printed document)
+  const sellingPriceDoc = downPayment + remainingBalance;
   
   // Extract installment day
   const installmentDay = firstInstallmentDate ? parseInt(firstInstallmentDate.split('-')[2]) || 7 : 7;
@@ -296,8 +298,12 @@ export default function ContractPage() {
               </div>
               <div className="form-grid-2">
                 <div className="form-group">
-                  <label className="form-label">총금액 (Total Price - Calculated)</label>
-                  <input type="text" className="form-input" value={sellingPrice ? sellingPrice.toLocaleString() + ' บาท' : '0 บาท'} disabled style={{ opacity: 0.8, cursor: 'not-allowed' }} />
+                  <label className="form-label">총금액 (Total Price) *</label>
+                  <input type="number" className="form-input" value={sellingPrice || ''} onChange={(e) => {
+                    const val = Math.max(0, parseInt(e.target.value) || 0);
+                    setSellingPrice(val);
+                    setDownPayment(Math.round(val * 0.3));
+                  }} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">เงินดาวน์ (Down Payment) *</label>
@@ -428,7 +434,7 @@ export default function ContractPage() {
                   <div style={{ gridColumn: 'span 2' }}><b>IMEI:</b> <span className="fill-value">{imei || '........................................................'}</span></div>
                   
                   <div><b>ประกันสินค้า:</b> โทรศัพท์มือถือ</div>
-                  <div style={{ color: 'var(--red)' }}><b>ราคาขาย:</b> <span className="fill-value" style={{ fontWeight: 'bold' }}>{sellingPrice ? `${sellingPrice.toLocaleString()} บาท` : '.......................... บาท'}</span></div>
+                  <div style={{ color: 'var(--red)' }}><b>ราคาขาย:</b> <span className="fill-value" style={{ fontWeight: 'bold' }}>{sellingPriceDoc ? `${sellingPriceDoc.toLocaleString()} บาท` : '.......................... บาท'}</span></div>
                 </div>
               </div>
 
@@ -437,7 +443,7 @@ export default function ContractPage() {
               <div className="calc-details-box">
                 <div className="calc-row">
                   <span>1.) ราคาทีทำสัญญา</span>
-                  <b>{sellingPrice ? `${sellingPrice.toLocaleString()} บาท` : '.......................... บาท'}</b>
+                  <b>{sellingPriceDoc ? `${sellingPriceDoc.toLocaleString()} บาท` : '.......................... บาท'}</b>
                 </div>
                 <div className="calc-row">
                   <span>2.) เงินดาวน์ (เงินล่วงหน้า) 30% จำนวน</span>
