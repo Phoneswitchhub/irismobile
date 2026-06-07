@@ -89,7 +89,7 @@ export default function ContractPage() {
     const cleanVal = val.trim();
     if (cleanVal.length >= 2) {
       const filtered = inventory.filter((item) =>
-        item.imei.startsWith(cleanVal)
+        item.imei.includes(cleanVal)
       );
       setFilteredInventory(filtered);
       setShowSuggestions(filtered.length > 0);
@@ -977,11 +977,12 @@ export default function ContractPage() {
         }
         .company-seal-stamp {
           position: absolute;
-          width: 85px;
+          width: 220px;
           height: auto;
-          bottom: -15px;
-          right: 35px;
-          opacity: 0.9;
+          bottom: -45px;
+          left: 50%;
+          transform: translateX(-50%);
+          opacity: 0.85;
           pointer-events: none;
         }
         .sig-name {
