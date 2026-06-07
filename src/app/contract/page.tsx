@@ -6,9 +6,11 @@ import MobileLayout from '@/components/MobileLayout';
 import Navbar from '@/components/Navbar';
 import { INTEREST_TABLE, getClosestPrice } from '@/lib/interestTable';
 import { supabase } from '@/lib/supabase';
+import { useTranslation } from '@/lib/i18n';
 
 export default function ContractPage() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   // 1. Contract Meta States
   const [contractNo, setContractNo] = useState('IRISBUY0072');
@@ -246,7 +248,7 @@ export default function ContractPage() {
         .single();
 
       if (error) {
-        alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + error.message + '\n\n💡 Supabase에 contracts 테이블이 생성되었는지 확인해 주세요. (SQL 스키마는 walkthrough.md에 있습니다)');
+        alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + error.message + '\n\n💡 Please check if the contracts table is created in Supabase.');
       } else if (data) {
         const link = `${window.location.origin}/contract/sign/${data.id}`;
         setGeneratedLink(link);
@@ -628,17 +630,16 @@ export default function ContractPage() {
           boxShadow: 'var(--shadow)'
         }}>
           <div style={{ fontSize: '56px', marginBottom: '16px' }}>🚫</div>
-          <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px', color: 'var(--red)' }}>접근 권한 없음</h3>
+          <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px', color: 'var(--red)' }}>{t('access_denied_title')}</h3>
           <p style={{ fontSize: '13px', color: 'var(--t2)', marginBottom: '24px', lineHeight: 1.5 }}>
-            이 페이지는 본사 직영점(Direct Store) 또는 관리자만 접근할 수 있습니다.<br />
-            일반 가맹점/협력사는 이용할 수 없습니다.
+            {t('access_denied_desc')}
           </p>
           <button 
             className="btn-submit" 
             style={{ margin: 0, width: '100%', justifyContent: 'center' }}
             onClick={() => router.push('/')}
           >
-            🏠 메인 홈으로 이동
+            🏠 {t('go_home_button')}
           </button>
         </div>
       </MobileLayout>
@@ -668,22 +669,22 @@ export default function ContractPage() {
                 className={`tab-btn ${sidebarTab === 'create' ? 'active' : ''}`}
                 onClick={() => setSidebarTab('create')}
               >
-                ✍️ 계약서 작성 (Create)
+                ✍️ {t('tab_contracts')} (Create)
               </button>
               <button 
                 className={`tab-btn ${sidebarTab === 'history' ? 'active' : ''}`}
                 onClick={() => setSidebarTab('history')}
               >
-                📋 보낸 내역 (Sent)
+                📋 {t('recent_contracts_sent')} (Sent)
               </button>
             </div>
           )}
 
           {!user && !loadingSeller && (
             <div className="login-banner">
-              <p>로그인하시면 고객에게 전송하는 서명 링크를 만들고 관리할 수 있습니다.</p>
+              <p>{t('contract_login_required_desc')}</p>
               <button className="btn-login-redirect" onClick={() => router.push('/auth')}>
-                🔑 로그인하러 가기 (Go to Login)
+                🔑 {t('login_or_register')} (Go to Login)
               </button>
             </div>
           )}
@@ -692,7 +693,7 @@ export default function ContractPage() {
             <>
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
                 <button className="btn-reset" onClick={resetFormFields}>
-                  ✨ 새 계약서 작성 (New)
+                  ✨ {t('btn_new_contract')} (New)
                 </button>
               </div>
 
@@ -909,14 +910,14 @@ export default function ContractPage() {
                     onClick={doSaveContractDraft}
                     disabled={savingDraft}
                   >
-                    {savingDraft ? 'กำลังบันทึก... (Saving...)' : '🔗 고객 서명 링크 생성 (Create Sign Link)'}
+                    {savingDraft ? 'กำลังบันทึก... (Saving...)' : t('btn_create_sign_link')}
                   </button>
                 ) : (
                   <button 
                     className="btn-send-link disabled" 
                     onClick={() => router.push('/auth')}
                   >
-                    🔑 로그인 후 서명 링크 만들기
+                    {t('btn_login_to_create_link')}
                   </button>
                 )}
                 
@@ -928,14 +929,14 @@ export default function ContractPage() {
           ) : (
             /* Tab 2: History List */
             <div className="history-wrapper">
-              <h4>📋 최근 보낸 계약서 목록</h4>
+              <h4>{t('recent_contracts_sent')}</h4>
               {loadingHistory ? (
                 <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
-                  กำลังโหลดข้อมูล... (Loading...)
+                  {t('loading')}
                 </div>
               ) : sentContracts.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '30px', color: '#64748b', fontSize: '13px' }}>
-                  ยังไม่มีประวัติการส่งสัญญา (No contracts sent yet)
+                  {t('no_contracts')}
                 </div>
               ) : (
                 <div className="history-list">
@@ -948,7 +949,7 @@ export default function ContractPage() {
                       <div className="history-item-top">
                         <span className="cust-name">👤 {c.customer_name || 'ไม่ระบุชื่อ'}</span>
                         <span className={`status-badge ${c.status}`}>
-                          {c.status === 'signed' ? '🟢 서명완료' : '⏳ 대기중'}
+                          {c.status === 'signed' ? `🟢 ${t('status_signed')}` : `⏳ ${t('status_waiting')}`}
                         </span>
                       </div>
                       <div className="history-item-details">
@@ -967,7 +968,7 @@ export default function ContractPage() {
                             alert('คัดลอกลิงก์เรียบร้อยแล้ว! (Link copied to clipboard!)');
                           }}
                         >
-                          📋 링크 복사 (Copy Link)
+                          {t('btn_copy_link')}
                         </button>
                       )}
                     </div>

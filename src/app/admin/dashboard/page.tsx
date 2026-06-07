@@ -9,7 +9,7 @@ import { THAILAND_PROVINCES, Province, District } from '@/lib/addresses';
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
 
   // Authentication & Profile States
   const [isAdmin, setIsAdmin] = useState(false);
@@ -367,8 +367,8 @@ export default function AdminDashboard() {
   const handleToggleDirectStore = async (id: string, currentStoreType: string) => {
     const nextType = currentStoreType === 'direct' ? 'franchise' : 'direct';
     const msg = nextType === 'direct' 
-      ? '이 판매자를 직영점으로 지정하시겠습니까? (할부계약서 작성 권한이 부여됩니다)' 
-      : '이 판매자의 직영점 지정을 해제하시겠습니까?';
+      ? 'Set this seller as a Direct Store? (Authorized to write installment contracts)' 
+      : 'Unset this seller from Direct Store?';
     if (!confirm(msg)) return;
 
     const { error } = await supabase
@@ -377,25 +377,25 @@ export default function AdminDashboard() {
       .eq('id', id);
 
     if (error) {
-      showToast('❌ 변경 실패: ' + error.message, 'error');
+      showToast('❌ Change failed: ' + error.message, 'error');
       return;
     }
-    showToast(`✅ ${nextType === 'direct' ? '직영점으로 지정되었습니다.' : '직영점이 해제되었습니다.'}`, 'success');
+    showToast(`✅ ${nextType === 'direct' ? 'Set as Direct Store successfully.' : 'Unset from Direct Store successfully.'}`, 'success');
     refreshAllData();
   };
 
   const handleDeleteContract = async (id: string) => {
-    if (!confirm('정말 이 할부계약서를 영구 삭제하시겠습니까? 삭제 후에는 복구할 수 없습니다.')) return;
+    if (!confirm('Are you sure you want to permanently delete this installment contract? This cannot be undone.')) return;
     const { error } = await supabase
       .from('contracts')
       .delete()
       .eq('id', id);
 
     if (error) {
-      showToast('❌ 삭제 실패: ' + error.message, 'error');
+      showToast('❌ Delete failed: ' + error.message, 'error');
       return;
     }
-    showToast('🗑️ 할부계약서가 삭제되었습니다.', 'success');
+    showToast('🗑_ Installment contract deleted.', 'success');
     loadAllContracts();
   };
 
@@ -799,10 +799,10 @@ export default function AdminDashboard() {
 
   const getStatusText = (status: string) => {
     const map: Record<string, string> = {
-      pending: '주문 대기 (Pending)',
-      confirmed: '배송 중 (Shipping)',
-      completed: '구매 확정 (Completed)',
-      cancelled: '취소/반송 (Cancelled)'
+      pending: `${t('status_pending')} (Pending)`,
+      confirmed: `${t('status_confirmed')} (Shipping)`,
+      completed: `${t('status_completed')} (Completed)`,
+      cancelled: `${t('status_cancelled')} (Cancelled)`
     };
     return map[status] || status;
   };
@@ -839,59 +839,59 @@ export default function AdminDashboard() {
         </div>
 
         <nav className="sb-nav">
-          <div className="sb-sec-lbl">관리자 메뉴</div>
+          <div className="sb-sec-lbl">{t('admin_menu_title')}</div>
           <button 
             className={`sb-link ${activePage === 'overview' ? 'active' : ''}`} 
             onClick={() => setActivePage('overview')}
           >
-            <span className="ico">📊</span> 개요
+            <span className="ico">📊</span> {t('tab_overview')}
           </button>
           <button 
             className={`sb-link ${activePage === 'sellers' ? 'active' : ''}`} 
             onClick={() => setActivePage('sellers')}
           >
-            <span className="ico">💼</span> 판매자 관리
+            <span className="ico">💼</span> {t('admin_menu_sellers')}
           </button>
           <button 
             className={`sb-link ${activePage === 'buyers' ? 'active' : ''}`} 
             onClick={() => setActivePage('buyers')}
           >
-            <span className="ico">👥</span> 구매자 관리
+            <span className="ico">👥</span> {t('admin_menu_buyers')}
           </button>
           <button 
             className={`sb-link ${activePage === 'products' ? 'active' : ''}`} 
             onClick={() => setActivePage('products')}
           >
-            <span className="ico">📱</span> 전체 상품
+            <span className="ico">📱</span> {t('admin_menu_products')}
           </button>
           <button 
             className={`sb-link ${activePage === 'orders' ? 'active' : ''}`} 
             onClick={() => setActivePage('orders')}
           >
-            <span className="ico">📦</span> 전체 주문/정산
+            <span className="ico">📦</span> {t('admin_menu_orders')}
           </button>
           <button 
             className={`sb-link ${activePage === 'chat-rooms' ? 'active' : ''}`} 
             onClick={() => setActivePage('chat-rooms')}
           >
-            <span className="ico">💬</span> 채팅방 관리
+            <span className="ico">💬</span> {t('admin_menu_chat')}
           </button>
           <button 
             className={`sb-link ${activePage === 'media' ? 'active' : ''}`} 
             onClick={() => setActivePage('media')}
           >
-            <span className="ico">🖼️</span> 채팅 미디어 관리
+            <span className="ico">🖼️</span> {t('admin_menu_media')}
           </button>
           <button 
             className={`sb-link ${activePage === 'contracts' ? 'active' : ''}`} 
             onClick={() => setActivePage('contracts')}
           >
-            <span className="ico">✍️</span> 할부계약서 관리
+            <span className="ico">✍️</span> {t('admin_menu_contracts')}
           </button>
           
-          <div className="sb-sec-lbl">바로가기</div>
+          <div className="sb-sec-lbl">Shortcuts</div>
           <button className="sb-link" onClick={() => router.push('/')}>
-            <span className="ico">🏠</span> 메인 홈
+            <span className="ico">🏠</span> {t('admin_menu_home')}
           </button>
         </nav>
 
@@ -908,7 +908,7 @@ export default function AdminDashboard() {
             style={{ width: '100%', marginTop: '12px', justifyContent: 'center' }} 
             onClick={handleLogout}
           >
-            🚪 로그아웃
+            {t('logout_btn')}
           </button>
         </div>
       </aside>
@@ -919,9 +919,9 @@ export default function AdminDashboard() {
         {activePage === 'overview' && (
           <div className="animate-slide-up">
             <div className="main-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '24px' }}>
-              <h1>📊 관리자 개요</h1>
+              <h1>📊 {t('admin_overview_title')}</h1>
               <span style={{ color: 'var(--t2)', fontSize: '13px' }}>
-                {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                {new Date().toLocaleDateString(lang === 'ko' ? 'ko-KR' : lang === 'th' ? 'th-TH' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
               </span>
             </div>
 
@@ -931,32 +931,32 @@ export default function AdminDashboard() {
                 <div className="stat-card" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <div className="sc-icon" style={{ background: 'rgba(139,92,246,.15)', width: '38px', height: '38px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>👥</div>
                   <div className="sc-val" style={{ fontSize: '24px', fontWeight: 900, fontFamily: "'Outfit', sans-serif" }}>{stats.usersCount}</div>
-                  <div className="sc-lbl" style={{ fontSize: '11px', color: 'var(--t3)' }}>전체 회원</div>
+                  <div className="sc-lbl" style={{ fontSize: '11px', color: 'var(--t3)' }}>{t('admin_total_users')}</div>
                 </div>
                 <div className="stat-card" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <div className="sc-icon" style={{ background: 'rgba(251,191,36,.15)', width: '38px', height: '38px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>💼</div>
                   <div className="sc-val" style={{ fontSize: '24px', fontWeight: 900, fontFamily: "'Outfit', sans-serif" }}>{stats.sellersCount}</div>
-                  <div className="sc-lbl" style={{ fontSize: '11px', color: 'var(--t3)' }}>활성 판매자</div>
+                  <div className="sc-lbl" style={{ fontSize: '11px', color: 'var(--t3)' }}>{t('admin_active_sellers')}</div>
                 </div>
                 <div className="stat-card" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <div className="sc-icon" style={{ background: 'rgba(16,185,129,.15)', width: '38px', height: '38px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>📱</div>
                   <div className="sc-val" style={{ fontSize: '24px', fontWeight: 900, fontFamily: "'Outfit', sans-serif" }}>{stats.productsCount}</div>
-                  <div className="sc-lbl" style={{ fontSize: '11px', color: 'var(--t3)' }}>등록 상품</div>
+                  <div className="sc-lbl" style={{ fontSize: '11px', color: 'var(--t3)' }}>{t('admin_total_products')}</div>
                 </div>
                 <div className="stat-card" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <div className="sc-icon" style={{ background: 'rgba(34,211,238,.15)', width: '38px', height: '38px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>📦</div>
                   <div className="sc-val" style={{ fontSize: '24px', fontWeight: 900, fontFamily: "'Outfit', sans-serif" }}>{stats.ordersCount}</div>
-                  <div className="sc-lbl" style={{ fontSize: '11px', color: 'var(--t3)' }}>전체 주문</div>
+                  <div className="sc-lbl" style={{ fontSize: '11px', color: 'var(--t3)' }}>{t('admin_total_orders')}</div>
                 </div>
                 <div className="stat-card" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <div className="sc-icon" style={{ background: 'rgba(251,191,36,.15)', width: '38px', height: '38px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>💰</div>
                   <div className="sc-val" style={{ fontSize: '24px', fontWeight: 900, fontFamily: "'Outfit', sans-serif", color: 'var(--gold)' }}>{stats.totalRevenue.toLocaleString()}</div>
-                  <div className="sc-lbl" style={{ fontSize: '11px', color: 'var(--t3)' }}>총 매출 (฿)</div>
+                  <div className="sc-lbl" style={{ fontSize: '11px', color: 'var(--t3)' }}>{t('admin_total_revenue')}</div>
                 </div>
                 <div className="stat-card" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px', cursor: 'pointer' }} onClick={() => setActivePage('sellers')}>
                   <div className="sc-icon" style={{ background: 'rgba(239,68,68,.15)', width: '38px', height: '38px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>⏳</div>
                   <div className="sc-val" style={{ fontSize: '24px', fontWeight: 900, fontFamily: "'Outfit', sans-serif", color: 'var(--red)' }}>{stats.pendingSellersCount}</div>
-                  <div className="sc-lbl" style={{ fontSize: '11px', color: 'var(--t3)' }}>승인 대기</div>
+                  <div className="sc-lbl" style={{ fontSize: '11px', color: 'var(--t3)' }}>{t('admin_pending_approval')}</div>
                 </div>
               </div>
 
@@ -965,11 +965,10 @@ export default function AdminDashboard() {
                 <div style={{ display: 'flex', background: 'rgba(251,191,36,.08)', border: '1px solid rgba(251,191,36,.3)', borderRadius: '16px', padding: '18px', marginBottom: '24px', alignItems: 'center', gap: '12px', textAlign: 'left' }}>
                   <span style={{ fontSize: '24px' }}>⚠️</span>
                   <div>
-                    <div style={{ fontWeight: 700, marginBottom: '4px' }}>판매자 승인 대기 중</div>
+                    <div style={{ fontWeight: 700, marginBottom: '4px' }}>{t('admin_alert_pending_sellers')}</div>
                     <div style={{ fontSize: '13px', color: 'var(--t2)' }}>
-                      승인 대기 중인 판매자 계정이 있습니다.{' '}
                       <span style={{ color: 'var(--gold)', cursor: 'pointer', fontWeight: 700, textDecoration: 'underline' }} onClick={() => setActivePage('sellers')}>
-                        지금 확인하기 →
+                        {t('admin_alert_pending_desc')}
                       </span>
                     </div>
                   </div>
@@ -978,23 +977,23 @@ export default function AdminDashboard() {
 
               {/* Recent Orders table */}
               <div className="card">
-                <h3 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 700, marginBottom: '18px', textAlign: 'left' }}>최근 주문 현황</h3>
+                <h3 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 700, marginBottom: '18px', textAlign: 'left' }}>{t('admin_recent_orders')}</h3>
                 <div className="tbl-wrap">
                   <table className="tbl">
                     <thead>
                       <tr>
-                        <th>구매자</th>
-                        <th>판매자</th>
-                        <th>상품</th>
-                        <th>금액</th>
-                        <th>결제/수수료</th>
-                        <th>날짜</th>
-                        <th>상태</th>
+                        <th>{t('role_buyer')}</th>
+                        <th>{t('product_seller')}</th>
+                        <th>{t('product_name_label')}</th>
+                        <th>Total</th>
+                        <th>{t('payment_label')}/{t('commission_label')}</th>
+                        <th>{t('created_date_label')}</th>
+                        <th>{t('product_condition')}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {recentOrders.length === 0 ? (
-                        <tr><td colSpan={7} style={{ textAlign: 'center', padding: '30px', color: 'var(--t3)' }}>주문 내역이 없습니다.</td></tr>
+                        <tr><td colSpan={7} style={{ textAlign: 'center', padding: '30px', color: 'var(--t3)' }}>{t('admin_no_orders')}</td></tr>
                       ) : (
                         recentOrders.map((o) => {
                           const buyerName = o.buyer?.name || '—';
@@ -1011,9 +1010,9 @@ export default function AdminDashboard() {
                               </td>
                               <td style={{ color: 'var(--gold)', fontWeight: 700 }}>{formatPrice(o.total_price)}</td>
                               <td style={{ fontSize: '12px' }}>
-                                <span style={{ color: isCOD ? 'var(--red)' : 'var(--green)', fontWeight: 700 }}>{isCOD ? 'COD' : '온라인'}</span>
+                                <span style={{ color: isCOD ? 'var(--red)' : 'var(--green)', fontWeight: 700 }}>{isCOD ? 'COD' : t('pay_online')}</span>
                                 <br />
-                                <small style={{ color: 'var(--t2)' }}>수수료: {commAmount}</small>
+                                <small style={{ color: 'var(--t2)' }}>{t('commission_label')}: {commAmount}</small>
                               </td>
                               <td style={{ fontSize: '12px', color: 'var(--t3)' }}>{formatDate(o.created_at)}</td>
                               <td><span className={`badge ${getStatusBadgeClass(o.status)}`}>{getStatusText(o.status).split(' ')[0]}</span></td>
@@ -1033,31 +1032,31 @@ export default function AdminDashboard() {
         {activePage === 'sellers' && (
           <div className="animate-slide-up">
             <div className="main-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '24px' }}>
-              <h1>💼 판매자 관리</h1>
+              <h1>💼 {t('admin_menu_sellers')}</h1>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <span className="badge bg-yellow">대기 {pendingSellers.length}</span>
-                <span className="badge bg-green">승인 {approvedSellers.length}</span>
+                <span className="badge bg-yellow">{t('status_pending')} {pendingSellers.length}</span>
+                <span className="badge bg-green">{t('status_completed')} {approvedSellers.length}</span>
               </div>
             </div>
 
             <div className="main-body" style={{ textAlign: 'left' }}>
               {/* Pending approvals */}
-              <h3 style={{ fontFamily: "'Outfit', sans-serif'", fontWeight: 700, marginBottom: '14px' }}>⏳ 승인 대기</h3>
+              <h3 style={{ fontFamily: "'Outfit', sans-serif'", fontWeight: 700, marginBottom: '14px' }}>⏳ {t('admin_pending_approval')}</h3>
               <div className="tbl-wrap" style={{ marginBottom: '28px' }}>
                 <table className="tbl">
                   <thead>
                     <tr>
-                      <th>이름</th>
-                      <th>전화번호</th>
-                      <th>매장명/구분</th>
-                      <th>지역/주소</th>
-                      <th>가입일</th>
-                      <th>처리</th>
+                      <th>{t('register_name_label')}</th>
+                      <th>{t('phone_number')}</th>
+                      <th>{t('store_name_label')}</th>
+                      <th>{t('order_province')} / {t('order_address')}</th>
+                      <th>{t('created_date_label')}</th>
+                      <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {pendingSellers.length === 0 ? (
-                      <tr><td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--t3)' }}>대기 중인 판매자가 없습니다. ✅</td></tr>
+                      <tr><td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--t3)' }}>{t('no_shops') || 'No pending sellers.'} ✅</td></tr>
                     ) : (
                       pendingSellers.map((s) => (
                         <tr key={s.id}>
@@ -1066,16 +1065,16 @@ export default function AdminDashboard() {
                           <td>
                             <b>{s.store_name || '—'}</b>
                             <br />
-                            <span style={{ fontSize: '11px', color: 'var(--t2)' }}>{s.partner_type === 'subsidiary' ? '직영 자회사' : '협력사'}</span>
+                            <span style={{ fontSize: '11px', color: 'var(--t2)' }}>{s.partner_type === 'subsidiary' ? t('partner_subsidiary') : t('partner_merchant')}</span>
                           </td>
                           <td style={{ fontSize: '11px', color: 'var(--t2)' }}>
-                            {s.location_province ? `${s.location_province} - ${s.location_district || ''}` : '정보 없음'}
+                            {s.location_province ? `${s.location_province} - ${s.location_district || ''}` : 'No Info'}
                           </td>
                           <td style={{ fontSize: '12px', color: 'var(--t3)' }}>{formatDate(s.created_at)}</td>
                           <td>
                             <div style={{ display: 'flex', gap: '6px' }}>
-                              <button className="btn-sm btn-green" onClick={() => handleApproveSeller(s.id)}>✅ 승인</button>
-                              <button className="btn-sm btn-red" onClick={() => handleRejectSeller(s.id)}>❌ 거절</button>
+                              <button className="btn-sm btn-green" onClick={() => handleApproveSeller(s.id)}>✅ Approve</button>
+                              <button className="btn-sm btn-red" onClick={() => handleRejectSeller(s.id)}>❌ Reject</button>
                             </div>
                           </td>
                         </tr>
@@ -1086,27 +1085,27 @@ export default function AdminDashboard() {
               </div>
 
               {/* Approved sellers list */}
-              <h3 style={{ fontFamily: "'Outfit', sans-serif'", fontWeight: 700, marginBottom: '14px' }}>✅ 승인된 판매자 (직영/협력사)</h3>
+              <h3 style={{ fontFamily: "'Outfit', sans-serif'", fontWeight: 700, marginBottom: '14px' }}>✅ {t('shops_title')}</h3>
               <div className="tbl-wrap">
                 <table className="tbl">
                   <thead>
                     <tr>
-                      <th>매장 정보</th>
-                      <th>담당자/연락처</th>
-                      <th>파트너 구분</th>
-                      <th>지역/주소</th>
-                      <th>정산방식/수수료율</th>
-                      <th>가입일</th>
-                      <th>처리</th>
+                      <th>{t('detail_shop_info_title')}</th>
+                      <th>{t('manager_name')}/{t('phone_number')}</th>
+                      <th>Type</th>
+                      <th>{t('product_location')}/{t('order_address')}</th>
+                      <th>{t('payout_label')}/{t('commission_label')}</th>
+                      <th>{t('created_date_label')}</th>
+                      <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {approvedSellers.length === 0 ? (
-                      <tr><td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: 'var(--t3)' }}>승인된 판매자가 없습니다.</td></tr>
+                      <tr><td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: 'var(--t3)' }}>{t('no_shops')}</td></tr>
                     ) : (
                       approvedSellers.map((s) => {
-                        const locText = s.location_province ? `${s.location_province} - ${s.location_district || ''}` : '정보 없음';
-                        const payoutText = s.payout_method === 'cod_commission' ? 'COD 수금 정산' : '본사 직접정산';
+                        const locText = s.location_province ? `${s.location_province} - ${s.location_district || ''}` : 'No Info';
+                        const payoutText = s.payout_method === 'cod_commission' ? t('payout_method_cod') : t('payout_method_parent');
                         return (
                           <tr key={s.id}>
                             <td>
@@ -1119,15 +1118,15 @@ export default function AdminDashboard() {
                             </td>
                             <td>
                               {s.partner_type === 'subsidiary' ? (
-                                <span className="badge bg-blue">직영 자회사</span>
+                                <span className="badge bg-blue">{t('partner_subsidiary')}</span>
                               ) : (
-                                <span className="badge bg-purple">입점 협력사</span>
+                                <span className="badge bg-purple">{t('partner_merchant')}</span>
                               )}
                               <div style={{ marginTop: '4px' }}>
                                 {s.store_type === 'direct' ? (
-                                  <span className="badge bg-green" style={{ background: '#10b981', color: '#fff', fontSize: '9px', padding: '2px 4px' }}>🏢 본사직영점</span>
+                                  <span className="badge bg-green" style={{ background: '#10b981', color: '#fff', fontSize: '9px', padding: '2px 4px' }}>🏢 {t('direct_store_label')}</span>
                                 ) : (
-                                  <span className="badge bg-gray" style={{ background: '#6b7280', color: '#fff', fontSize: '9px', padding: '2px 4px' }}>🏪 일반대리점</span>
+                                  <span className="badge bg-gray" style={{ background: '#6b7280', color: '#fff', fontSize: '9px', padding: '2px 4px' }}>🏪 {t('franchise_store_label')}</span>
                                 )}
                               </div>
                             </td>
@@ -1142,7 +1141,7 @@ export default function AdminDashboard() {
                             <td style={{ fontSize: '12px', color: 'var(--t3)' }}>{formatDate(s.created_at)}</td>
                             <td>
                               <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                                <button className="btn-sm btn-purple" onClick={() => handleOpenPartnerConfig(s)}>⚙️ 설정</button>
+                                <button className="btn-sm btn-purple" onClick={() => handleOpenPartnerConfig(s)}>⚙️ Config</button>
                                 <button 
                                   className="btn-sm" 
                                   style={{
@@ -1156,16 +1155,16 @@ export default function AdminDashboard() {
                                   }} 
                                   onClick={() => handleToggleDirectStore(s.id, s.store_type)}
                                 >
-                                  {s.store_type === 'direct' ? '직영 해제' : '직영 지정'}
+                                  {s.store_type === 'direct' ? t('btn_toggle_franchise') : t('btn_toggle_direct')}
                                 </button>
                                 <button className="btn-sm btn-green" onClick={() => handleResetPin(s.id, s.phone)}>🔑 PIN</button>
-                                <button className="btn-sm btn-red" onClick={() => handleSuspendSeller(s.id)}>🚫 정지</button>
+                                <button className="btn-sm btn-red" onClick={() => handleSuspendSeller(s.id)}>🚫 Suspend</button>
                                 <button 
                                   className="btn-sm btn-red" 
                                   style={{ background: 'rgba(239,68,68,.1)', color: 'var(--red)', border: '1px solid rgba(239,68,68,.2)' }}
                                   onClick={() => handleDeleteUser(s.id)}
                                 >
-                                  🗑️ 삭제
+                                  🗑️ {t('btn_delete')}
                                 </button>
                               </div>
                             </td>
