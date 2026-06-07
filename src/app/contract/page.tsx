@@ -706,7 +706,7 @@ export default function ContractPage() {
                 <div className="sig-box" style={{ position: 'relative' }}>
                   <div className="sig-label">ลงชื่อ</div>
                   <div className="sig-line-wrapper">
-                    <div style={{ height: '40px', borderBottom: '1px solid #000', width: '200px', margin: '0 auto' }} />
+                    <div style={{ height: '100px', borderBottom: '1px solid #000', width: '200px', margin: '0 auto' }} />
                     {/* Official transparent company stamp seal */}
                     <img 
                       src="/company_stamp_transparent.png" 
@@ -1136,7 +1136,7 @@ export default function ContractPage() {
           margin-bottom: 8px;
         }
         .sig-line-wrapper {
-          min-height: 48px;
+          min-height: 120px;
           display: flex;
           align-items: flex-end;
           justify-content: center;
@@ -1151,16 +1151,17 @@ export default function ContractPage() {
           padding-bottom: 2px;
         }
         .sig-img {
-          max-height: 44px;
-          max-width: 180px;
+          max-height: 110px;
+          max-width: 280px;
           object-fit: contain;
           border-bottom: 1px solid #000000;
+          width: 100%;
         }
         .company-seal-stamp {
           position: absolute;
           width: 450px;
           height: auto;
-          bottom: -90px;
+          bottom: -150px;
           left: 50%;
           transform: translateX(-50%);
           opacity: 0.85;
@@ -1329,7 +1330,7 @@ export default function ContractPage() {
           margin-top: 2px;
         }
 
-        /* Full Screen E-Signature Modal Styling */
+         /* Full Screen E-Signature Modal Styling */
         .signature-modal-overlay {
           position: fixed;
           top: 0;
@@ -1340,6 +1341,7 @@ export default function ContractPage() {
           z-index: 99999;
           display: flex;
           flex-direction: column;
+          justify-content: center; /* Center content vertically on tall screens */
           padding: 20px;
           box-sizing: border-box;
         }
@@ -1352,12 +1354,14 @@ export default function ContractPage() {
           padding-bottom: 8px;
         }
         .signature-canvas-container {
-          flex: 1;
+          width: 100%;
+          height: 250px; /* Enforce landscape aspect ratio to prevent tall squished signatures on mobile */
           border: 2px dashed #cccccc;
           border-radius: 12px;
           background: #f9f9f9;
           overflow: hidden;
           position: relative;
+          margin: 10px 0;
         }
         .signature-canvas-container canvas {
           display: block;
