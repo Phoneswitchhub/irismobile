@@ -1,7 +1,7 @@
 'use client';
-
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+ 
+import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from '@/lib/i18n';
 import { formatPrice, resizeAndCompressImage } from '@/lib/utils';
@@ -11,9 +11,11 @@ import BottomNav, { TabName } from '@/components/BottomNav';
 import DetailModal from '@/components/DetailModal';
 import OrderModal from '@/components/OrderModal';
 import ChatModal from '@/components/ChatModal';
-
-export default function Home() {
+ 
+function HomeContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pId = searchParams.get('p');
   const { t } = useTranslation();
 
   // Navigation Tab State
@@ -59,6 +61,26 @@ export default function Home() {
 
   // Modal States
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+
+  // Handle direct product link (?p=productId)
+  useEffect(() => {
+    const loadDirectProduct = async () => {
+      if (!pId) return;
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('id, title, description, price, images, category, seller_id, condition, stock, status, profiles(id, name, store_name, partner_type, location_province, location_district, location_address, location_coords)')
+          .eq('id', pId)
+          .single();
+        if (!error && data) {
+          setSelectedProduct(data);
+        }
+      } catch (e) {
+        console.error('Failed to load direct product:', e);
+      }
+    };
+    loadDirectProduct();
+  }, [pId]);
   const [isOrderOpen, setIsOrderOpen] = useState(false);
   const [checkoutItems, setCheckoutItems] = useState<any[]>([]);
   const [activeChatRoom, setActiveChatRoom] = useState<any>(null);
@@ -1558,5 +1580,13 @@ export default function Home() {
         </div>
       )}
     </MobileLayout>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeContent />
+    </Suspense>
   );
 }

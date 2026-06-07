@@ -22,6 +22,24 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const savedLang = localStorage.getItem('lang') as Language;
     if (savedLang && ['ko', 'th', 'mm', 'en'].includes(savedLang)) {
       setLang(savedLang);
+    } else {
+      // Auto-detect browser/phone language
+      if (typeof navigator !== 'undefined') {
+        const browserLang = navigator.language || (navigator as any).userLanguage || '';
+        const code = browserLang.toLowerCase();
+        
+        let detected: Language = 'th'; // Default fallback
+        if (code.startsWith('ko')) {
+          detected = 'ko';
+        } else if (code.startsWith('th')) {
+          detected = 'th';
+        } else if (code.startsWith('my') || code.startsWith('mm')) {
+          detected = 'mm';
+        } else {
+          detected = 'en';
+        }
+        setLang(detected);
+      }
     }
     setMounted(true);
   }, []);
