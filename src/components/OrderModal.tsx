@@ -40,6 +40,14 @@ export default function OrderModal({
   // Sub-modal for prompt
   const [showPrompt, setShowPrompt] = useState(false);
 
+  // Sub-modal for iOS bank redirect
+  const [showIosBankModal, setShowIosBankModal] = useState(false);
+  const [activeIosBank, setActiveIosBank] = useState<{
+    scheme: string;
+    iosId: string;
+    displayName: string;
+  } | null>(null);
+
   useEffect(() => {
     if (isOpen) {
       setQuantity(1);
@@ -53,6 +61,8 @@ export default function OrderModal({
       setSlipPreview(null);
       setIsSubmitting(false);
       setShowPrompt(false);
+      setShowIosBankModal(false);
+      setActiveIosBank(null);
     }
   }, [isOpen]);
 
@@ -87,13 +97,11 @@ export default function OrderModal({
     alert(t('toast_account_copied'));
   };
 
-  const openBankApp = (scheme: string, pkg: string, iosId: string) => {
+  const openBankApp = (scheme: string, pkg: string, iosId: string, displayName: string) => {
     const isIOS = /ipad|iphone|ipod/.test(navigator.userAgent.toLowerCase());
     if (isIOS) {
-      window.location.href = `${scheme}://`;
-      setTimeout(() => {
-        window.location.href = `https://apps.apple.com/app/id${iosId}`;
-      }, 1500);
+      setActiveIosBank({ scheme, iosId, displayName });
+      setShowIosBankModal(true);
     } else {
       window.location.href = `intent://#Intent;scheme=${scheme};package=${pkg};end`;
     }
@@ -320,12 +328,12 @@ export default function OrderModal({
                 태국 송금앱 바로가기 (Open App)
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                <button type="button" className="app-link-btn" style={{ background: '#00A950', color: '#fff', border: 'none' }} onClick={() => openBankApp('kplus', 'com.kasikorn.retail.mbanking.wap', '361117099')}>🟢 K PLUS</button>
-                <button type="button" className="app-link-btn" style={{ background: '#4E2A84', color: '#fff', border: 'none' }} onClick={() => openBankApp('scbeasy', 'com.scb.phone', '1085114709')}>🟣 SCB Easy</button>
-                <button type="button" className="app-link-btn" style={{ background: '#0056B3', color: '#fff', border: 'none' }} onClick={() => openBankApp('bualuangmbanking', 'com.bbl.mobilebanking', '635483861')}>🔵 Bangkok</button>
-                <button type="button" className="app-link-btn" style={{ background: '#FFC72C', color: '#333', border: 'none' }} onClick={() => openBankApp('kma', 'com.krungsri.kma', '1257404364')}>🟡 Krungsri</button>
-                <button type="button" className="app-link-btn" style={{ background: '#00A1E4', color: '#fff', border: 'none' }} onClick={() => openBankApp('ktbnetbank', 'ktbcs.netbank', '1438965706')}>🔵 Krungthai</button>
-                <button type="button" className="app-link-btn" style={{ background: '#FF8200', color: '#fff', border: 'none' }} onClick={() => openBankApp('truemoney', 'th.co.truemoney.wallet', '1081682855')}>🟠 TrueMoney</button>
+                <button type="button" className="app-link-btn" style={{ background: '#00A950', color: '#fff', border: 'none' }} onClick={() => openBankApp('kplus', 'com.kasikorn.retail.mbanking.wap', '360946808', 'K PLUS')}>🟢 K PLUS</button>
+                <button type="button" className="app-link-btn" style={{ background: '#4E2A84', color: '#fff', border: 'none' }} onClick={() => openBankApp('scbeasy', 'com.scb.phone', '526848749', 'SCB Easy')}>🟣 SCB Easy</button>
+                <button type="button" className="app-link-btn" style={{ background: '#0056B3', color: '#fff', border: 'none' }} onClick={() => openBankApp('bualuangmbanking', 'com.bbl.mobilebanking', '656640578', 'Bangkok Bank')}>🔵 Bangkok</button>
+                <button type="button" className="app-link-btn" style={{ background: '#FFC72C', color: '#333', border: 'none' }} onClick={() => openBankApp('krungsri-kma', 'com.krungsri.kma', '915234988', 'Krungsri KMA')}>🟡 Krungsri</button>
+                <button type="button" className="app-link-btn" style={{ background: '#00A1E4', color: '#fff', border: 'none' }} onClick={() => openBankApp('ktbnext', 'com.ktb.next', '1321213328', 'Krungthai NEXT')}>🔵 Krungthai</button>
+                <button type="button" className="app-link-btn" style={{ background: '#FF8200', color: '#fff', border: 'none' }} onClick={() => openBankApp('truemoney', 'th.co.truemoney.wallet', '931131754', 'TrueMoney')}>🟠 TrueMoney</button>
               </div>
             </div>
           </div>
@@ -464,6 +472,51 @@ export default function OrderModal({
               </button>
               <button 
                 onClick={() => setShowPrompt(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--t3)', fontSize: '12px', cursor: 'pointer', padding: '6px', fontWeight: 600, textDecoration: 'underline' }}
+              >
+                {t('cancel')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* iOS BANK APP REDIRECT DIALOG */}
+      {showIosBankModal && activeIosBank && (
+        <div className="modal-bg open" style={{ zIndex: 4500, display: 'flex' }}>
+          <div className="modal animate-slide-up" style={{ maxWidth: '420px', padding: '24px', textAlign: 'center', borderRadius: '22px' }}>
+            <div style={{ fontSize: '36px', marginBottom: '12px' }}>🏦</div>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--t1)', marginBottom: '10px' }}>
+              {activeIosBank.displayName} - {t('ios_bank_prompt_title')}
+            </div>
+
+            <div style={{ background: 'rgba(34,211,238,0.04)', border: '1px solid rgba(34,211,238,0.15)', borderRadius: '10px', padding: '14px', marginBottom: '18px', fontSize: '12.5px', textAlign: 'left', lineHeight: 1.6, color: 'var(--t2)' }}>
+              {t('ios_bank_prompt_desc')}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button 
+                className="btn-submit" 
+                onClick={() => {
+                  window.location.href = `${activeIosBank.scheme}://`;
+                  setShowIosBankModal(false);
+                }}
+                style={{ background: 'var(--gp)', margin: 0 }}
+              >
+                {t('ios_bank_btn_open')}
+              </button>
+              <button 
+                className="btn-submit" 
+                onClick={() => {
+                  window.open(`https://apps.apple.com/app/id${activeIosBank.iosId}`, '_blank');
+                  setShowIosBankModal(false);
+                }}
+                style={{ background: 'rgba(0,0,0,0.03)', border: '1px solid var(--border)', color: 'var(--t1)', boxShadow: 'none', margin: 0 }}
+              >
+                {t('ios_bank_btn_store')}
+              </button>
+              <button 
+                onClick={() => setShowIosBankModal(false)}
                 style={{ background: 'none', border: 'none', color: 'var(--t3)', fontSize: '12px', cursor: 'pointer', padding: '6px', fontWeight: 600, textDecoration: 'underline' }}
               >
                 {t('cancel')}

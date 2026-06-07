@@ -308,7 +308,11 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     cart_empty: "장바구니가 비어 있습니다.",
     btn_checkout_all: "전체 주문하기",
     toast_link_copied: "🔗 링크가 복사되었습니다!",
-    btn_copy_link: "🔗 링크 복사"
+    btn_copy_link: "🔗 링크 복사",
+    ios_bank_prompt_title: "이동 방법 선택",
+    ios_bank_prompt_desc: "기기에 은행 앱이 설치되어 있으면 '앱 열기'를 선택하고, 설치되어 있지 않으면 '스토어 이동'을 선택해 주세요. (미설치 상태에서 앱 열기를 누르면 iOS 사파리 제한으로 오류 팝업이 나타날 수 있습니다.)",
+    ios_bank_btn_open: "📱 앱 열기",
+    ios_bank_btn_store: "🏪 스토어 이동"
   },
   th: {
     app_title: "PHONE SWITCH HUB",
@@ -617,7 +621,11 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     cart_empty: "ตะกร้าสินค้าว่างเปล่า",
     btn_checkout_all: "สั่งซื้อทั้งหมด",
     toast_link_copied: "🔗 คัดลอกลิงก์แล้ว!",
-    btn_copy_link: "🔗 คัดลอกลิงก์"
+    btn_copy_link: "🔗 คัดลอกลิงก์",
+    ios_bank_prompt_title: "เลือกวิธีเปิดแอป",
+    ios_bank_prompt_desc: "หากคุณมีแอปธนาคารติดตั้งอยู่ ให้เลือก 'เปิดแอป' หากไม่มี ให้เลือก 'ไปที่ App Store' (การเปิดแอปเมื่อไม่ได้ติดตั้งอาจทำให้เกิดป๊อปอัปแจ้งเตือนจาก Safari)",
+    ios_bank_btn_open: "📱 เปิดแอป",
+    ios_bank_btn_store: "🏪 ไปที่ App Store"
   },
   mm: {
     app_title: "PHONE SWITCH HUB",
@@ -926,7 +934,11 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     cart_empty: "ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိပါ။",
     btn_checkout_all: "အားလုံးအော်ဒါတင်ရန်",
     toast_link_copied: "🔗 လင့်ခ်ကူးယူပြီးပါပြီ!",
-    btn_copy_link: "🔗 လင့်ခ်ကူးယူရန်"
+    btn_copy_link: "🔗 လင့်ခ်ကူးယူရန်",
+    ios_bank_prompt_title: "အက်ပ်ဖွင့်နည်းကိုရွေးချယ်ပါ",
+    ios_bank_prompt_desc: "ဘဏ်အက်ပ်ထည့်သွင်းထားပါက 'အက်ပ်ဖွင့်ပါ' ကိုရွေးချယ်ပါ။ မရှိပါက 'App Store သို့သွားပါ' ကိုရွေးချယ်ပါ။ (အက်ပ်မရှိဘဲဖွင့်ပါက Safari သတိပေးချက်ပေါ်လာနိုင်ပါသည်။)",
+    ios_bank_btn_open: "📱 အက်ပ်ဖွင့်ပါ",
+    ios_bank_btn_store: "🏪 App Store သို့သွားပါ"
   },
   en: {
     app_title: "Phone Switch Hub",
@@ -1219,7 +1231,11 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     cart_empty: "Your cart is empty.",
     btn_checkout_all: "Checkout All",
     toast_link_copied: "🔗 Link copied to clipboard!",
-    btn_copy_link: "🔗 Copy Link"
+    btn_copy_link: "🔗 Copy Link",
+    ios_bank_prompt_title: "Choose How to Open App",
+    ios_bank_prompt_desc: "If you have the banking app installed, choose 'Open App'. If not, choose 'Go to App Store'. (Opening the app when it is not installed may cause a Safari warning popup.)",
+    ios_bank_btn_open: "📱 Open App",
+    ios_bank_btn_store: "🏪 Go to App Store"
   }
 };
 
