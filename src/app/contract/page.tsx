@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import MobileLayout from '@/components/MobileLayout';
 import Navbar from '@/components/Navbar';
+import { INTEREST_TABLE, getClosestPrice } from '@/lib/interestTable';
 
 export default function ContractPage() {
   const router = useRouter();
@@ -70,9 +71,11 @@ export default function ContractPage() {
   const [showSignModal, setShowSignModal] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
 
-  // Resize canvas when modal opens to fill the container resolution dynamically
+  // 6b. Installment Months Modal State
+  const [showMonthsModal, setShowMonthsModal] = useState(false);
+
+  // Resize canvas and bind direct DOM events for smooth zero-lag drawing when modal opens
   useEffect(() => {
     if (showSignModal && canvasRef.current) {
       const canvas = canvasRef.current;
@@ -83,11 +86,80 @@ export default function ContractPage() {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 4;
+          ctx.lineWidth = 3.5;
           ctx.lineCap = 'round';
           ctx.lineJoin = 'round';
         }
       }
+
+      // Performance optimized draw state inside hook closure
+      let drawing = false;
+      let cachedRect: DOMRect | null = null;
+      const ctx = canvas.getContext('2d');
+
+      const start = (e: MouseEvent | TouchEvent) => {
+        e.preventDefault();
+        if (!canvas || !ctx) return;
+
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 3.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        cachedRect = canvas.getBoundingClientRect();
+        const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+
+        const x = clientX - cachedRect.left;
+        const y = clientY - cachedRect.top;
+
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        drawing = true;
+      };
+
+      const move = (e: MouseEvent | TouchEvent) => {
+        if (!drawing || !canvas || !ctx || !cachedRect) return;
+        e.preventDefault();
+
+        const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+
+        const x = clientX - cachedRect.left;
+        const y = clientY - cachedRect.top;
+
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      };
+
+      const stop = () => {
+        drawing = false;
+        cachedRect = null;
+      };
+
+      // Bind mouse events directly
+      canvas.addEventListener('mousedown', start);
+      canvas.addEventListener('mousemove', move);
+      canvas.addEventListener('mouseup', stop);
+      canvas.addEventListener('mouseleave', stop);
+
+      // Bind touch events directly (passive: false to prevent scrolling)
+      canvas.addEventListener('touchstart', start, { passive: false });
+      canvas.addEventListener('touchmove', move, { passive: false });
+      canvas.addEventListener('touchend', stop, { passive: false });
+      canvas.addEventListener('touchcancel', stop, { passive: false });
+
+      return () => {
+        canvas.removeEventListener('mousedown', start);
+        canvas.removeEventListener('mousemove', move);
+        canvas.removeEventListener('mouseup', stop);
+        canvas.removeEventListener('mouseleave', stop);
+
+        canvas.removeEventListener('touchstart', start);
+        canvas.removeEventListener('touchmove', move);
+        canvas.removeEventListener('touchend', stop);
+        canvas.removeEventListener('touchcancel', stop);
+      };
     }
   }, [showSignModal]);
 
@@ -122,13 +194,70 @@ export default function ContractPage() {
     }
   };
 
+  const handleSellingPriceChange = (valStr: string) => {
+    setSellingPrice(valStr);
+    if (valStr !== '') {
+      const price = parseInt(valStr) || 0;
+      if (price >= 5000 && price <= 40000) {
+        const closest = getClosestPrice(price);
+        const row = INTEREST_TABLE[closest];
+        if (row) {
+          setDownPayment(row.down);
+          const m = Number(installmentsCount);
+          if (m === 3 || m === 4 || m === 6 || m === 8 || m === 10) {
+            setInstallmentAmount(row[m]);
+          }
+        }
+      } else {
+        // Exceeds or below table range
+        setDownPayment(Math.round(price * 0.3));
+        setInstallmentAmount('');
+      }
+    } else {
+      setDownPayment('');
+      setInstallmentAmount('');
+    }
+  };
+
+  const handleInstallmentsCountChange = (valStr: string) => {
+    setInstallmentsCount(valStr);
+    if (valStr !== '') {
+      const m = parseInt(valStr);
+      const price = Number(sellingPrice) || 0;
+      if (price >= 5000 && price <= 40000) {
+        const closest = getClosestPrice(price);
+        const row = INTEREST_TABLE[closest];
+        if (row && (m === 3 || m === 4 || m === 6 || m === 8 || m === 10)) {
+          setInstallmentAmount(row[m]);
+        }
+      }
+    }
+  };
+
   const selectItem = (item: any) => {
     setImei(item.imei);
     setModel(item.model);
     setColor(item.color);
     setSerialNo(item.serialNo);
     setSellingPrice(item.price);
-    setDownPayment(Math.round(item.price * 0.3));
+    
+    // Auto-lookup interest table for this item's price
+    if (item.price >= 5000 && item.price <= 40000) {
+      const closest = getClosestPrice(item.price);
+      const row = INTEREST_TABLE[closest];
+      if (row) {
+        setDownPayment(row.down);
+        const m = Number(installmentsCount) || 4; // default to current or 4 months
+        if (m === 3 || m === 4 || m === 6 || m === 8 || m === 10) {
+          setInstallmentsCount(m);
+          setInstallmentAmount(row[m]);
+        }
+      }
+    } else {
+      // Exceeds or below table range
+      setDownPayment(Math.round(item.price * 0.3));
+      setInstallmentAmount('');
+    }
     setShowSuggestions(false);
   };
 
@@ -150,48 +279,7 @@ export default function ContractPage() {
     return `${day} ${thaiMonths[month - 1]} ${thaiYear}`;
   };
 
-  // Drawing Pad Canvas Actions
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 3.5;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    const rect = canvas.getBoundingClientRect();
-    const x = ('touches' in e) ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-    const y = ('touches' in e) ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
-
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    setIsDrawing(true);
-  };
-
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
-    e.preventDefault();
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = ('touches' in e) ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-    const y = ('touches' in e) ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
-
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  };
-
-  const stopDrawing = () => {
-    setIsDrawing(false);
-  };
-
+  // Drawing Pad Canvas Actions (Drawing handled by raw DOM listeners in useEffect)
   const clearCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -392,11 +480,7 @@ export default function ContractPage() {
               <div className="form-grid-2">
                 <div className="form-group">
                   <label className="form-label">총금액 (Total Price) *</label>
-                  <input type="number" className="form-input" value={sellingPrice} onChange={(e) => {
-                    const val = e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0);
-                    setSellingPrice(val);
-                    setDownPayment(val === '' ? '' : Math.round(Number(val) * 0.3));
-                  }} />
+                  <input type="number" className="form-input" value={sellingPrice} onChange={(e) => handleSellingPriceChange(e.target.value)} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">เงินดาวน์ (Down Payment) *</label>
@@ -413,9 +497,17 @@ export default function ContractPage() {
               <div className="form-grid-2">
                 <div className="form-group">
                   <label className="form-label">จำนวนงวดที่ผ่อนชำระ (Installments) *</label>
-                  <input type="number" className="form-input" value={installmentsCount} onChange={(e) => {
-                    setInstallmentsCount(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0));
-                  }} />
+                  <div 
+                    className="custom-select-card" 
+                    onClick={() => setShowMonthsModal(true)}
+                  >
+                    <span>
+                      {installmentsCount 
+                        ? `${installmentsCount} 개월 (${installmentsCount} Months)` 
+                        : 'เลือกจำนวนงวด (Select Months)'}
+                    </span>
+                    <span className="dropdown-arrow">▼</span>
+                  </div>
                 </div>
                 <div className="form-group">
                   <label className="form-label">ชำระงวดละ (Monthly Installment) *</label>
@@ -648,16 +740,7 @@ export default function ContractPage() {
           </p>
 
           <div className="signature-canvas-container">
-            <canvas
-              ref={canvasRef}
-              onMouseDown={startDrawing}
-              onMouseMove={draw}
-              onMouseUp={stopDrawing}
-              onMouseLeave={stopDrawing}
-              onTouchStart={startDrawing}
-              onTouchMove={draw}
-              onTouchEnd={stopDrawing}
-            />
+            <canvas ref={canvasRef} />
           </div>
 
           <div style={{ display: 'flex', gap: '12px', marginTop: '15px' }}>
@@ -672,6 +755,72 @@ export default function ContractPage() {
               style={{ flex: 1, background: '#00A950', border: 'none', color: '#fff', padding: '12px', borderRadius: '10px', fontWeight: 700, cursor: 'pointer', fontSize: '14px' }}
             >
               ✔️ บันทึก (Save)
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* CUSTOM MONTHS SELECTION MODAL */}
+      {showMonthsModal && (
+        <div className="months-modal-overlay" onClick={() => setShowMonthsModal(false)}>
+          <div className="months-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="months-modal-header">
+              <span>📅 เลือกจำนวนงวด (Select Months)</span>
+              <button 
+                onClick={() => setShowMonthsModal(false)} 
+                style={{ background: 'none', border: 'none', fontSize: '22px', cursor: 'pointer', color: '#94a3b8' }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <p className="months-modal-desc">
+              เลือกระยะเวลาการผ่อนชำระที่ต้องการ (Select the installment plan)
+            </p>
+
+            <div className="months-options-list">
+              {[3, 4, 6, 8, 10].map((m) => {
+                // Determine interest rate preview for this month count
+                const price = Number(sellingPrice) || 0;
+                let previewAmount = '';
+                if (price >= 5000 && price <= 40000) {
+                  const closest = getClosestPrice(price);
+                  const row = INTEREST_TABLE[closest];
+                  if (row) {
+                    previewAmount = `${row[m as 3 | 4 | 6 | 8 | 10].toLocaleString()} ฿/월`;
+                  }
+                }
+
+                const isSelected = String(installmentsCount) === String(m);
+
+                return (
+                  <button
+                    key={m}
+                    className={`months-option-btn ${isSelected ? 'active' : ''}`}
+                    onClick={() => {
+                      handleInstallmentsCountChange(String(m));
+                      setShowMonthsModal(false);
+                    }}
+                  >
+                    <div className="option-title">
+                      <span className="option-check">{isSelected ? '✓ ' : ''}</span>
+                      {m} 개월 ({m} Months)
+                    </div>
+                    {previewAmount && (
+                      <div className="option-subtitle">
+                        ชำระงวดละ {previewAmount} (Monthly)
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button 
+              className="months-modal-close-btn"
+              onClick={() => setShowMonthsModal(false)}
+            >
+              닫기 (Close)
             </button>
           </div>
         </div>
@@ -1215,6 +1364,132 @@ export default function ContractPage() {
           width: 100%;
           height: 100%;
           cursor: crosshair;
+        }
+
+        /* Custom Select Card */
+        .custom-select-card {
+          width: 100%;
+          background: #0b0f19;
+          border: 1px solid #1e293b;
+          border-radius: 6px;
+          padding: 10px 12px;
+          color: #f1f5f9;
+          font-size: 13px;
+          cursor: pointer;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          transition: all 0.2s;
+        }
+        .custom-select-card:hover {
+          border-color: #22d3ee;
+          background: #0f172a;
+        }
+        .dropdown-arrow {
+          font-size: 9px;
+          color: #94a3b8;
+        }
+
+        /* Months Modal Overlay */
+        .months-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(15, 23, 42, 0.75);
+          backdrop-filter: blur(4px);
+          z-index: 99999;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          padding: 20px;
+          box-sizing: border-box;
+        }
+        .months-modal-card {
+          width: 100%;
+          max-width: 440px;
+          background: #0f172a;
+          border: 1px solid #1e293b;
+          border-radius: 16px;
+          padding: 24px;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+          display: flex;
+          flex-direction: column;
+          color: #f1f5f9;
+        }
+        .months-modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 8px;
+        }
+        .months-modal-header span {
+          font-size: 17px;
+          font-weight: 800;
+          color: #22d3ee;
+        }
+        .months-modal-desc {
+          font-size: 12px;
+          color: #94a3b8;
+          margin-bottom: 20px;
+          text-align: left;
+        }
+        .months-options-list {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          margin-bottom: 20px;
+        }
+        .months-option-btn {
+          width: 100%;
+          background: #1e293b;
+          border: 1px solid #334155;
+          border-radius: 10px;
+          padding: 12px 16px;
+          color: #f1f5f9;
+          cursor: pointer;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          transition: all 0.2s;
+          text-align: left;
+        }
+        .months-option-btn:hover {
+          background: #334155;
+          border-color: #22d3ee;
+        }
+        .months-option-btn.active {
+          background: rgba(34, 211, 238, 0.1);
+          border-color: #22d3ee;
+          color: #22d3ee;
+        }
+        .months-option-btn .option-title {
+          font-size: 14px;
+          font-weight: 700;
+        }
+        .months-option-btn .option-subtitle {
+          font-size: 11px;
+          color: #94a3b8;
+          margin-top: 4px;
+        }
+        .months-option-btn.active .option-subtitle {
+          color: #22d3ee;
+        }
+        .months-modal-close-btn {
+          width: 100%;
+          background: #334155;
+          border: none;
+          color: #f1f5f9;
+          padding: 12px;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          font-size: 13.5px;
+          transition: background 0.2s;
+        }
+        .months-modal-close-btn:hover {
+          background: #475569;
         }
 
       `}</style>
