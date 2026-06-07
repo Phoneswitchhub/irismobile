@@ -1755,7 +1755,7 @@ export default function ContractPage() {
           position: absolute;
           width: 450px;
           height: auto;
-          bottom: -150px;
+          bottom: -40px;
           left: 50%;
           transform: translateX(-50%);
           opacity: 0.85;

@@ -664,7 +664,7 @@ export default function CustomerSignPage() {
         .sig-placeholder { font-size: 8.5px; color: #c084fc; font-style: italic; border-bottom: 1px dashed #c084fc; width: 180px; padding-bottom: 2px; font-weight: bold; animation: pulse 2s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .sig-img { max-height: 110px; max-width: 280px; object-fit: contain; border-bottom: 1px solid #000; width: 100%; }
-        .company-seal-stamp { position: absolute; width: 450px; height: auto; bottom: -150px; left: 50%; transform: translateX(-50%); opacity: 0.85; pointer-events: none; }
+        .company-seal-stamp { position: absolute; width: 450px; height: auto; bottom: -40px; left: 50%; transform: translateX(-50%); opacity: 0.85; pointer-events: none; }
         .sig-name { font-size: 10px; font-weight: bold; margin-top: 4px; }
         .sig-role { font-size: 8.5px; color: #666; }
 
