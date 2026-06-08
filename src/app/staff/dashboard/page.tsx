@@ -34,6 +34,10 @@ interface DeviceItem {
   installment_months?: number;
   installment_amount?: number;
   payment_status?: string;
+  customer_name?: string;
+  customer_phone?: string;
+  is_approved?: boolean;
+  installment_history?: any[];
 }
 
 export default function StaffDashboard() {
@@ -46,8 +50,8 @@ export default function StaffDashboard() {
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [redirectCountdown, setRedirectCountdown] = useState(3);
 
-  // Active Tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin'
-  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin'>('overview');
+  // Active Tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment'
+  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment'>('overview');
 
   // Sorting States
   const [sortField, setSortField] = useState<string>('created_at');
@@ -123,6 +127,9 @@ export default function StaffDashboard() {
   const [codAmountInput, setCodAmountInput] = useState<number | string>(0);
   const [instMonths, setInstMonths] = useState<number>(4);
   const [instMonthlyPayment, setInstMonthlyPayment] = useState<number | string>(0);
+  const [custName, setCustName] = useState('');
+  const [custPhone, setCustPhone] = useState('');
+  const [exchangeRate, setExchangeRate] = useState<number>(40.0);
 
   const calculatedFinalPrice = useMemo(() => {
     const dep = Number(depositAmount) || 0;
@@ -181,7 +188,8 @@ export default function StaffDashboard() {
   }, []);
 
   const marginStats = useMemo(() => {
-    const soldList = devices.filter(d => !d.deleted_at && d.is_sold);
+    // Only approved sold items are counted in margins!
+    const soldList = devices.filter(d => !d.deleted_at && d.is_sold && d.is_approved);
     const totalPaidTHB = soldList.filter(d => d.payment_status === 'paid' || !d.payment_status).reduce((sum, d) => sum + Number(d.selling_price || 0), 0);
     const totalPaidCostKRW = soldList.filter(d => d.payment_status === 'paid' || !d.payment_status).reduce((sum, d) => sum + Number(d.purchase_cost_krw || 0), 0);
     const totalUnpaidCODTHB = soldList.filter(d => d.payment_status === 'unpaid').reduce((sum, d) => sum + Number(d.cod_amount || 0), 0);
@@ -231,6 +239,24 @@ export default function StaffDashboard() {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
+  // Fetch Naver Exchange Rate on mount (THB to KRW)
+  useEffect(() => {
+    const fetchExchangeRate = async () => {
+      try {
+        const res = await fetch('https://open.er-api.com/v6/latest/THB');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.rates && data.rates.KRW) {
+            setExchangeRate(Number(data.rates.KRW.toFixed(2)));
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching exchange rate:', err);
+      }
+    };
+    fetchExchangeRate();
+  }, []);
+
   // 1. Auth Guard Checklist
   useEffect(() => {
     const checkStaffAuth = async () => {
@@ -254,9 +280,10 @@ export default function StaffDashboard() {
           return;
         }
 
-        // Allow Admin, Staff, or Direct Store Sellers
+        // Allow Admin, Manager, Staff, or Direct Store Sellers
         const hasAccess = 
           p.role === 'admin' || 
+          p.role === 'manager' || 
           p.role === 'staff' || 
           (p.role === 'seller' && p.store_type === 'direct');
 
@@ -1464,6 +1491,29 @@ export default function StaffDashboard() {
     setIsManualModalOpen(true);
   };
 
+  // Helper to calculate monthly installment due dates
+  const calculateDueDate = (startDateStr: string, monthsToAdd: number): string => {
+    let year = 26;
+    let month = 6;
+    let day = 8;
+    
+    const parts = startDateStr.split('.').map(p => p.trim()).filter(Boolean);
+    if (parts.length >= 3) {
+      year = Number(parts[0]) || 26;
+      month = Number(parts[1]) || 6;
+      day = Number(parts[2]) || 8;
+    }
+    
+    let targetMonth = month + monthsToAdd;
+    let targetYear = year;
+    while (targetMonth > 12) {
+      targetMonth -= 12;
+      targetYear += 1;
+    }
+    
+    return `${targetYear}. ${targetMonth}. ${day}.`;
+  };
+
   // 7. Selling Single Device Process Handler
   const handleOpenSellModal = (device: DeviceItem) => {
     setSellingDevice(device);
@@ -1476,6 +1526,8 @@ export default function StaffDashboard() {
     setCodAmountInput(0);
     setInstMonths(4);
     setInstMonthlyPayment(0);
+    setCustName('');
+    setCustPhone('');
   };
 
   const handleProcessSale = async () => {
@@ -1485,6 +1537,17 @@ export default function StaffDashboard() {
       return;
     }
 
+    if (saleType === 'installment') {
+      if (!custName.trim()) {
+        showToast('고객 성함을 입력해 주세요. (Customer Name is required.)', 'error');
+        return;
+      }
+      if (!custPhone.trim()) {
+        showToast('고객 연락처를 입력해 주세요. (Customer Phone is required.)', 'error');
+        return;
+      }
+    }
+
     setProcessingSale(true);
     try {
       let paymentStatus = 'paid';
@@ -1492,6 +1555,21 @@ export default function StaffDashboard() {
         paymentStatus = 'unpaid';
       } else if (saleType === 'installment') {
         paymentStatus = 'collecting';
+      }
+
+      let instHistory: any[] = [];
+      if (saleType === 'installment') {
+        const months = Number(instMonths) || 0;
+        const monthlyAmount = Number(instMonthlyPayment) || 0;
+        for (let i = 1; i <= months; i++) {
+          instHistory.push({
+            sequence: i,
+            due_date: calculateDueDate(saleDate, i),
+            amount: monthlyAmount,
+            status: 'unpaid',
+            paid_date: null
+          });
+        }
       }
 
       const { error } = await supabase
@@ -1510,7 +1588,11 @@ export default function StaffDashboard() {
           cod_amount: saleType === 'cod' ? (Number(codAmountInput) || 0) : 0,
           installment_months: saleType === 'installment' ? (Number(instMonths) || 0) : 0,
           installment_amount: saleType === 'installment' ? (Number(instMonthlyPayment) || 0) : 0,
-          payment_status: paymentStatus
+          payment_status: paymentStatus,
+          customer_name: saleType === 'installment' ? custName.trim() : null,
+          customer_phone: saleType === 'installment' ? custPhone.trim() : null,
+          is_approved: false, // New sale requires admin approval to hit margin log
+          installment_history: saleType === 'installment' ? instHistory : []
         })
         .eq('id', sellingDevice.id);
 
@@ -1523,6 +1605,91 @@ export default function StaffDashboard() {
       showToast(t('toast_sale_recorded_failed') + err.message, 'error');
     } finally {
       setProcessingSale(false);
+    }
+  };
+
+  const handleApproveSale = async (deviceId: string) => {
+    if (!confirm('해당 판매 건을 승인하시겠습니까?\n승인 시 최종 마진 장부에 반영됩니다.\n(Do you want to approve this sale? It will be entered into the margin ledger.)')) return;
+    try {
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .update({
+          is_approved: true
+        })
+        .eq('id', deviceId);
+
+      if (error) throw error;
+      showToast('판매 승인이 완료되었습니다. (Sale approved successfully.)', 'success');
+      loadLedgerData();
+    } catch (err: any) {
+      showToast('판매 승인 실패: ' + err.message, 'error');
+    }
+  };
+
+  const handleToggleInstallmentStatus = async (deviceId: string, sequence: number) => {
+    const device = devices.find(d => d.id === deviceId);
+    if (!device) return;
+    
+    const history = [...(device.installment_history || [])];
+    const itemIndex = history.findIndex((h: any) => h.sequence === sequence);
+    if (itemIndex === -1) return;
+    
+    const inst = history[itemIndex];
+    const newStatus = inst.status === 'paid' ? 'unpaid' : 'paid';
+    const todayStr = new Date().toLocaleDateString('ko-KR').slice(2);
+    
+    history[itemIndex] = {
+      ...inst,
+      status: newStatus,
+      paid_date: newStatus === 'paid' ? todayStr : null
+    };
+    
+    // Recalculate if all installments are now paid
+    const allPaid = history.every((h: any) => h.status === 'paid');
+    const paymentStatus = allPaid ? 'paid' : 'collecting';
+    
+    try {
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .update({
+          installment_history: history,
+          payment_status: paymentStatus
+        })
+        .eq('id', deviceId);
+        
+      if (error) throw error;
+      showToast(`${sequence}회차 수금 상태를 변경했습니다.`, 'success');
+      loadLedgerData();
+    } catch (err: any) {
+      showToast('상태 변경 실패: ' + err.message, 'error');
+    }
+  };
+
+  const handleFinalizeInstallment = async (deviceId: string) => {
+    const device = devices.find(d => d.id === deviceId);
+    if (!device) return;
+    if (!confirm('해당 할부 계약을 최종 완납 처리하시겠습니까?\n모든 회차가 납부 완료로 변경됩니다.')) return;
+    
+    const history = (device.installment_history || []).map((h: any) => ({
+      ...h,
+      status: 'paid',
+      paid_date: h.paid_date || new Date().toLocaleDateString('ko-KR').slice(2)
+    }));
+    
+    try {
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .update({
+          installment_history: history,
+          payment_status: 'paid'
+        })
+        .eq('id', deviceId);
+        
+      if (error) throw error;
+      showToast('할부 완납 처리가 완료되었습니다.', 'success');
+      loadLedgerData();
+    } catch (err: any) {
+      showToast('완납 처리 실패: ' + err.message, 'error');
     }
   };
 
@@ -1719,7 +1886,7 @@ export default function StaffDashboard() {
   };
 
   // Tab Change Handler
-  const handleTabChange = (tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin') => {
+  const handleTabChange = (tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment') => {
     setActiveTab(tab);
     setSelectedIds([]);
     setCategoryFilter('all');
@@ -1799,6 +1966,15 @@ export default function StaffDashboard() {
             <span className="ico">💸</span> {t('staff_menu_sales') || '판매 완료 처리'}
           </button>
 
+          {(staffProfile?.role === 'admin' || staffProfile?.role === 'manager') && (
+            <button 
+              className={`sb-link ${activeTab === 'installment' ? 'active' : ''}`}
+              onClick={() => handleTabChange('installment')}
+            >
+              <span className="ico">💳</span> 할부 수금 및 고객 관리
+            </button>
+          )}
+
           <button 
             className={`sb-link ${activeTab === 'settings' ? 'active' : ''}`}
             onClick={() => handleTabChange('settings')}
@@ -1859,6 +2035,7 @@ export default function StaffDashboard() {
               {activeTab === 'overview' && `📊 ${t('staff_menu_overview') || '경영 개요'}`}
               {activeTab === 'ledger' && `📱 ${t('staff_menu_inventory') || '사내 재고 관리'}`}
               {activeTab === 'sales' && `💸 ${t('staff_menu_sales') || '판매 완료 처리'}`}
+              {activeTab === 'installment' && `💳 할부 수금 및 고객 관리`}
               {activeTab === 'settings' && `⚙️ ${t('staff_menu_settings') || '기준 정보 관리'}`}
               {activeTab === 'margin' && `📈 마진 및 정산관리`}
               {activeTab === 'trash' && `🗑️ 휴지통`}
@@ -1868,6 +2045,28 @@ export default function StaffDashboard() {
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {(staffProfile?.role === 'admin' || staffProfile?.role === 'manager') && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '20px', padding: '4px 10px', fontSize: '11.5px', fontWeight: 700 }}>
+                <span>💱 네이버 환율 (THB➔KRW):</span>
+                <input
+                  type="number"
+                  value={exchangeRate}
+                  onChange={(e) => setExchangeRate(Number(e.target.value) || 0)}
+                  style={{
+                    width: '55px',
+                    border: 'none',
+                    background: 'transparent',
+                    fontWeight: 800,
+                    color: 'var(--purple-l)',
+                    textAlign: 'center',
+                    padding: 0,
+                    margin: 0,
+                    outline: 'none'
+                  }}
+                  step="0.1"
+                />
+              </div>
+            )}
             <div style={{ display: 'inline-flex', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '20px', padding: '2px' }}>
               <button
                 onClick={() => changeLanguage('ko')}
@@ -2272,6 +2471,11 @@ export default function StaffDashboard() {
                     <th style={{ width: '10%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
                       {t('staff_th_selling_price')} {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
+                    {(staffProfile?.role === 'admin' || staffProfile?.role === 'manager') && (
+                      <th style={{ width: '10%', textAlign: 'right' }}>
+                        임시 마진
+                      </th>
+                    )}
                     <th style={{ width: '10%', cursor: 'pointer' }} onClick={() => toggleSort('stock_location')}>
                       {t('staff_th_location')} {sortField === 'stock_location' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
@@ -2282,13 +2486,13 @@ export default function StaffDashboard() {
                 <tbody>
                   {loadingData ? (
                     <tr>
-                      <td colSpan={12} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
+                      <td colSpan={(staffProfile?.role === 'admin' || staffProfile?.role === 'manager') ? 13 : 12} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
                         {t('loading_data') || 'Database fetching active records...'}
                       </td>
                     </tr>
                   ) : filteredActiveDevices.length === 0 ? (
                     <tr>
-                      <td colSpan={12} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
+                      <td colSpan={(staffProfile?.role === 'admin' || staffProfile?.role === 'manager') ? 13 : 12} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
                         {t('staff_empty_stock') || '재고 목록이 비어 있습니다. 입고를 진행해 주세요.'}
                       </td>
                     </tr>
@@ -2543,6 +2747,11 @@ export default function StaffDashboard() {
                             <>฿{formatPrice(item.selling_price)}</>
                           )}
                         </td>
+                        {(staffProfile?.role === 'admin' || staffProfile?.role === 'manager') && (
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: (Math.round((item.selling_price || 0) * exchangeRate) - (item.purchase_cost_krw || 0)) >= 0 ? 'var(--green)' : '#e11d48' }}>
+                            ₩{formatPrice(Math.round((item.selling_price || 0) * exchangeRate) - (item.purchase_cost_krw || 0))}
+                          </td>
+                        )}
                         <td
                           style={{ cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }}
                           onClick={() => {
@@ -2739,13 +2948,13 @@ export default function StaffDashboard() {
                       {t('staff_th_model')} {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
                     <th style={{ width: '11%' }}>IMEI</th>
-                    <th style={{ width: '8%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('purchase_cost_krw')}>
+                    <th style={{ width: '7%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('purchase_cost_krw')}>
                       {t('staff_th_purchase_cost')} {sortField === 'purchase_cost_krw' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th style={{ width: '9%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
+                    <th style={{ width: '7%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
                       {t('staff_th_selling_price')} {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th style={{ width: '16%' }}>판매 상세 (Payment Details)</th>
+                    <th style={{ width: '15%' }}>판매 상세 (Payment Details)</th>
                     <th style={{ width: '8%', textAlign: 'center', cursor: 'pointer' }} onClick={() => toggleSort('payment_status')}>
                       수납 상태 {sortField === 'payment_status' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
@@ -2753,7 +2962,7 @@ export default function StaffDashboard() {
                       {t('staff_th_seller_name')} {sortField === 'seller_name' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
                     <th style={{ width: '7%' }}>{t('staff_th_sale_memo')}</th>
-                    <th style={{ width: '4%', textAlign: 'center' }}>{t('staff_th_restore')}</th>
+                    <th style={{ width: '9%', textAlign: 'center' }}>조작</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2792,18 +3001,39 @@ export default function StaffDashboard() {
                         <td style={{ textAlign: 'right', color: '#94a3b8' }}>₩{formatPrice(item.purchase_cost_krw)}</td>
                         <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)' }}>฿{formatPrice(item.selling_price)}</td>
                         <td style={{ fontSize: '11.5px', color: 'var(--t1)' }}>{getSaleDetailsLabel(item)}</td>
-                        <td style={{ textAlign: 'center' }}>{getPaymentStatusBadge(item.payment_status)}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                            {getPaymentStatusBadge(item.payment_status)}
+                            {item.is_approved ? (
+                              <span style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'var(--green)', padding: '2px 6px', borderRadius: '4px', fontSize: '9px', fontWeight: 800 }}>승인 완료</span>
+                            ) : (
+                              <span style={{ background: 'rgba(217, 119, 6, 0.12)', color: '#d97706', padding: '2px 6px', borderRadius: '4px', fontSize: '9px', fontWeight: 800 }}>승인 대기</span>
+                            )}
+                          </div>
+                        </td>
                         <td style={{ fontWeight: 700 }}>{item.seller_name || '-'}</td>
                         <td style={{ fontSize: '11px', color: 'var(--t2)' }}>{item.notes || '-'}</td>
                         <td style={{ textAlign: 'center' }}>
-                          <button
-                            className="btn-red"
-                            style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', background: '#fef2f2', color: 'var(--red)', borderColor: '#fee2e2', cursor: 'pointer' }}
-                            onClick={() => handleRestoreToStock(item.id)}
-                            title={t('staff_th_restore') || "재고복원"}
-                          >
-                            🔄
-                          </button>
+                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                            {!item.is_approved && staffProfile?.role === 'admin' && (
+                              <button
+                                className="btn-green"
+                                style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', background: '#ecfdf5', color: '#10b981', borderColor: '#d1fae5', cursor: 'pointer' }}
+                                onClick={() => handleApproveSale(item.id)}
+                                title="판매 승인 (Approve Sale)"
+                              >
+                                ✔️
+                              </button>
+                            )}
+                            <button
+                              className="btn-red"
+                              style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', background: '#fef2f2', color: 'var(--red)', borderColor: '#fee2e2', cursor: 'pointer' }}
+                              onClick={() => handleRestoreToStock(item.id)}
+                              title={t('staff_th_restore') || "재고복원"}
+                            >
+                              🔄
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -2814,6 +3044,199 @@ export default function StaffDashboard() {
 
           </div>
         )}
+
+        {/* ==================== VIEW: INSTALLMENT MANAGEMENT ==================== */}
+        {activeTab === 'installment' && (staffProfile?.role === 'admin' || staffProfile?.role === 'manager') && (() => {
+          const installmentDevices = devices.filter(d => !d.deleted_at && d.is_sold && d.sale_type === 'installment');
+          
+          const now = new Date();
+          const currYear = now.getFullYear() % 100;
+          const currMonth = now.getMonth() + 1;
+          
+          const isDueThisMonth = (dueDate: string) => {
+            if (!dueDate) return false;
+            const pts = dueDate.split('.').map(x => x.trim()).filter(Boolean);
+            if (pts.length >= 2) {
+              return Number(pts[0]) === currYear && Number(pts[1]) === currMonth;
+            }
+            return false;
+          };
+
+          let expectedThisMonth = 0;
+          let collectedThisMonth = 0;
+          
+          installmentDevices.forEach(d => {
+            const history = d.installment_history || [];
+            history.forEach((h: any) => {
+              if (isDueThisMonth(h.due_date)) {
+                expectedThisMonth += Number(h.amount) || 0;
+                if (h.status === 'paid') {
+                  collectedThisMonth += Number(h.amount) || 0;
+                }
+              }
+            });
+          });
+          
+          const remainingThisMonth = expectedThisMonth - collectedThisMonth;
+
+          // Filter installments based on search query
+          const filteredInstallments = installmentDevices.filter(d => {
+            const custNameMatch = d.customer_name?.toLowerCase().includes(searchQuery.toLowerCase());
+            const custPhoneMatch = d.customer_phone?.includes(searchQuery);
+            const stickerMatch = d.sticker?.toLowerCase().includes(searchQuery.toLowerCase());
+            const imeiMatch = d.imei?.includes(searchQuery);
+            const modelMatch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery));
+            return !searchQuery || custNameMatch || custPhoneMatch || stickerMatch || imeiMatch || modelMatch;
+          });
+
+          return (
+            <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              
+              {/* Summary Metrics */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+                <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>📅</div>
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600 }}>이번 달 청구 예정액 ({currMonth}월)</div>
+                    <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--purple-l)', marginTop: '4px' }}>฿{expectedThisMonth.toLocaleString()}</div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>총 청구 회차 합산</div>
+                  </div>
+                </div>
+
+                <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>🟢</div>
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600 }}>이번 달 수납 완료액</div>
+                    <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--green)', marginTop: '4px' }}>฿{collectedThisMonth.toLocaleString()}</div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>수금 완료액</div>
+                  </div>
+                </div>
+
+                <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>🔴</div>
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600 }}>이번 달 미수 금액</div>
+                    <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--red)', marginTop: '4px' }}>฿{remainingThisMonth.toLocaleString()}</div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>미납 회차 잔액</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Installment Search & Count */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '8px 12px' }}>
+                <input
+                  type="text"
+                  placeholder="고객명, 연락처, 기기 검색..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="form-input"
+                  style={{ maxWidth: '240px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
+                />
+                <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--purple-l)' }}>
+                  총 할부 거래 수: {installmentDevices.length}건 (검색됨: {filteredInstallments.length}건)
+                </div>
+              </div>
+
+              {/* Installment Table */}
+              <div className="tbl-wrap" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px' }}>
+                <table className="tbl" style={{ tableLayout: 'fixed', width: '100%' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '10%' }}>구매일</th>
+                      <th style={{ width: '15%' }}>기기 정보</th>
+                      <th style={{ width: '12%' }}>고객명 / 연락처</th>
+                      <th style={{ width: '18%' }}>할부 조건 (계약 금액)</th>
+                      <th style={{ width: '12%', textAlign: 'right' }}>수납액 / 할부총액</th>
+                      <th style={{ width: '25%' }}>회차별 수금 관리 (클릭 시 수납 처리)</th>
+                      <th style={{ width: '8%', textAlign: 'center' }}>조작</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredInstallments.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
+                          할부 거래 내역이 없습니다. (No installments found.)
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredInstallments.map(item => {
+                        const history = item.installment_history || [];
+                        const paidTotal = history.filter((h: any) => h.status === 'paid').reduce((s: number, h: any) => s + (Number(h.amount) || 0), 0);
+                        const totalInstPrice = (item.installment_months || 0) * (item.installment_amount || 0);
+                        const isFinished = item.payment_status === 'paid';
+                        
+                        return (
+                          <tr key={item.id} style={{ background: isFinished ? '#f4f4f5' : '#fff', opacity: isFinished ? 0.65 : 1 }}>
+                            <td style={{ fontWeight: 700 }}>{item.sale_date}</td>
+                            <td>
+                              <div style={{ fontWeight: 700 }}>{item.model_name}</div>
+                              <div style={{ fontSize: '10.5px', color: 'var(--t3)', fontFamily: 'monospace' }}>Sticker: {item.sticker}</div>
+                              <div style={{ fontSize: '10.5px', color: 'var(--t3)', fontFamily: 'monospace' }}>IMEI: {item.imei}</div>
+                            </td>
+                            <td>
+                              <div style={{ fontWeight: 700, color: 'var(--purple-l)' }}>👤 {item.customer_name || '미기입'}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '2px' }}>📞 {item.customer_phone || '미기입'}</div>
+                            </td>
+                            <td>
+                              <div style={{ fontSize: '11px', color: 'var(--t2)' }}>인도금: ฿{formatPrice(item.deposit_amount || 0)}</div>
+                              <div style={{ fontSize: '11px', fontWeight: 700 }}>분납: ฿{formatPrice(item.installment_amount || 0)} x {item.installment_months}개월</div>
+                              <div style={{ fontSize: '11px', color: 'var(--t3)', marginTop: '2px' }}>최종 판매가: ฿{formatPrice((item.deposit_amount || 0) + totalInstPrice)}</div>
+                            </td>
+                            <td style={{ textAlign: 'right', fontWeight: 800 }}>
+                              <span style={{ color: isFinished ? 'var(--green)' : '#d97706' }}>฿{formatPrice(paidTotal)}</span>
+                              <span style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 'normal' }}> / ฿{formatPrice(totalInstPrice)}</span>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {history.map((inst: any, idx: number) => {
+                                  const isPaid = inst.status === 'paid';
+                                  return (
+                                    <button
+                                      key={idx}
+                                      onClick={() => handleToggleInstallmentStatus(item.id, inst.sequence)}
+                                      style={{
+                                        padding: '3px 6px',
+                                        borderRadius: '6px',
+                                        fontSize: '10.5px',
+                                        fontWeight: 700,
+                                        background: isPaid ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                        color: isPaid ? 'var(--green)' : 'var(--red)',
+                                        border: `1px solid ${isPaid ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}`,
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap'
+                                      }}
+                                      title={`예정일: ${inst.due_date}${inst.paid_date ? ` (수금일: ${inst.paid_date})` : ''}`}
+                                    >
+                                      {inst.sequence}회차 ({inst.due_date.split('.').slice(1,2).join('.') + '월'}): ฿{formatPrice(inst.amount)} {isPaid ? '🟢' : '🔴'}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              {!isFinished && (
+                                <button
+                                  className="btn-sm btn-green"
+                                  onClick={() => handleFinalizeInstallment(item.id)}
+                                  style={{ padding: '4px 8px', fontSize: '10.5px', fontWeight: 800, margin: 0, whiteSpace: 'nowrap' }}
+                                >
+                                  완납 처리
+                                </button>
+                              )}
+                              {isFinished && (
+                                <span style={{ color: 'var(--green)', fontSize: '11px', fontWeight: 800 }}>✓ 완납완료</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ==================== VIEW 4: SETTINGS (MASTER DATA) ==================== */}
         {activeTab === 'settings' && (
@@ -3720,6 +4143,30 @@ export default function StaffDashboard() {
 
               {saleType === 'installment' && (
                 <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">고객 성함 (Customer Name) *</label>
+                      <input
+                        type="text"
+                        placeholder="예: 홍길동"
+                        value={custName}
+                        onChange={(e) => setCustName(e.target.value)}
+                        className="form-input"
+                        style={{ margin: 0 }}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">고객 연락처 (Customer Phone) *</label>
+                      <input
+                        type="text"
+                        placeholder="예: 010-1234-5678"
+                        value={custPhone}
+                        onChange={(e) => setCustPhone(e.target.value)}
+                        className="form-input"
+                        style={{ margin: 0 }}
+                      />
+                    </div>
+                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px', marginBottom: '12px' }}>
                     <div className="form-group" style={{ margin: 0 }}>
                       <label className="form-label">보증금 (Deposit)</label>
