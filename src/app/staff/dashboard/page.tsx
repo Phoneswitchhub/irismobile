@@ -24,6 +24,9 @@ interface DeviceItem {
   purchase_cost_krw: number;
   created_at: string;
   deleted_at?: string;
+  is_reserved?: boolean;
+  reserved_by?: string;
+  reserved_date?: string;
 }
 
 export default function StaffDashboard() {
@@ -45,6 +48,15 @@ export default function StaffDashboard() {
 
   // Checkbox Selection States
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Category Quick Filter Tag
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+
+  // Reservation Form Modal States
+  const [reservingDevice, setReservingDevice] = useState<DeviceItem | null>(null);
+  const [reserverName, setReserverName] = useState<string>('');
+  const [reservationNotes, setReservationNotes] = useState<string>('');
+  const [processingReservation, setProcessingReservation] = useState<boolean>(false);
 
   // Ledger Data States
   const [devices, setDevices] = useState<DeviceItem[]>([]);
@@ -447,6 +459,7 @@ export default function StaffDashboard() {
     const soldList = devices.filter(d => !d.deleted_at && d.is_sold);
 
     const totalStockCount = activeStock.length;
+    const reservedCount = activeStock.filter(d => d.is_reserved).length;
     const totalPurchaseCostKRW = activeStock.reduce((sum, d) => sum + Number(d.purchase_cost_krw || 0), 0);
     const totalSellingValueTHB = activeStock.reduce((sum, d) => sum + Number(d.selling_price || 0), 0);
 
@@ -465,19 +478,73 @@ export default function StaffDashboard() {
     let galaxyCount = 0;
     let otherCount = 0;
 
+    // Detailed model series counts
+    const seriesCounts: Record<string, number> = {
+      'iPhone 16': 0,
+      'iPhone 15': 0,
+      'iPhone 14': 0,
+      'iPhone 13': 0,
+      'iPhone 12': 0,
+      'iPhone 11': 0,
+      'iPhone 기타': 0,
+      'Galaxy S24': 0,
+      'Galaxy S23': 0,
+      'Galaxy S22': 0,
+      'Galaxy Fold': 0,
+      'Galaxy Flip': 0,
+      'Galaxy 기타': 0,
+      'Vivo': 0,
+      'Oppo': 0,
+      'Huawei': 0,
+      '기타 브랜드': 0,
+    };
+
+    // Top individual models
+    const individualModelCounts: Record<string, number> = {};
+
     activeStock.forEach(d => {
       const name = d.model_name.toLowerCase();
+      individualModelCounts[d.model_name] = (individualModelCounts[d.model_name] || 0) + 1;
+
       if (name.includes('iphone') || name.includes('aip') || name.includes('ip') || name.includes('아이폰')) {
         iphoneCount++;
-      } else if (name.includes('galaxy') || name.includes('sec') || name.includes('갤') || name.includes('s2') || name.includes('s3') || name.includes('s4')) {
+        if (name.includes('16')) seriesCounts['iPhone 16']++;
+        else if (name.includes('15')) seriesCounts['iPhone 15']++;
+        else if (name.includes('14')) seriesCounts['iPhone 14']++;
+        else if (name.includes('13')) seriesCounts['iPhone 13']++;
+        else if (name.includes('12')) seriesCounts['iPhone 12']++;
+        else if (name.includes('11')) seriesCounts['iPhone 11']++;
+        else seriesCounts['iPhone 기타']++;
+      } else if (name.includes('galaxy') || name.includes('sec') || name.includes('갤') || name.includes('s2') || name.includes('s3') || name.includes('s4') || name.includes('flip') || name.includes('fold')) {
         galaxyCount++;
+        if (name.includes('24')) seriesCounts['Galaxy S24']++;
+        else if (name.includes('23')) seriesCounts['Galaxy S23']++;
+        else if (name.includes('22')) seriesCounts['Galaxy S22']++;
+        else if (name.includes('fold')) seriesCounts['Galaxy Fold']++;
+        else if (name.includes('flip')) seriesCounts['Galaxy Flip']++;
+        else seriesCounts['Galaxy 기타']++;
+      } else if (name.includes('vivo')) {
+        seriesCounts['Vivo']++;
+        otherCount++;
+      } else if (name.includes('oppo')) {
+        seriesCounts['Oppo']++;
+        otherCount++;
+      } else if (name.includes('huawei')) {
+        seriesCounts['Huawei']++;
+        otherCount++;
       } else {
+        seriesCounts['기타 브랜드']++;
         otherCount++;
       }
     });
 
+    const topIndividualModels = Object.entries(individualModelCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 15); // Get top 15 exact models
+
     return {
       totalStockCount,
+      reservedCount,
       totalPurchaseCostKRW,
       totalSellingValueTHB,
       totalSoldCount,
@@ -485,9 +552,32 @@ export default function StaffDashboard() {
       locationCounts,
       iphoneCount,
       galaxyCount,
-      otherCount
+      otherCount,
+      seriesCounts,
+      topIndividualModels
     };
   }, [devices]);
+
+  // Helper to check category
+  const matchesCategory = useCallback((modelName: string, filter: string) => {
+    if (filter === 'all') return true;
+    const name = modelName.toLowerCase();
+    const isIphone = name.includes('iphone') || name.includes('aip') || name.includes('ip') || name.includes('아이폰');
+    const isGalaxy = name.includes('galaxy') || name.includes('sec') || name.includes('갤') || name.includes('s2') || name.includes('s3') || name.includes('s4') || name.includes('fold') || name.includes('flip');
+
+    if (filter === 'iphone') return isIphone;
+    if (filter === 'iphone16') return isIphone && name.includes('16');
+    if (filter === 'iphone15') return isIphone && name.includes('15');
+    if (filter === 'iphone14') return isIphone && name.includes('14');
+    if (filter === 'iphone13') return isIphone && name.includes('13');
+    if (filter === 'galaxy') return isGalaxy;
+    if (filter === 's24') return name.includes('s24');
+    if (filter === 's23') return name.includes('s23');
+    if (filter === 's22') return name.includes('s22');
+    if (filter === 'fold_flip') return name.includes('fold') || name.includes('flip');
+    if (filter === 'other_brand') return name.includes('vivo') || name.includes('oppo') || name.includes('huawei');
+    return true;
+  }, []);
 
   // Filtered lists
   const filteredActiveDevices = useMemo(() => {
@@ -497,10 +587,16 @@ export default function StaffDashboard() {
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchLoc = locationFilter === 'all' || d.stock_location === locationFilter;
-      return matchSearch && matchLoc;
+      const matchCat = matchesCategory(d.model_name, categoryFilter);
+      return matchSearch && matchLoc && matchCat;
     });
-    return sortDevices(list);
-  }, [devices, searchQuery, locationFilter, sortDevices]);
+
+    // Pin reserved items to the very top, sorted.
+    const reserved = list.filter(d => d.is_reserved);
+    const normal = list.filter(d => !d.is_reserved);
+
+    return [...sortDevices(reserved), ...sortDevices(normal)];
+  }, [devices, searchQuery, locationFilter, categoryFilter, matchesCategory, sortDevices]);
 
   const filteredSoldDevices = useMemo(() => {
     const list = devices.filter(d => {
@@ -508,10 +604,11 @@ export default function StaffDashboard() {
       const matchSearch = d.model_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
-      return matchSearch;
+      const matchCat = matchesCategory(d.model_name, categoryFilter);
+      return matchSearch && matchCat;
     });
     return sortDevices(list);
-  }, [devices, searchQuery, sortDevices]);
+  }, [devices, searchQuery, categoryFilter, matchesCategory, sortDevices]);
 
   const filteredTrashDevices = useMemo(() => {
     const list = devices.filter(d => {
@@ -1176,6 +1273,9 @@ export default function StaffDashboard() {
         .from('sheets_inventory')
         .update({
           is_sold: true,
+          is_reserved: false,
+          reserved_by: null,
+          reserved_date: null,
           sale_date: saleDate,
           seller_name: sellerName.trim(),
           notes: saleNotes.trim() || null
@@ -1194,6 +1294,66 @@ export default function StaffDashboard() {
     }
   };
 
+  // Reservation Handlers
+  const handleOpenReserveModal = (device: DeviceItem) => {
+    setReservingDevice(device);
+    setReserverName('');
+    setReservationNotes('');
+  };
+
+  const handleProcessReservation = async () => {
+    if (!reservingDevice) return;
+    if (!reserverName.trim()) {
+      showToast('❌ 예약자명을 입력해 주세요.', 'error');
+      return;
+    }
+
+    setProcessingReservation(true);
+    try {
+      const todayStr = new Date().toLocaleDateString('ko-KR').slice(2);
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .update({
+          is_reserved: true,
+          reserved_by: reserverName.trim(),
+          reserved_date: todayStr,
+          notes: reservationNotes.trim() ? `[예약] ${reservationNotes.trim()}` : reservingDevice.notes
+        })
+        .eq('id', reservingDevice.id);
+
+      if (error) throw error;
+
+      showToast('📌 기기 예약이 설정되었습니다.', 'success');
+      setReservingDevice(null);
+      loadLedgerData();
+    } catch (err: any) {
+      showToast('❌ 예약 처리 실패: ' + err.message, 'error');
+    } finally {
+      setProcessingReservation(false);
+    }
+  };
+
+  const handleCancelReservation = async (deviceId: string) => {
+    if (!confirm('이 기기의 예약을 취소하시겠습니까?')) return;
+    try {
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .update({
+          is_reserved: false,
+          reserved_by: null,
+          reserved_date: null
+        })
+        .eq('id', deviceId);
+
+      if (error) throw error;
+
+      showToast('🔓 예약을 취소하고 일반 재고로 변경했습니다.', 'success');
+      loadLedgerData();
+    } catch (err: any) {
+      showToast('❌ 예약 취소 실패: ' + err.message, 'error');
+    }
+  };
+
   // Re-verify back to inventory stock
   const handleRestoreToStock = async (deviceId: string) => {
     if (!confirm('Mark this device back as active stock?')) return;
@@ -1203,7 +1363,10 @@ export default function StaffDashboard() {
         .update({
           is_sold: false,
           sale_date: null,
-          seller_name: null
+          seller_name: null,
+          is_reserved: false,
+          reserved_by: null,
+          reserved_date: null
         })
         .eq('id', deviceId);
 
@@ -1213,6 +1376,33 @@ export default function StaffDashboard() {
       loadLedgerData();
     } catch (err: any) {
       showToast('❌ Error: ' + err.message, 'error');
+    }
+  };
+
+  // Bulk Re-verify back to inventory stock
+  const handleBulkRestoreToStock = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`선택한 ${selectedIds.length}개 기기를 재고로 복원하시겠습니까?`)) return;
+    try {
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .update({
+          is_sold: false,
+          sale_date: null,
+          seller_name: null,
+          is_reserved: false,
+          reserved_by: null,
+          reserved_date: null
+        })
+        .in('id', selectedIds);
+
+      if (error) throw error;
+
+      showToast(`🔄 선택한 ${selectedIds.length}개 기기를 재고로 복원하였습니다.`, 'success');
+      setSelectedIds([]);
+      loadLedgerData();
+    } catch (err: any) {
+      showToast('❌ 일괄 복원 실패: ' + err.message, 'error');
     }
   };
 
@@ -1478,10 +1668,13 @@ export default function StaffDashboard() {
                   <div className="sc-num" style={{ fontSize: '22px', fontWeight: 900, color: 'var(--green)', margin: '8px 0 2px' }}>
                     {stats.totalStockCount} 대
                   </div>
-                  <div style={{ fontSize: '11px', color: 'var(--t2)', display: 'flex', gap: '6px', fontWeight: 700 }}>
+                  <div style={{ fontSize: '11px', color: 'var(--t2)', display: 'flex', flexWrap: 'wrap', gap: '6px', fontWeight: 700, alignItems: 'center' }}>
                     <span>🍎 {stats.iphoneCount}</span>
                     <span>🪐 {stats.galaxyCount}</span>
                     <span>기타 {stats.otherCount}</span>
+                    {stats.reservedCount > 0 && (
+                      <span style={{ color: '#d97706', background: '#fef3c7', padding: '1px 5px', borderRadius: '999px', fontSize: '9px', fontWeight: 800 }}>📌 예약 {stats.reservedCount}대</span>
+                    )}
                   </div>
                 </div>
                 <div className="sc-lbl" style={{ color: 'var(--t2)', fontSize: '11px', fontWeight: 600 }}>현재고 수량 (아이폰 / 갤럭시 / 기타)</div>
@@ -1526,10 +1719,11 @@ export default function StaffDashboard() {
               </div>
 
               {/* Model distribution */}
-              <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 800, marginBottom: '16px' }}>📱 기종별 재고 현황</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  
+              <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: 800 }}>📱 기종별 재고 현황</h3>
+                
+                {/* High level category bars */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {/* iPhone */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
@@ -1562,8 +1756,54 @@ export default function StaffDashboard() {
                       <div style={{ width: `${stats.totalStockCount > 0 ? (stats.otherCount / stats.totalStockCount) * 100 : 0}%`, height: '100%', background: 'var(--t3)', borderRadius: '999px' }}></div>
                     </div>
                   </div>
-
                 </div>
+
+                <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '4px 0' }} />
+                
+                {/* Detailed Series Counts */}
+                <div>
+                  <h4 style={{ fontSize: '12px', fontWeight: 800, marginBottom: '10px', color: 'var(--t1)' }}>📋 상세 기종 시리즈 현황</h4>
+                  <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px' }}>
+                    {Object.entries(stats.seriesCounts)
+                      .filter(([_, count]) => count > 0)
+                      .map(([series, count]) => {
+                        const pct = stats.totalStockCount > 0 ? (count / stats.totalStockCount) * 100 : 0;
+                        return (
+                          <div key={series} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 700 }}>
+                              <span>{series}</span>
+                              <span style={{ color: 'var(--purple-l)' }}>{count}대 ({pct.toFixed(1)}%)</span>
+                            </div>
+                            <div style={{ width: '100%', height: '5px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
+                              <div style={{ width: `${pct}%`, height: '100%', background: 'var(--purple-l)', borderRadius: '999px' }}></div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    {Object.values(stats.seriesCounts).every(count => count === 0) && (
+                      <div style={{ fontSize: '11px', color: 'var(--t3)', textAlign: 'center', padding: '12px' }}>재고 없음</div>
+                    )}
+                  </div>
+                </div>
+
+                <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '4px 0' }} />
+
+                {/* Top 10 Exact Model Names */}
+                <div>
+                  <h4 style={{ fontSize: '12px', fontWeight: 800, marginBottom: '10px', color: 'var(--t1)' }}>💎 실재고 단일 모델 TOP 10</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto', paddingRight: '4px' }}>
+                    {stats.topIndividualModels.slice(0, 10).map(([model, count]) => (
+                      <div key={model} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', padding: '6px 10px', background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '8px', alignItems: 'center' }}>
+                        <span style={{ fontWeight: 700, color: 'var(--t1)' }}>{model}</span>
+                        <span style={{ fontWeight: 800, color: 'var(--green)', fontSize: '12px' }}>{count}대</span>
+                      </div>
+                    ))}
+                    {stats.topIndividualModels.length === 0 && (
+                      <div style={{ fontSize: '11px', color: 'var(--t3)', textAlign: 'center', padding: '8px' }}>데이터 없음</div>
+                    )}
+                  </div>
+                </div>
+
               </div>
 
               {/* Quick info panel */}
@@ -1637,6 +1877,46 @@ export default function StaffDashboard() {
               </div>
             </div>
 
+            {/* Category Quick Filter Tag Shortcuts */}
+            <div className="category-shortcuts" style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '12px 16px', background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {[
+                { id: 'all', label: '📱 전체 (All)' },
+                { id: 'iphone', label: '🍎 아이폰 전체' },
+                { id: 'iphone16', label: 'iPhone 16' },
+                { id: 'iphone15', label: 'iPhone 15' },
+                { id: 'iphone14', label: 'iPhone 14' },
+                { id: 'iphone13', label: 'iPhone 13' },
+                { id: 'galaxy', label: '🪐 갤럭시 전체' },
+                { id: 's24', label: 'S24 울트라/기타' },
+                { id: 's23', label: 'S23 울트라/기타' },
+                { id: 's22', label: 'S22 울트라/기타' },
+                { id: 'fold_flip', label: '📂 폴드/플립' },
+                { id: 'other_brand', label: '🏷️ Vivo/Oppo/Huawei' }
+              ].map(cat => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setCategoryFilter(cat.id)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '999px',
+                    border: '1px solid',
+                    borderColor: categoryFilter === cat.id ? 'var(--purple-l)' : 'var(--border)',
+                    background: categoryFilter === cat.id ? 'var(--purple-l)' : '#fff',
+                    color: categoryFilter === cat.id ? '#fff' : 'var(--t1)',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.2s',
+                    boxShadow: categoryFilter === cat.id ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none'
+                  }}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
             {/* Devices Stock Grid Table */}
             <div className="tbl-wrap" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px' }}>
               <table className="tbl" style={{ tableLayout: 'fixed', width: '100%' }}>
@@ -1695,7 +1975,7 @@ export default function StaffDashboard() {
                     </tr>
                   ) : (
                     filteredActiveDevices.map(item => (
-                      <tr key={item.id}>
+                      <tr key={item.id} style={item.is_reserved ? { background: '#fff9eb', borderLeft: '4px solid #f59e0b' } : undefined}>
                         <td style={{ textAlign: 'center' }}>
                           <input 
                             type="checkbox" 
@@ -1790,7 +2070,12 @@ export default function StaffDashboard() {
                               ))}
                             </select>
                           ) : (
-                            item.model_name
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              {item.is_reserved && (
+                                <span style={{ fontSize: '10px', fontWeight: 800, background: '#f59e0b', color: '#fff', padding: '1px 4px', borderRadius: '4px', whiteSpace: 'nowrap' }}>예약중</span>
+                              )}
+                              <span>{item.model_name}</span>
+                            </div>
                           )}
                         </td>
                         <td className="font-mono" style={{ fontSize: '11px', wordBreak: 'break-all' }}>{item.imei}</td>
@@ -1809,8 +2094,12 @@ export default function StaffDashboard() {
                         <td>
                           <span className="badge bg-gray">{item.stock_location || 'Shop'}</span>
                         </td>
-                        <td style={{ fontSize: '11px', color: 'var(--t2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {item.notes || '-'}
+                        <td style={{ fontSize: '11px', color: 'var(--t2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.is_reserved ? `예약자: ${item.reserved_by} | ${item.notes || ''}` : item.notes || ''}>
+                          {item.is_reserved ? (
+                            <span style={{ color: '#d97706', fontWeight: 700 }}>👤 {item.reserved_by} ({item.reserved_date})</span>
+                          ) : (
+                            item.notes || '-'
+                          )}
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
@@ -1820,6 +2109,23 @@ export default function StaffDashboard() {
                             >
                               💸 판매완료
                             </button>
+                            {item.is_reserved ? (
+                              <button
+                                className="btn-sm"
+                                style={{ background: '#f1f5f9', color: '#475569', border: '1px solid var(--border)', padding: '2px 6px', fontSize: '11px', borderRadius: '4px', cursor: 'pointer' }}
+                                onClick={() => handleCancelReservation(item.id)}
+                              >
+                                🔓 예약취소
+                              </button>
+                            ) : (
+                              <button
+                                className="btn-sm"
+                                style={{ background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', padding: '2px 6px', fontSize: '11px', borderRadius: '4px', cursor: 'pointer' }}
+                                onClick={() => handleOpenReserveModal(item)}
+                              >
+                                📌 예약
+                              </button>
+                            )}
                             <button
                               className="btn-sm btn-blue"
                               onClick={() => handleOpenEdit(item)}
@@ -1860,19 +2166,68 @@ export default function StaffDashboard() {
                   style={{ maxWidth: '280px', margin: 0 }}
                 />
                 {selectedIds.length > 0 && (
-                  <button 
-                    className="btn-submit btn-red"
-                    style={{ margin: 0, padding: '8px 16px', fontSize: '12px' }}
-                    onClick={handleBulkDelete}
-                  >
-                    🗑️ 선택 삭제 ({selectedIds.length}대)
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button 
+                      className="btn-submit btn-green"
+                      style={{ margin: 0, padding: '8px 16px', fontSize: '12px' }}
+                      onClick={handleBulkRestoreToStock}
+                    >
+                      🔄 선택 재고복원 ({selectedIds.length}대)
+                    </button>
+                    <button 
+                      className="btn-submit btn-red"
+                      style={{ margin: 0, padding: '8px 16px', fontSize: '12px' }}
+                      onClick={handleBulkDelete}
+                    >
+                      🗑️ 선택 삭제 ({selectedIds.length}대)
+                    </button>
+                  </div>
                 )}
               </div>
               
               <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--purple-l)', whiteSpace: 'nowrap' }}>
                 총 판매 대수: {filteredSoldDevices.length}대
               </div>
+            </div>
+
+            {/* Category Quick Filter Tag Shortcuts */}
+            <div className="category-shortcuts" style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '12px 16px', background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {[
+                { id: 'all', label: '📱 전체 (All)' },
+                { id: 'iphone', label: '🍎 아이폰 전체' },
+                { id: 'iphone16', label: 'iPhone 16' },
+                { id: 'iphone15', label: 'iPhone 15' },
+                { id: 'iphone14', label: 'iPhone 14' },
+                { id: 'iphone13', label: 'iPhone 13' },
+                { id: 'galaxy', label: '🪐 갤럭시 전체' },
+                { id: 's24', label: 'S24 울트라/기타' },
+                { id: 's23', label: 'S23 울트라/기타' },
+                { id: 's22', label: 'S22 울트라/기타' },
+                { id: 'fold_flip', label: '📂 폴드/플립' },
+                { id: 'other_brand', label: '🏷️ Vivo/Oppo/Huawei' }
+              ].map(cat => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setCategoryFilter(cat.id)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '999px',
+                    border: '1px solid',
+                    borderColor: categoryFilter === cat.id ? 'var(--purple-l)' : 'var(--border)',
+                    background: categoryFilter === cat.id ? 'var(--purple-l)' : '#fff',
+                    color: categoryFilter === cat.id ? '#fff' : 'var(--t1)',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.2s',
+                    boxShadow: categoryFilter === cat.id ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none'
+                  }}
+                >
+                  {cat.label}
+                </button>
+              ))}
             </div>
 
             {/* Sales Grid Table */}
@@ -2682,6 +3037,67 @@ export default function StaffDashboard() {
               <button 
                 className="btn-sm btn-red" 
                 onClick={() => setSellingDevice(null)} 
+                style={{ padding: '14px 20px', borderRadius: 'var(--r)' }}
+              >
+                {t('cancel')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RESERVATION ACTION MODAL */}
+      {reservingDevice && (
+        <div className="modal-bg open" style={{ display: 'flex', zIndex: 3000 }}>
+          <div className="modal animate-slide-up" style={{ maxWidth: '450px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-hd">
+              <span className="modal-title">📌 단말기 예약 등록</span>
+              <button className="modal-x" onClick={() => setReservingDevice(null)}>✕</button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '20px' }}>
+              <p style={{ fontSize: '13px', marginBottom: '16px' }}>
+                기기명: <b style={{ color: 'var(--purple-l)' }}>{reservingDevice.model_name}</b><br />
+                IMEI: <span className="font-mono">{reservingDevice.imei}</span>
+              </p>
+
+              <div className="form-group" style={{ marginBottom: '12px' }}>
+                <label className="form-label">예약자명 (Reserver Name) *</label>
+                <input
+                  type="text"
+                  placeholder="예: 고객명 또는 담당 사원"
+                  value={reserverName}
+                  onChange={(e) => setReserverName(e.target.value)}
+                  className="form-input"
+                  style={{ margin: 0 }}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '12px' }}>
+                <label className="form-label">예약 상세 메모</label>
+                <input
+                  type="text"
+                  placeholder="예: 금주 토요일 수령 예정, 계약금 1,000바트 수령"
+                  value={reservationNotes}
+                  onChange={(e) => setReservationNotes(e.target.value)}
+                  className="form-input"
+                  style={{ margin: 0 }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', padding: '0 20px 20px' }}>
+              <button 
+                className="btn-submit" 
+                onClick={handleProcessReservation} 
+                disabled={processingReservation}
+                style={{ flex: 1, margin: 0, background: '#f59e0b', color: '#fff' }}
+              >
+                {processingReservation ? t('loading') : '📌 예약 확정'}
+              </button>
+              <button 
+                className="btn-sm btn-red" 
+                onClick={() => setReservingDevice(null)} 
                 style={{ padding: '14px 20px', borderRadius: 'var(--r)' }}
               >
                 {t('cancel')}
