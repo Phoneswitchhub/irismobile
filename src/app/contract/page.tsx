@@ -2230,6 +2230,22 @@ export default function ContractPage() {
             visibility: visible !important;
           }
           
+          /* Completely hide non-printable areas to prevent layout space allocation and scale issues on mobile */
+          .no-print,
+          .sidebar,
+          header,
+          footer,
+          nav {
+            display: none !important;
+          }
+          
+          .print-shipping-only #printable-contract-area {
+            display: none !important;
+          }
+          .print-contract-only #printable-shipping-area {
+            display: none !important;
+          }
+          
           /* Reset layout constraints of all ancestors so they don't restrict print width or add margins */
           .app-shell, 
           .contract-container, 
@@ -2521,10 +2537,10 @@ export default function ContractPage() {
           background: #475569;
         }
 
-        /* Shipping Label Styles (A5 Landscape) */
+        /* Shipping Label Styles (A4 Half-size scaled down) */
         .shipping-label-document {
-          width: 210mm;
-          height: 148mm;
+          width: 190mm;
+          height: 135mm;
           background: #ffffff;
           color: #000000;
           padding: 8mm;
@@ -2578,8 +2594,9 @@ export default function ContractPage() {
         .grid-right {
           display: flex;
           flex-direction: column;
-          justify-content: space-between;
+          justify-content: flex-end;
           height: 100%;
+          gap: 8px;
         }
 
         .label-section {
@@ -2589,7 +2606,7 @@ export default function ContractPage() {
         }
 
         .sender-box {
-          height: calc(100% - 4px);
+          height: auto;
         }
 
         .receiver-box {
@@ -2699,13 +2716,13 @@ export default function ContractPage() {
         @media print {
           .print-shipping-only #printable-shipping-area {
             position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 210mm !important;
-            height: 148mm !important;
-            padding: 6mm !important;
+            left: 10mm !important;
+            top: 10mm !important;
+            width: 190mm !important;
+            height: 135mm !important;
+            padding: 8mm !important;
             box-shadow: none !important;
-            border: none !important;
+            border: 2px solid #000000 !important;
             margin: 0 !important;
             display: flex !important;
             flex-direction: column !important;
@@ -2713,10 +2730,12 @@ export default function ContractPage() {
             color: #000000 !important;
             page-break-after: avoid !important;
             page-break-before: avoid !important;
-            border-radius: 0 !important;
+            border-radius: 8px !important;
+            box-sizing: border-box !important;
+            zoom: 1 !important;
           }
           @page {
-            size: A5 landscape !important;
+            size: A4 portrait !important;
             margin: 0 !important;
           }
         }
