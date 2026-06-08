@@ -31,7 +31,7 @@ interface DeviceItem {
 
 export default function StaffDashboard() {
   const router = useRouter();
-  const { t, lang } = useTranslation();
+  const { t, lang, changeLanguage } = useTranslation();
 
   // Authentication & Profile States
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
@@ -305,7 +305,7 @@ export default function StaffDashboard() {
 
   // Rename & Delete Settings Handlers
   const handleRenameLocation = async (oldName: string) => {
-    const newName = prompt(`위치명 수정: [${oldName}] ➔ 새 이름을 입력하세요:`, oldName);
+    const newName = prompt(t('staff_prompt_rename_location', { oldName }), oldName);
     if (!newName || newName.trim() === '' || newName.trim() === oldName) return;
     
     setLoadingSettings(true);
@@ -322,17 +322,17 @@ export default function StaffDashboard() {
         .eq('stock_location', oldName);
       if (cascadeErr) throw cascadeErr;
 
-      showToast(`✅ 보관 위치가 [${oldName}] ➔ [${newName.trim()}]으로 변경되었으며 기존 재고 장부도 업데이트되었습니다.`, 'success');
+      showToast(t('toast_rename_location_success', { oldName, newName: newName.trim() }), 'success');
       await Promise.all([loadSettingsData(), loadLedgerData()]);
     } catch (err: any) {
-      showToast('❌ 위치 수정 실패: ' + err.message, 'error');
+      showToast(t('toast_rename_location_failed') + err.message, 'error');
     } finally {
       setLoadingSettings(false);
     }
   };
 
   const handleDeleteLocation = async (name: string) => {
-    if (!confirm(`보관 위치 [${name}] 기준 정보를 삭제하시겠습니까? (기존 재고 물건들은 삭제되지 않고 위치 정보만 유지됩니다)`)) return;
+    if (!confirm(t('toast_confirm_delete_location', { name }))) return;
     
     setLoadingSettings(true);
     try {
@@ -341,17 +341,17 @@ export default function StaffDashboard() {
         .delete()
         .eq('name', name);
       if (error) throw error;
-      showToast(`🗑️ 위치 [${name}]가 삭제되었습니다.`, 'success');
+      showToast(t('toast_location_deleted', { name }), 'success');
       await loadSettingsData();
     } catch (err: any) {
-      showToast('❌ 위치 삭제 실패: ' + err.message, 'error');
+      showToast(t('toast_delete_location_failed') + err.message, 'error');
     } finally {
       setLoadingSettings(false);
     }
   };
 
   const handleRenameModel = async (oldName: string) => {
-    const newName = prompt(`모델명 수정: [${oldName}] ➔ 새 이름을 입력하세요:`, oldName);
+    const newName = prompt(t('staff_prompt_rename_model', { oldName }), oldName);
     if (!newName || newName.trim() === '' || newName.trim() === oldName) return;
     
     setLoadingSettings(true);
@@ -368,17 +368,17 @@ export default function StaffDashboard() {
         .eq('model_name', oldName);
       if (cascadeErr) throw cascadeErr;
 
-      showToast(`✅ 모델명이 [${oldName}] ➔ [${newName.trim()}]으로 변경되었으며 기존 재고 장부도 업데이트되었습니다.`, 'success');
+      showToast(t('toast_rename_model_success', { oldName, newName: newName.trim() }), 'success');
       await Promise.all([loadSettingsData(), loadLedgerData()]);
     } catch (err: any) {
-      showToast('❌ 모델명 수정 실패: ' + err.message, 'error');
+      showToast(t('toast_rename_model_failed') + err.message, 'error');
     } finally {
       setLoadingSettings(false);
     }
   };
 
   const handleDeleteModel = async (name: string) => {
-    if (!confirm(`모델명 [${name}] 기준 정보를 삭제하시겠습니까?`)) return;
+    if (!confirm(t('toast_confirm_delete_model', { name }))) return;
     
     setLoadingSettings(true);
     try {
@@ -387,10 +387,10 @@ export default function StaffDashboard() {
         .delete()
         .eq('name', name);
       if (error) throw error;
-      showToast(`🗑️ 모델명 [${name}]이 삭제되었습니다.`, 'success');
+      showToast(t('toast_model_deleted', { name }), 'success');
       await loadSettingsData();
     } catch (err: any) {
-      showToast('❌ 모델명 삭제 실패: ' + err.message, 'error');
+      showToast(t('toast_delete_model_failed') + err.message, 'error');
     } finally {
       setLoadingSettings(false);
     }
@@ -404,11 +404,11 @@ export default function StaffDashboard() {
         .from('settings_locations')
         .insert({ name: newLocInput.trim() });
       if (error) throw error;
-      showToast('✅ 새 위치가 추가되었습니다.', 'success');
+      showToast(t('toast_add_location_success'), 'success');
       setNewLocInput('');
       await loadSettingsData();
     } catch (err: any) {
-      showToast('❌ 위치 추가 실패: ' + err.message, 'error');
+      showToast(t('toast_add_location_failed') + err.message, 'error');
     }
   };
 
@@ -420,11 +420,11 @@ export default function StaffDashboard() {
         .from('settings_models')
         .insert({ name: newModInput.trim() });
       if (error) throw error;
-      showToast('✅ 새 모델명이 추가되었습니다.', 'success');
+      showToast(t('toast_add_model_success'), 'success');
       setNewModInput('');
       await loadSettingsData();
     } catch (err: any) {
-      showToast('❌ 모델 추가 실패: ' + err.message, 'error');
+      showToast(t('toast_add_model_failed') + err.message, 'error');
     }
   };
 
@@ -950,12 +950,12 @@ export default function StaffDashboard() {
 
       if (error) throw error;
 
-      showToast(`🌐 구글 시트로부터 ${records.length}개 기기 실시간 동기화 완료!`, 'success');
+      showToast(t('toast_sync_success', { count: records.length }), 'success');
       setIsCSVModalOpen(false);
       loadLedgerData();
     } catch (err: any) {
       console.error(err);
-      showToast('❌ 동기화 실패: ' + err.message, 'error');
+      showToast(t('toast_sync_failed') + err.message, 'error');
     } finally {
       setImportingCSV(false);
     }
@@ -964,14 +964,14 @@ export default function StaffDashboard() {
   // Clipboard Paste Ingestion Handler
   const handlePasteImport = async () => {
     if (!pasteText.trim()) {
-      showToast('❌ 붙여넣은 텍스트가 없습니다.', 'error');
+      showToast(t('toast_no_paste_text'), 'error');
       return;
     }
     setImportingCSV(true);
     try {
       const rows = pasteText.trim().split(/\r?\n/).map(row => row.split('\t'));
       if (rows.length === 0) {
-        showToast('❌ 유효한 텍스트 데이터가 없습니다.', 'error');
+        showToast(t('toast_no_valid_text_data'), 'error');
         setImportingCSV(false);
         return;
       }
@@ -1129,7 +1129,7 @@ export default function StaffDashboard() {
       }
 
       if (records.length === 0) {
-        showToast('❌ 파싱된 유효한 기기 데이터가 없습니다.', 'error');
+        showToast(t('toast_no_valid_paste_data'), 'error');
         setImportingCSV(false);
         return;
       }
@@ -1140,13 +1140,13 @@ export default function StaffDashboard() {
 
       if (error) throw error;
 
-      showToast(`📋 붙여넣기를 통해 ${records.length}개 기기 입고 완료!`, 'success');
+      showToast(t('toast_paste_import_success', { count: records.length }), 'success');
       setIsCSVModalOpen(false);
       setPasteText('');
       loadLedgerData();
     } catch (err: any) {
       console.error(err);
-      showToast('❌ 붙여넣기 입고 실패: ' + err.message, 'error');
+      showToast(t('toast_paste_import_failed') + err.message, 'error');
     } finally {
       setImportingCSV(false);
     }
@@ -1281,9 +1281,9 @@ export default function StaffDashboard() {
 
       // Update local state
       setDevices(prev => prev.map(d => d.id === id ? { ...d, [field]: value.trim() } : d));
-      showToast('✅ 인라인 수정이 반영되었습니다.', 'success');
+      showToast(t('toast_inline_save_success'), 'success');
     } catch (err: any) {
-      showToast('❌ 수정 실패: ' + err.message, 'error');
+      showToast(t('toast_inline_save_failed') + err.message, 'error');
     } finally {
       setEditingCell(null);
     }
@@ -1320,7 +1320,7 @@ export default function StaffDashboard() {
   const handleProcessSale = async () => {
     if (!sellingDevice) return;
     if (!sellerName.trim()) {
-      showToast('❌ Seller Name is required.', 'error');
+      showToast(t('toast_name_required'), 'error');
       return;
     }
 
@@ -1341,11 +1341,11 @@ export default function StaffDashboard() {
 
       if (error) throw error;
 
-      showToast('💸 Sale recorded successfully!', 'success');
+      showToast(t('toast_sale_recorded_success'), 'success');
       setSellingDevice(null);
       loadLedgerData();
     } catch (err: any) {
-      showToast('❌ Error: ' + err.message, 'error');
+      showToast(t('toast_sale_recorded_failed') + err.message, 'error');
     } finally {
       setProcessingSale(false);
     }
@@ -1361,7 +1361,7 @@ export default function StaffDashboard() {
   const handleProcessReservation = async () => {
     if (!reservingDevice) return;
     if (!reserverName.trim()) {
-      showToast('❌ 예약자명을 입력해 주세요.', 'error');
+      showToast(t('toast_input_reserver'), 'error');
       return;
     }
 
@@ -1380,18 +1380,18 @@ export default function StaffDashboard() {
 
       if (error) throw error;
 
-      showToast('📌 기기 예약이 설정되었습니다.', 'success');
+      showToast(t('toast_reserve_success'), 'success');
       setReservingDevice(null);
       loadLedgerData();
     } catch (err: any) {
-      showToast('❌ 예약 처리 실패: ' + err.message, 'error');
+      showToast(t('toast_reserve_failed') + err.message, 'error');
     } finally {
       setProcessingReservation(false);
     }
   };
 
   const handleCancelReservation = async (deviceId: string) => {
-    if (!confirm('이 기기의 예약을 취소하시겠습니까?')) return;
+    if (!confirm(t('toast_confirm_cancel_reserve'))) return;
     try {
       const { error } = await supabase
         .from('sheets_inventory')
@@ -1404,16 +1404,16 @@ export default function StaffDashboard() {
 
       if (error) throw error;
 
-      showToast('🔓 예약을 취소하고 일반 재고로 변경했습니다.', 'success');
+      showToast(t('toast_cancel_reserve_success'), 'success');
       loadLedgerData();
     } catch (err: any) {
-      showToast('❌ 예약 취소 실패: ' + err.message, 'error');
+      showToast(t('toast_cancel_reserve_failed') + err.message, 'error');
     }
   };
 
   // Re-verify back to inventory stock
   const handleRestoreToStock = async (deviceId: string) => {
-    if (!confirm('Mark this device back as active stock?')) return;
+    if (!confirm(t('toast_confirm_restore_selected', { count: 1 }))) return;
     try {
       const { error } = await supabase
         .from('sheets_inventory')
@@ -1429,17 +1429,17 @@ export default function StaffDashboard() {
 
       if (error) throw error;
 
-      showToast('🔄 Device returned to active stock list.', 'success');
+      showToast(t('toast_active_stock_success'), 'success');
       loadLedgerData();
     } catch (err: any) {
-      showToast('❌ Error: ' + err.message, 'error');
+      showToast(t('toast_active_stock_failed') + err.message, 'error');
     }
   };
 
   // Bulk Re-verify back to inventory stock
   const handleBulkRestoreToStock = async () => {
     if (selectedIds.length === 0) return;
-    if (!confirm(`선택한 ${selectedIds.length}개 기기를 재고로 복원하시겠습니까?`)) return;
+    if (!confirm(t('toast_confirm_restore_selected', { count: selectedIds.length }))) return;
     try {
       const { error } = await supabase
         .from('sheets_inventory')
@@ -1455,17 +1455,17 @@ export default function StaffDashboard() {
 
       if (error) throw error;
 
-      showToast(`🔄 선택한 ${selectedIds.length}개 기기를 재고로 복원하였습니다.`, 'success');
+      showToast(t('toast_restore_selected_success', { count: selectedIds.length }), 'success');
       setSelectedIds([]);
       loadLedgerData();
     } catch (err: any) {
-      showToast('❌ 일괄 복원 실패: ' + err.message, 'error');
+      showToast(t('toast_active_stock_failed') + err.message, 'error');
     }
   };
 
   // Delete Device Handler (Soft Delete to Trash Bin)
   const handleDeleteDevice = async (deviceId: string) => {
-    if (!confirm('선택한 기기를 삭제하여 휴지통으로 이동하시겠습니까?')) return;
+    if (!confirm(t('toast_confirm_delete_selected_trash'))) return;
     try {
       const nowStr = new Date().toISOString();
       const { error } = await supabase
@@ -1476,16 +1476,16 @@ export default function StaffDashboard() {
       if (error) throw error;
 
       setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, deleted_at: nowStr } : d));
-      showToast('🗑️ 기기가 삭제되어 휴지통으로 이동했습니다.', 'success');
+      showToast(t('toast_delete_selected_trash_success'), 'success');
     } catch (err: any) {
-      showToast('❌ Error: ' + err.message, 'error');
+      showToast(t('error_occurred') + err.message, 'error');
     }
   };
 
   // Bulk Soft Delete
   const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
-    if (!confirm(`선택한 ${selectedIds.length}개의 기기를 삭제하여 휴지통으로 이동하시겠습니까?`)) return;
+    if (!confirm(t('toast_confirm_bulk_delete_trash', { count: selectedIds.length }))) return;
     try {
       const nowStr = new Date().toISOString();
       const { error } = await supabase
@@ -1498,9 +1498,9 @@ export default function StaffDashboard() {
       setDevices(prev => prev.map(d => selectedIds.includes(d.id) ? { ...d, deleted_at: nowStr } : d));
       const deletedCount = selectedIds.length;
       setSelectedIds([]);
-      showToast(`🗑️ 선택한 ${deletedCount}개 기기가 휴지통으로 이동했습니다.`, 'success');
+      showToast(t('toast_bulk_delete_trash_success', { count: deletedCount }), 'success');
     } catch (err: any) {
-      showToast('❌ Error: ' + err.message, 'error');
+      showToast(t('error_occurred') + err.message, 'error');
     }
   };
 
@@ -1517,16 +1517,16 @@ export default function StaffDashboard() {
 
       setDevices(prev => prev.map(d => selectedIds.includes(d.id) ? { ...d, deleted_at: undefined } : d));
       setSelectedIds([]);
-      showToast(`🔄 선택한 기기가 재고로 정상 복원되었습니다.`, 'success');
+      showToast(t('toast_restore_success'), 'success');
     } catch (err: any) {
-      showToast('❌ Error: ' + err.message, 'error');
+      showToast(t('error_occurred') + err.message, 'error');
     }
   };
 
   // Bulk Permanent Delete from Trash
   const handleBulkPermanentDelete = async () => {
     if (selectedIds.length === 0) return;
-    if (!confirm(`선택한 ${selectedIds.length}개의 기기를 영구 삭제하시겠습니까?\n이 작업은 복구가 불가능합니다.`)) return;
+    if (!confirm(t('toast_confirm_permanent_delete', { count: selectedIds.length }))) return;
     try {
       const { error } = await supabase
         .from('sheets_inventory')
@@ -1537,9 +1537,9 @@ export default function StaffDashboard() {
 
       setDevices(prev => prev.filter(d => !selectedIds.includes(d.id)));
       setSelectedIds([]);
-      showToast(`🔥 선택한 기기가 영구 삭제되었습니다.`, 'success');
+      showToast(t('toast_permanent_delete_success'), 'success');
     } catch (err: any) {
-      showToast('❌ Error: ' + err.message, 'error');
+      showToast(t('error_occurred') + err.message, 'error');
     }
   };
 
@@ -1692,8 +1692,44 @@ export default function StaffDashboard() {
               Company Ledger & Stock Intake Management System.
             </p>
           </div>
-          <div style={{ color: 'var(--t2)', fontSize: '13px' }}>
-            {new Date().toLocaleDateString(lang === 'ko' ? 'ko-KR' : lang === 'th' ? 'th-TH' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ display: 'inline-flex', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '20px', padding: '2px' }}>
+              <button
+                onClick={() => changeLanguage('ko')}
+                style={{
+                  padding: '4px 12px',
+                  borderRadius: '16px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  border: 'none',
+                  background: lang === 'ko' ? 'var(--purple-l)' : 'transparent',
+                  color: lang === 'ko' ? '#fff' : 'var(--t2)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                KO
+              </button>
+              <button
+                onClick={() => changeLanguage('th')}
+                style={{
+                  padding: '4px 12px',
+                  borderRadius: '16px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  border: 'none',
+                  background: lang === 'th' ? 'var(--purple-l)' : 'transparent',
+                  color: lang === 'th' ? '#fff' : 'var(--t2)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                TH
+              </button>
+            </div>
+            <div style={{ color: 'var(--t2)', fontSize: '13px', fontWeight: 600 }}>
+              {new Date().toLocaleDateString(lang === 'ko' ? 'ko-KR' : lang === 'th' ? 'th-TH' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </div>
           </div>
         </header>
 
@@ -1709,7 +1745,7 @@ export default function StaffDashboard() {
                 <div className="sc-num" style={{ fontSize: '22px', fontWeight: 900, color: 'var(--purple-l)', margin: '8px 0 2px' }}>
                   ₩{formatPrice(stats.totalPurchaseCostKRW)}
                 </div>
-                <div className="sc-lbl" style={{ color: 'var(--t2)', fontSize: '11px', fontWeight: 600 }}>총 매입 가치 (KRW)</div>
+                <div className="sc-lbl" style={{ color: 'var(--t2)', fontSize: '11px', fontWeight: 600 }}>{t('staff_total_purchase_value') || '총 매입 가치 (KRW)'}</div>
               </div>
 
               <div className="stat-card" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1717,25 +1753,25 @@ export default function StaffDashboard() {
                 <div className="sc-num" style={{ fontSize: '22px', fontWeight: 900, color: 'var(--blue)', margin: '8px 0 2px' }}>
                   ฿{formatPrice(stats.totalSellingValueTHB)}
                 </div>
-                <div className="sc-lbl" style={{ color: 'var(--t2)', fontSize: '11px', fontWeight: 600 }}>현재 재고 판매가 (THB)</div>
+                <div className="sc-lbl" style={{ color: 'var(--t2)', fontSize: '11px', fontWeight: 600 }}>{t('staff_current_stock_value') || '현재 재고 판매가 (THB)'}</div>
               </div>
 
               <div className="stat-card" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <div className="sc-icon" style={{ background: 'rgba(16,185,129,.15)', width: '38px', height: '38px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>📦</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <div className="sc-num" style={{ fontSize: '22px', fontWeight: 900, color: 'var(--green)', margin: '8px 0 2px' }}>
-                    {stats.totalStockCount} 대
+                    {stats.totalStockCount} {t('staff_qty_unit') || '대'}
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--t2)', display: 'flex', flexWrap: 'wrap', gap: '6px', fontWeight: 700, alignItems: 'center' }}>
                     <span>🍎 {stats.iphoneCount}</span>
                     <span>🪐 {stats.galaxyCount}</span>
-                    <span>기타 {stats.otherCount}</span>
+                    <span>{lang === 'ko' ? '기타' : (lang === 'th' ? 'อื่นๆ' : 'Other')} {stats.otherCount}</span>
                     {stats.reservedCount > 0 && (
-                      <span style={{ color: '#d97706', background: '#fef3c7', padding: '1px 5px', borderRadius: '999px', fontSize: '9px', fontWeight: 800 }}>📌 예약 {stats.reservedCount}대</span>
+                      <span style={{ color: '#d97706', background: '#fef3c7', padding: '1px 5px', borderRadius: '999px', fontSize: '9px', fontWeight: 800 }}>📌 {t('staff_status_reserved') || '예약중'} {stats.reservedCount}{t('staff_qty_unit') || '대'}</span>
                     )}
                   </div>
                 </div>
-                <div className="sc-lbl" style={{ color: 'var(--t2)', fontSize: '11px', fontWeight: 600 }}>현재고 수량 (아이폰 / 갤럭시 / 기타)</div>
+                <div className="sc-lbl" style={{ color: 'var(--t2)', fontSize: '11px', fontWeight: 600 }}>{t('staff_current_stock_qty') || '현재고 수량'} (iPhone / Galaxy / Other)</div>
               </div>
 
               <div className="stat-card" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1743,7 +1779,7 @@ export default function StaffDashboard() {
                 <div className="sc-num" style={{ fontSize: '22px', fontWeight: 900, color: 'var(--pink)', margin: '8px 0 2px' }}>
                   ฿{formatPrice(stats.totalSoldRevenueTHB)}
                 </div>
-                <div className="sc-lbl" style={{ color: 'var(--t2)', fontSize: '11px', fontWeight: 600 }}>총 판매 완료액 ({stats.totalSoldCount}대)</div>
+                <div className="sc-lbl" style={{ color: 'var(--t2)', fontSize: '11px', fontWeight: 600 }}>{t('staff_total_sold_value') || '총 판매 완료액'} ({stats.totalSoldCount}{t('staff_qty_unit') || '대'})</div>
               </div>
 
             </div>
@@ -1753,7 +1789,7 @@ export default function StaffDashboard() {
               
               {/* Location distribution */}
               <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 800, marginBottom: '16px' }}>📍 보관 장소별 재고 현황</h3>
+                <h3 style={{ fontSize: '14px', fontWeight: 800, marginBottom: '16px' }}>📍 {t('staff_stock_by_location') || '보관 장소별 재고 현황'}</h3>
                 {Object.keys(stats.locationCounts).length === 0 ? (
                   <div style={{ color: 'var(--t2)', fontSize: '12px', textAlign: 'center', padding: '24px' }}>No active inventory found.</div>
                 ) : (
@@ -1764,7 +1800,7 @@ export default function StaffDashboard() {
                          <div key={loc} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
                              <span>{loc}</span>
-                             <span style={{ color: 'var(--t2)' }}>{count}대 ({pct.toFixed(1)}%)</span>
+                             <span style={{ color: 'var(--t2)' }}>{count}{t('staff_qty_unit') || '대'} ({pct.toFixed(1)}%)</span>
                            </div>
                            <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
                              <div style={{ width: `${pct}%`, height: '100%', background: 'var(--purple-l)', borderRadius: '999px' }}></div>
@@ -1778,7 +1814,7 @@ export default function StaffDashboard() {
 
               {/* Model distribution */}
               <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 800 }}>📱 기종별 재고 현황</h3>
+                <h3 style={{ fontSize: '14px', fontWeight: 800 }}>📱 {t('staff_stock_by_model') || '기종별 재고 현황'}</h3>
                 
                 {/* High level category bars */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1789,11 +1825,11 @@ export default function StaffDashboard() {
                       handleTabChange('ledger');
                       setSearchQuery('iPhone');
                     }}
-                    title="재고 관리에서 아이폰만 보기"
+                    title={t('staff_iphone_only') || "재고 관리에서 아이폰만 보기"}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
-                      <span>아이폰 (iPhone) ➔</span>
-                      <span style={{ color: 'var(--t2)' }}>{stats.iphoneCount}대 ({stats.totalStockCount > 0 ? ((stats.iphoneCount / stats.totalStockCount) * 100).toFixed(1) : 0}%)</span>
+                      <span>{lang === 'ko' ? '아이폰 (iPhone) ➔' : (lang === 'th' ? 'ไอโฟน (iPhone) ➔' : 'iPhone ➔')}</span>
+                      <span style={{ color: 'var(--t2)' }}>{stats.iphoneCount}{t('staff_qty_unit') || '대'} ({stats.totalStockCount > 0 ? ((stats.iphoneCount / stats.totalStockCount) * 100).toFixed(1) : 0}%)</span>
                     </div>
                     <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
                       <div style={{ width: `${stats.totalStockCount > 0 ? (stats.iphoneCount / stats.totalStockCount) * 100 : 0}%`, height: '100%', background: 'var(--purple)', borderRadius: '999px' }}></div>
@@ -1807,11 +1843,11 @@ export default function StaffDashboard() {
                       handleTabChange('ledger');
                       setSearchQuery('Galaxy');
                     }}
-                    title="재고 관리에서 갤럭시만 보기"
+                    title={t('staff_galaxy_only') || "재고 관리에서 갤럭시만 보기"}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
-                      <span>갤럭시 (Galaxy) ➔</span>
-                      <span style={{ color: 'var(--t2)' }}>{stats.galaxyCount}대 ({stats.totalStockCount > 0 ? ((stats.galaxyCount / stats.totalStockCount) * 100).toFixed(1) : 0}%)</span>
+                      <span>{lang === 'ko' ? '갤럭시 (Galaxy) ➔' : (lang === 'th' ? 'กาแลคซี่ (Galaxy) ➔' : 'Galaxy ➔')}</span>
+                      <span style={{ color: 'var(--t2)' }}>{stats.galaxyCount}{t('staff_qty_unit') || '대'} ({stats.totalStockCount > 0 ? ((stats.galaxyCount / stats.totalStockCount) * 100).toFixed(1) : 0}%)</span>
                     </div>
                     <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
                       <div style={{ width: `${stats.totalStockCount > 0 ? (stats.galaxyCount / stats.totalStockCount) * 100 : 0}%`, height: '100%', background: 'var(--cyan)', borderRadius: '999px' }}></div>
@@ -1825,11 +1861,11 @@ export default function StaffDashboard() {
                       handleTabChange('ledger');
                       setSearchQuery('Other');
                     }}
-                    title="재고 관리에서 기타 브랜드만 보기"
+                    title={t('staff_other_only') || "재고 관리에서 기타 브랜드만 보기"}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
-                      <span>기타 (Other) ➔</span>
-                      <span style={{ color: 'var(--t2)' }}>{stats.otherCount}대 ({stats.totalStockCount > 0 ? ((stats.otherCount / stats.totalStockCount) * 100).toFixed(1) : 0}%)</span>
+                      <span>{lang === 'ko' ? '기타 (Other) ➔' : (lang === 'th' ? 'อื่นๆ (Other) ➔' : 'Other ➔')}</span>
+                      <span style={{ color: 'var(--t2)' }}>{stats.otherCount}{t('staff_qty_unit') || '대'} ({stats.totalStockCount > 0 ? ((stats.otherCount / stats.totalStockCount) * 100).toFixed(1) : 0}%)</span>
                     </div>
                     <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
                       <div style={{ width: `${stats.totalStockCount > 0 ? (stats.otherCount / stats.totalStockCount) * 100 : 0}%`, height: '100%', background: 'var(--t3)', borderRadius: '999px' }}></div>
@@ -1841,7 +1877,7 @@ export default function StaffDashboard() {
                 
                 {/* Detailed Series Counts */}
                 <div>
-                  <h4 style={{ fontSize: '12px', fontWeight: 800, marginBottom: '10px', color: 'var(--t1)' }}>📋 상세 기종 시리즈 현황 (클릭 시 이동)</h4>
+                  <h4 style={{ fontSize: '12px', fontWeight: 800, marginBottom: '10px', color: 'var(--t1)' }}>📋 {t('staff_detail_series') || '상세 기종 시리즈 현황 (클릭 시 이동)'}</h4>
                   <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px' }}>
                     {Object.entries(stats.seriesCounts)
                       .filter(([_, count]) => count > 0)
@@ -1855,11 +1891,11 @@ export default function StaffDashboard() {
                               handleTabChange('ledger');
                               setSearchQuery(series.replace(' 기타', '').replace(' 브랜드', '').replace('기타 ', ''));
                             }}
-                            title={`재고 관리에서 ${series} 필터링`}
+                            title={t('search_placeholder')}
                           >
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 700 }}>
                               <span>{series} ➔</span>
-                              <span style={{ color: 'var(--purple-l)' }}>{count}대 ({pct.toFixed(1)}%)</span>
+                              <span style={{ color: 'var(--purple-l)' }}>{count}{t('staff_qty_unit') || '대'} ({pct.toFixed(1)}%)</span>
                             </div>
                             <div style={{ width: '100%', height: '5px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
                               <div style={{ width: `${pct}%`, height: '100%', background: 'var(--purple-l)', borderRadius: '999px' }}></div>
@@ -1868,7 +1904,7 @@ export default function StaffDashboard() {
                         );
                       })}
                     {Object.values(stats.seriesCounts).every(count => count === 0) && (
-                      <div style={{ fontSize: '11px', color: 'var(--t3)', textAlign: 'center', padding: '12px' }}>재고 없음</div>
+                      <div style={{ fontSize: '11px', color: 'var(--t3)', textAlign: 'center', padding: '12px' }}>{t('search_no_results') || '재고 없음'}</div>
                     )}
                   </div>
                 </div>
@@ -1877,7 +1913,7 @@ export default function StaffDashboard() {
 
                 {/* Top 10 Exact Model Names */}
                 <div>
-                  <h4 style={{ fontSize: '12px', fontWeight: 800, marginBottom: '10px', color: 'var(--t1)' }}>💎 실재고 단일 모델 TOP 10 (클릭 시 이동)</h4>
+                  <h4 style={{ fontSize: '12px', fontWeight: 800, marginBottom: '10px', color: 'var(--t1)' }}>💎 {t('staff_top10_models') || '실재고 단일 모델 TOP 10 (클릭 시 이동)'}</h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto', paddingRight: '4px' }}>
                     {stats.topIndividualModels.slice(0, 10).map(([model, count]) => (
                       <div 
@@ -1887,14 +1923,14 @@ export default function StaffDashboard() {
                           handleTabChange('ledger');
                           setCategoryFilter(model);
                         }}
-                        title={`재고 관리에서 ${model}만 보기`}
+                        title={t('search_placeholder')}
                       >
                         <span style={{ fontWeight: 700, color: 'var(--t1)' }}>{model} ➔</span>
-                        <span style={{ fontWeight: 800, color: 'var(--green)', fontSize: '12px' }}>{count}대</span>
+                        <span style={{ fontWeight: 800, color: 'var(--green)', fontSize: '12px' }}>{count}{t('staff_qty_unit') || '대'}</span>
                       </div>
                     ))}
                     {stats.topIndividualModels.length === 0 && (
-                      <div style={{ fontSize: '11px', color: 'var(--t3)', textAlign: 'center', padding: '8px' }}>데이터 없음</div>
+                      <div style={{ fontSize: '11px', color: 'var(--t3)', textAlign: 'center', padding: '8px' }}>{t('search_no_results') || '데이터 없음'}</div>
                     )}
                   </div>
                 </div>
@@ -1903,11 +1939,11 @@ export default function StaffDashboard() {
 
               {/* Quick info panel */}
               <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 800 }}>📌 사내 장부 시스템 안내</h3>
+                <h3 style={{ fontSize: '14px', fontWeight: 800 }}>{t('staff_system_info_title') || '📌 사내 장부 시스템 안내'}</h3>
                 <div style={{ fontSize: '12px', color: 'var(--t2)', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <p>• 입고된 물건들은 <b>엑셀(CSV) 일괄 등록</b>을 통해 IMEI 중복 없이 대량 업로드할 수 있습니다.</p>
-                  <p>• 폰 판매 시 리스트 우측의 <b>"판매 처리"</b> 버튼을 눌러 판매일과 수금 내용을 적어주세요. 장부에 즉시 반영됩니다.</p>
-                  <p>• 할부 계약이 완료된 폰은 고객 ID나 계약 내용을 비고에 함께 메모해 두시면 추적하기 수월합니다.</p>
+                  <p>• {t('staff_system_info_1') || '입고된 물건들은 엑셀(CSV) 일괄 등록을 통해 IMEI 중복 없이 대량 업로드할 수 있습니다.'}</p>
+                  <p>• {t('staff_system_info_2') || '폰 판매 시 리스트 우측의 \"판매 처리\" 버튼을 눌러 판매일과 수금 내용을 적어주세요. 장부에 즉시 반영됩니다.'}</p>
+                  <p>• {t('staff_system_info_3') || '할부 계약이 완료된 폰은 고객 ID나 계약 내용을 비고에 함께 메모해 두시면 추적하기 수월합니다.'}</p>
                 </div>
               </div>
 
@@ -1925,7 +1961,7 @@ export default function StaffDashboard() {
               <div style={{ display: 'flex', gap: '8px', flex: 1, alignItems: 'center' }}>
                 <input
                   type="text"
-                  placeholder="모델명, IMEI, 또는 스티커 검색..."
+                  placeholder={t('staff_search_placeholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="form-input"
@@ -1938,7 +1974,7 @@ export default function StaffDashboard() {
                   className="form-input"
                   style={{ maxWidth: '130px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                 >
-                  <option value="all">전체 위치</option>
+                  <option value="all">{t('staff_all_locations')}</option>
                   {locations.map(loc => (
                     <option key={loc.id} value={loc.name}>{loc.name}</option>
                   ))}
@@ -1950,14 +1986,14 @@ export default function StaffDashboard() {
                   className="form-input"
                   style={{ maxWidth: '180px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                 >
-                  <option value="all">전체 기종 ({baseActiveDevicesCount}대)</option>
+                  <option value="all">{t('staff_all_models') || '전체 기종'} ({baseActiveDevicesCount}{t('staff_qty_unit') || '대'})</option>
                   {uniqueModels.active.map(([model, count]) => (
-                    <option key={model} value={model}>{model} ({count}대)</option>
+                    <option key={model} value={model}>{model} ({count}{t('staff_qty_unit') || '대'})</option>
                   ))}
                 </select>
 
                 <div style={{ display: 'flex', alignItems: 'center', fontSize: '13px', fontWeight: 700, color: 'var(--purple-l)', marginLeft: '12px', whiteSpace: 'nowrap' }}>
-                  조회된 재고: {filteredActiveDevices.length}대
+                  {t('staff_viewed_stock', { count: filteredActiveDevices.length })}
                 </div>
               </div>
 
@@ -1967,20 +2003,20 @@ export default function StaffDashboard() {
                     style={{ margin: 0, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: 'var(--red)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                     onClick={handleBulkDelete}
                   >
-                    🗑️ 선택 삭제 ({selectedIds.length})
+                    🗑️ {t('staff_btn_delete_selected')} ({selectedIds.length})
                   </button>
                 )}
                 <button 
                   style={{ margin: 0, background: '#f1f5f9', border: '1px solid var(--border)', color: '#334155', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                   onClick={() => setIsCSVModalOpen(true)}
                 >
-                  📥 대량입고
+                  📥 {t('staff_btn_bulk_import')}
                 </button>
                 <button 
                   style={{ margin: 0, background: 'var(--purple-l)', border: 'none', color: '#fff', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                   onClick={handleOpenAddModal}
                 >
-                  ➕ 수동입고
+                  ➕ {t('staff_btn_manual_import')}
                 </button>
               </div>
             </div>
@@ -2004,41 +2040,41 @@ export default function StaffDashboard() {
                       />
                     </th>
                     <th style={{ width: '12%', cursor: 'pointer' }} onClick={() => toggleSort('sticker')}>
-                      스티커 No {sortField === 'sticker' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      {t('staff_th_sticker')} {sortField === 'sticker' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
                     <th style={{ width: '10%', cursor: 'pointer' }} onClick={() => toggleSort('site_date')}>
-                      입고일 {sortField === 'site_date' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      {t('staff_th_intake_date')} {sortField === 'site_date' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
                     <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
-                      모델명 (Model) {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      {t('staff_th_model')} {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
                     <th style={{ width: '13%' }}>IMEI</th>
                     <th style={{ width: '8%' }}>Color</th>
-                    <th style={{ width: '6%', textAlign: 'center' }}>배터리</th>
+                    <th style={{ width: '6%', textAlign: 'center' }}>{t('staff_th_battery')}</th>
                     <th style={{ width: '10%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('purchase_cost_krw')}>
-                      매입원가 {sortField === 'purchase_cost_krw' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      {t('staff_th_purchase_cost')} {sortField === 'purchase_cost_krw' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
                     <th style={{ width: '10%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
-                      소매판매가 {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      {t('staff_th_selling_price')} {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
                     <th style={{ width: '10%', cursor: 'pointer' }} onClick={() => toggleSort('stock_location')}>
-                      위치 {sortField === 'stock_location' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      {t('staff_th_location')} {sortField === 'stock_location' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th style={{ width: '12%' }}>비고 (Notes)</th>
-                    <th style={{ width: '15%', textAlign: 'center' }}>조작</th>
+                    <th style={{ width: '12%' }}>{t('staff_th_notes')}</th>
+                    <th style={{ width: '15%', textAlign: 'center' }}>{t('staff_th_actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loadingData ? (
                     <tr>
                       <td colSpan={12} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
-                        Database fetching active records...
+                        {t('loading_data') || 'Database fetching active records...'}
                       </td>
                     </tr>
                   ) : filteredActiveDevices.length === 0 ? (
                     <tr>
                       <td colSpan={12} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
-                        재고 목록이 비어 있습니다. 입고를 진행해 주세요.
+                        {t('staff_empty_stock') || '재고 목록이 비어 있습니다. 입고를 진행해 주세요.'}
                       </td>
                     </tr>
                   ) : (
@@ -2135,7 +2171,7 @@ export default function StaffDashboard() {
                               className="form-input"
                               style={{ margin: 0, padding: '2px 4px', fontSize: '12px', width: '90%' }}
                             >
-                              <option value="">-- 모델명 선택 --</option>
+                              <option value="">{t('staff_select_model_placeholder') || '-- 모델명 선택 --'}</option>
                               {models.map(mod => (
                                 <option key={mod.id} value={mod.name}>{mod.name}</option>
                               ))}
@@ -2143,7 +2179,7 @@ export default function StaffDashboard() {
                           ) : (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                               {item.is_reserved && (
-                                <span style={{ fontSize: '10px', fontWeight: 800, background: '#f59e0b', color: '#fff', padding: '1px 4px', borderRadius: '4px', whiteSpace: 'nowrap' }}>예약중</span>
+                                <span style={{ fontSize: '10px', fontWeight: 800, background: '#f59e0b', color: '#fff', padding: '1px 4px', borderRadius: '4px', whiteSpace: 'nowrap' }}>{t('staff_status_reserved') || '예약중'}</span>
                               )}
                               <span>{item.model_name}</span>
                             </div>
@@ -2165,7 +2201,7 @@ export default function StaffDashboard() {
                         <td>
                           <span className="badge bg-gray">{item.stock_location || 'Shop'}</span>
                         </td>
-                        <td style={{ fontSize: '11px', color: 'var(--t2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.is_reserved ? `예약자: ${item.reserved_by} | ${item.notes || ''}` : item.notes || ''}>
+                        <td style={{ fontSize: '11px', color: 'var(--t2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.is_reserved ? `${lang === 'ko' ? '예약자' : 'Reserver'}: ${item.reserved_by} | ${item.notes || ''}` : item.notes || ''}>
                           {item.is_reserved ? (
                             <span style={{ color: '#d97706', fontWeight: 700 }}>👤 {item.reserved_by} ({item.reserved_date})</span>
                           ) : (
@@ -2178,7 +2214,7 @@ export default function StaffDashboard() {
                               className="btn-green"
                               style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
                               onClick={() => handleOpenSellModal(item)}
-                              title="판매완료"
+                              title={t('staff_tooltip_sell') || "판매완료"}
                             >
                               💸
                             </button>
@@ -2186,7 +2222,7 @@ export default function StaffDashboard() {
                               <button
                                 style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', background: '#f1f5f9', color: '#475569', border: '1px solid var(--border)', cursor: 'pointer' }}
                                 onClick={() => handleCancelReservation(item.id)}
-                                title="예약취소"
+                                title={t('staff_tooltip_cancel_reserve') || "예약취소"}
                               >
                                 🔓
                               </button>
@@ -2194,7 +2230,7 @@ export default function StaffDashboard() {
                               <button
                                 style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', cursor: 'pointer' }}
                                 onClick={() => handleOpenReserveModal(item)}
-                                title="예약"
+                                title={t('staff_tooltip_reserve') || "예약"}
                               >
                                 📌
                               </button>
@@ -2203,7 +2239,7 @@ export default function StaffDashboard() {
                               className="btn-blue"
                               style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
                               onClick={() => handleOpenEdit(item)}
-                              title="수정"
+                              title={t('staff_tooltip_edit') || "수정"}
                             >
                               ✏️
                             </button>
@@ -2211,7 +2247,7 @@ export default function StaffDashboard() {
                               className="btn-red"
                               style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
                               onClick={() => handleDeleteDevice(item.id)}
-                              title="삭제"
+                              title={t('staff_tooltip_delete') || "삭제"}
                             >
                               🗑️
                             </button>
@@ -2236,7 +2272,7 @@ export default function StaffDashboard() {
               <div style={{ display: 'flex', gap: '6px', alignItems: 'center', width: '100%' }}>
                 <input
                   type="text"
-                  placeholder="모델명, IMEI, 또는 판매 직원 검색..."
+                  placeholder={t('staff_search_sold_placeholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="form-input"
@@ -2249,9 +2285,9 @@ export default function StaffDashboard() {
                   className="form-input"
                   style={{ maxWidth: '180px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                 >
-                  <option value="all">전체 기종 ({baseSoldDevicesCount}대)</option>
+                  <option value="all">{t('staff_all_models') || '전체 기종'} ({baseSoldDevicesCount}{t('staff_qty_unit') || '대'})</option>
                   {uniqueModels.sold.map(([model, count]) => (
-                    <option key={model} value={model}>{model} ({count}대)</option>
+                    <option key={model} value={model}>{model} ({count}{t('staff_qty_unit') || '대'})</option>
                   ))}
                 </select>
 
@@ -2261,20 +2297,20 @@ export default function StaffDashboard() {
                       style={{ margin: 0, background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.25)', color: 'var(--green)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                       onClick={handleBulkRestoreToStock}
                     >
-                      🔄 선택 재고복원 ({selectedIds.length})
+                      🔄 {t('staff_btn_restore_selected')} ({selectedIds.length})
                     </button>
                     <button 
                       style={{ margin: 0, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: 'var(--red)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                       onClick={handleBulkDelete}
                     >
-                      🗑️ 선택 삭제 ({selectedIds.length})
+                      🗑️ {t('staff_btn_delete_selected')} ({selectedIds.length})
                     </button>
                   </div>
                 )}
               </div>
               
               <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--purple-l)', whiteSpace: 'nowrap' }}>
-                총 판매 대수: {filteredSoldDevices.length}대
+                {t('staff_total_sold_count', { count: filteredSoldDevices.length })}
               </div>
             </div>
 
@@ -2297,27 +2333,27 @@ export default function StaffDashboard() {
                       />
                     </th>
                     <th style={{ width: '11%', cursor: 'pointer' }} onClick={() => toggleSort('sale_date')}>
-                      판매일 {sortField === 'sale_date' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      {t('staff_th_sale_date')} {sortField === 'sale_date' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
                     <th style={{ width: '11%', cursor: 'pointer' }} onClick={() => toggleSort('sticker')}>
-                      스티커 No {sortField === 'sticker' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      {t('staff_th_sticker')} {sortField === 'sticker' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
                     <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
-                      모델명 {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      {t('staff_th_model')} {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
                     <th style={{ width: '13%' }}>IMEI</th>
                     <th style={{ width: '8%' }}>Color</th>
                     <th style={{ width: '10%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('purchase_cost_krw')}>
-                      매입원가 {sortField === 'purchase_cost_krw' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      {t('staff_th_purchase_cost')} {sortField === 'purchase_cost_krw' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
                     <th style={{ width: '10%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
-                      판매가격 {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      {t('staff_th_selling_price')} {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
                     <th style={{ width: '10%', cursor: 'pointer' }} onClick={() => toggleSort('seller_name')}>
-                      판매사원 {sortField === 'seller_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      {t('staff_th_seller_name')} {sortField === 'seller_name' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th style={{ width: '12%' }}>판매 메모 / 결제정보</th>
-                    <th style={{ width: '10%', textAlign: 'center' }}>재고복원</th>
+                    <th style={{ width: '12%' }}>{t('staff_th_sale_memo')}</th>
+                    <th style={{ width: '10%', textAlign: 'center' }}>{t('staff_th_restore')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2330,7 +2366,7 @@ export default function StaffDashboard() {
                   ) : filteredSoldDevices.length === 0 ? (
                     <tr>
                       <td colSpan={11} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
-                        판매 완료된 기기 내역이 없습니다.
+                        {t('staff_empty_sold') || '판매 완료된 기기 내역이 없습니다.'}
                       </td>
                     </tr>
                   ) : (
@@ -2363,7 +2399,7 @@ export default function StaffDashboard() {
                             className="btn-red"
                             style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', background: '#fef2f2', color: 'var(--red)', borderColor: '#fee2e2', cursor: 'pointer' }}
                             onClick={() => handleRestoreToStock(item.id)}
-                            title="재고복원"
+                            title={t('staff_th_restore') || "재고복원"}
                           >
                             🔄
                           </button>
@@ -2387,21 +2423,21 @@ export default function StaffDashboard() {
               {/* Location Management Card */}
               <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <h3 style={{ fontSize: '15px', fontWeight: 800, borderBottom: '1px solid var(--border)', paddingBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>📍</span> 보관 위치 기준 정보 관리
+                  <span>📍</span> {t('staff_location_mgmt') || '보관 위치 기준 정보 관리'}
                 </h3>
                 
                 {/* Add Location Form */}
                 <form onSubmit={handleAddLocationFromSettings} style={{ display: 'flex', gap: '8px' }}>
                   <input
                     type="text"
-                    placeholder="새 보관 위치 입력 (예: Mr.han 3층)"
+                    placeholder={t('staff_input_new_location')}
                     value={newLocInput}
                     onChange={(e) => setNewLocInput(e.target.value)}
                     className="form-input"
                     style={{ margin: 0 }}
                   />
                   <button type="submit" className="btn-submit" style={{ margin: 0, width: 'auto', padding: '0 20px', whiteSpace: 'nowrap' }}>
-                    추가
+                    {t('staff_btn_add') || '추가'}
                   </button>
                 </form>
 
@@ -2410,14 +2446,14 @@ export default function StaffDashboard() {
                   <table className="tbl" style={{ margin: 0 }}>
                     <thead>
                       <tr>
-                        <th>위치명</th>
-                        <th style={{ width: '120px', textAlign: 'center' }}>조작</th>
+                        <th>{t('staff_th_location_name') || '위치명'}</th>
+                        <th style={{ width: '120px', textAlign: 'center' }}>{t('staff_th_actions') || '조작'}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {locations.length === 0 ? (
                         <tr>
-                          <td colSpan={2} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>등록된 위치가 없습니다.</td>
+                          <td colSpan={2} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>{t('staff_empty_locations') || '등록된 위치가 없습니다.'}</td>
                         </tr>
                       ) : (
                         locations.map((loc) => (
@@ -2425,8 +2461,8 @@ export default function StaffDashboard() {
                             <td style={{ fontWeight: 700 }}>{loc.name}</td>
                             <td>
                               <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                                <button type="button" className="btn-sm btn-blue" onClick={() => handleRenameLocation(loc.name)}>수정</button>
-                                <button type="button" className="btn-sm btn-red" onClick={() => handleDeleteLocation(loc.name)}>삭제</button>
+                                <button type="button" className="btn-sm btn-blue" onClick={() => handleRenameLocation(loc.name)}>{t('staff_btn_edit') || '수정'}</button>
+                                <button type="button" className="btn-sm btn-red" onClick={() => handleDeleteLocation(loc.name)}>{t('staff_btn_delete') || '삭제'}</button>
                               </div>
                             </td>
                           </tr>
@@ -2440,21 +2476,21 @@ export default function StaffDashboard() {
               {/* Model Management Card */}
               <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <h3 style={{ fontSize: '15px', fontWeight: 800, borderBottom: '1px solid var(--border)', paddingBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>📱</span> 모델명 기준 정보 관리
+                  <span>📱</span> {t('staff_model_mgmt') || '모델명 기준 정보 관리'}
                 </h3>
                 
                 {/* Add Model Form */}
                 <form onSubmit={handleAddModelFromSettings} style={{ display: 'flex', gap: '8px' }}>
                   <input
                     type="text"
-                    placeholder="새 모델명 입력 (예: iPhone 16 Pro Max)"
+                    placeholder={t('staff_input_new_model')}
                     value={newModInput}
                     onChange={(e) => setNewModInput(e.target.value)}
                     className="form-input"
                     style={{ margin: 0 }}
                   />
                   <button type="submit" className="btn-submit" style={{ margin: 0, width: 'auto', padding: '0 20px', whiteSpace: 'nowrap' }}>
-                    추가
+                    {t('staff_btn_add') || '추가'}
                   </button>
                 </form>
 
@@ -2463,14 +2499,14 @@ export default function StaffDashboard() {
                   <table className="tbl" style={{ margin: 0 }}>
                     <thead>
                       <tr>
-                        <th>모델명</th>
-                        <th style={{ width: '120px', textAlign: 'center' }}>조작</th>
+                        <th>{t('staff_th_model') || '모델명'}</th>
+                        <th style={{ width: '120px', textAlign: 'center' }}>{t('staff_th_actions') || '조작'}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {models.length === 0 ? (
                         <tr>
-                          <td colSpan={2} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>등록된 모델명이 없습니다.</td>
+                          <td colSpan={2} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>{t('staff_empty_models') || '등록된 모델명이 없습니다.'}</td>
                         </tr>
                       ) : (
                         models.map((mod) => (
@@ -2478,8 +2514,8 @@ export default function StaffDashboard() {
                             <td style={{ fontWeight: 700 }}>{mod.name}</td>
                             <td>
                               <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                                <button type="button" className="btn-sm btn-blue" onClick={() => handleRenameModel(mod.name)}>수정</button>
-                                <button type="button" className="btn-sm btn-red" onClick={() => handleDeleteModel(mod.name)}>삭제</button>
+                                <button type="button" className="btn-sm btn-blue" onClick={() => handleRenameModel(mod.name)}>{t('staff_btn_edit') || '수정'}</button>
+                                <button type="button" className="btn-sm btn-red" onClick={() => handleDeleteModel(mod.name)}>{t('staff_btn_delete') || '삭제'}</button>
                               </div>
                             </td>
                           </tr>
@@ -2500,9 +2536,9 @@ export default function StaffDashboard() {
           <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '32px', textAlign: 'center' }}>
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>📈</div>
-              <h3 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '8px' }}>마진 및 정산관리</h3>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '8px' }}>{t('staff_menu_margin') || '마진 및 정산관리'}</h3>
               <p style={{ color: 'var(--t2)', fontSize: '13px', lineHeight: 1.6 }}>
-                마진 및 정산관리 기능 준비 중입니다. 차후 업데이트 예정입니다.
+                {t('staff_margin_prep')}
               </p>
             </div>
           </div>
@@ -2517,7 +2553,7 @@ export default function StaffDashboard() {
               <div style={{ display: 'flex', gap: '6px', alignItems: 'center', width: '100%' }}>
                 <input
                   type="text"
-                  placeholder="모델명, IMEI, 또는 스티커 검색..."
+                  placeholder={t('staff_trash_search_placeholder') || t('staff_search_placeholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="form-input"
@@ -2529,20 +2565,20 @@ export default function StaffDashboard() {
                       style={{ margin: 0, background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.25)', color: 'var(--green)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                       onClick={handleBulkRestore}
                     >
-                      🔄 선택 복원 ({selectedIds.length})
+                      🔄 {t('staff_btn_restore')} ({selectedIds.length})
                     </button>
                     <button 
                       style={{ margin: 0, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: 'var(--red)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                       onClick={handleBulkPermanentDelete}
                     >
-                      🔥 선택 영구삭제 ({selectedIds.length})
+                      🔥 {t('staff_btn_permanent_delete')} ({selectedIds.length})
                     </button>
                   </>
                 )}
               </div>
               
               <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--red)', whiteSpace: 'nowrap' }}>
-                휴지통 기기: {filteredTrashDevices.length}대 (7일 후 영구 자동 삭제)
+                {t('staff_trash_count_info', { count: filteredTrashDevices.length })}
               </div>
             </div>
 
@@ -2565,33 +2601,33 @@ export default function StaffDashboard() {
                       />
                     </th>
                     <th style={{ width: '12%', cursor: 'pointer' }} onClick={() => toggleSort('sticker')}>
-                      스티커 No {sortField === 'sticker' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      {t('staff_th_sticker')} {sortField === 'sticker' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
                     <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
-                      모델명 {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      {t('staff_th_model')} {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
                     <th style={{ width: '15%' }}>IMEI</th>
                     <th style={{ width: '8%' }}>Color</th>
                     <th style={{ width: '10%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('purchase_cost_krw')}>
-                      매입원가 {sortField === 'purchase_cost_krw' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      {t('staff_th_purchase_cost')} {sortField === 'purchase_cost_krw' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
                     <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('deleted_at')}>
-                      삭제 일시 {sortField === 'deleted_at' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      {t('staff_th_deleted_at')} {sortField === 'deleted_at' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th style={{ width: '15%', textAlign: 'center' }}>조작</th>
+                    <th style={{ width: '15%', textAlign: 'center' }}>{t('staff_th_actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loadingData ? (
                     <tr>
                       <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
-                        Loading trash bin...
+                        {t('loading') || 'Loading trash bin...'}
                       </td>
                     </tr>
                   ) : filteredTrashDevices.length === 0 ? (
                     <tr>
                       <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
-                        휴지통이 비어 있습니다.
+                        {t('staff_empty_trash') || '휴지통이 비어 있습니다.'}
                       </td>
                     </tr>
                   ) : (
@@ -2627,7 +2663,7 @@ export default function StaffDashboard() {
                                 setSelectedIds([item.id]);
                                 setTimeout(() => handleBulkRestore(), 50);
                               }}
-                              title="복원"
+                              title={t('staff_tooltip_restore') || "복원"}
                             >
                               🔄
                             </button>
@@ -2638,7 +2674,7 @@ export default function StaffDashboard() {
                                 setSelectedIds([item.id]);
                                 setTimeout(() => handleBulkPermanentDelete(), 50);
                               }}
-                              title="영구삭제"
+                              title={t('staff_tooltip_permanent_delete') || "영구삭제"}
                             >
                               🔥
                             </button>
@@ -2661,7 +2697,7 @@ export default function StaffDashboard() {
         <div className="modal-bg open" style={{ display: 'flex', zIndex: 3000 }} onClick={() => setIsCSVModalOpen(false)}>
           <div className="modal animate-slide-up" style={{ maxWidth: '650px', width: '90%', background: '#fff', borderRadius: '16px', overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-hd" style={{ borderBottom: '1px solid var(--border)', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span className="modal-title" style={{ fontSize: '16px', fontWeight: 800 }}>📥 대량 기기 입고 (Bulk Device Ingestion)</span>
+              <span className="modal-title" style={{ fontSize: '16px', fontWeight: 800 }}>{t('staff_bulk_import_title') || '📥 대량 기기 입고 (Bulk Device Ingestion)'}</span>
               <button className="modal-x" onClick={() => setIsCSVModalOpen(false)} style={{ border: 'none', background: 'none', fontSize: '18px', cursor: 'pointer' }}>✕</button>
             </div>
             
@@ -2674,7 +2710,7 @@ export default function StaffDashboard() {
                   onClick={() => setIntakeMethod('sync')}
                   style={{ flex: 1, padding: '10px', border: 'none', background: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, transition: 'all 0.2s' }}
                 >
-                  🌐 구글 시트 실시간 연동
+                  {t('staff_tab_gsheet') || '🌐 구글 시트 실시간 연동'}
                 </button>
                 <button 
                   type="button"
@@ -2682,7 +2718,7 @@ export default function StaffDashboard() {
                   onClick={() => setIntakeMethod('file')}
                   style={{ flex: 1, padding: '10px', border: 'none', background: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, transition: 'all 0.2s' }}
                 >
-                  📁 CSV 파일 업로드
+                  {t('staff_tab_csv') || '📁 CSV 파일 업로드'}
                 </button>
                 <button 
                   type="button"
@@ -2690,7 +2726,7 @@ export default function StaffDashboard() {
                   onClick={() => setIntakeMethod('paste')}
                   style={{ flex: 1, padding: '10px', border: 'none', background: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, transition: 'all 0.2s' }}
                 >
-                  📋 복사 붙여넣기 (Ctrl+C/V)
+                  {t('staff_tab_paste') || '📋 복사 붙여넣기 (Ctrl+C/V)'}
                 </button>
               </div>
 
@@ -2699,16 +2735,20 @@ export default function StaffDashboard() {
                 <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div style={{ background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', fontSize: '12px', lineHeight: 1.6, color: 'var(--t2)' }}>
                     <h4 style={{ fontWeight: 800, color: 'var(--t1)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span>💡</span> 실시간 구글 스프레드시트 동기화 안내
+                      <span>💡</span> {t('staff_gsheet_info_title') || '실시간 구글 스프레드시트 동기화 안내'}
                     </h4>
                     <p>
-                      Phoneswitchhub 공식 구글 시트(<a href="https://docs.google.com/spreadsheets/d/1NpSAZNB9xb0pYZxs5sKp9hxXQraMPXcpxWyhUO2o4DM/edit" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--purple)', textDecoration: 'underline', fontWeight: 600 }}>장부 링크</a>)에서 실시간으로 전체 기기 내역을 조회해 데이터베이스에 동기화합니다.
+                      {lang === 'ko' ? (
+                        <>Phoneswitchhub 공식 구글 시트(<a href="https://docs.google.com/spreadsheets/d/1NpSAZNB9xb0pYZxs5sKp9hxXQraMPXcpxWyhUO2o4DM/edit" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--purple)', textDecoration: 'underline', fontWeight: 600 }}>장부 링크</a>)에서 실시간으로 전체 기기 내역을 조회해 데이터베이스에 동기화합니다.</>
+                      ) : (
+                        <>ซิงค์ข้อมูลกับฐานข้อมูลแบบเรียลไทม์โดยการดึงข้อมูลอุปกรณ์ทั้งหมดจาก Google Spreadsheet ทางการของ Phoneswitchhub (<a href="https://docs.google.com/spreadsheets/d/1NpSAZNB9xb0pYZxs5sKp9hxXQraMPXcpxWyhUO2o4DM/edit" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--purple)', textDecoration: 'underline', fontWeight: 600 }}>ลิงก์บัญชีคลัง</a>)</>
+                      )}
                     </p>
                     <p style={{ marginTop: '6px' }}>
-                      • <b>IMEI를 고유 키</b>로 하여 이미 등록된 기기는 정보를 덮어쓰고(Update), 새로운 기기는 자동으로 추가(Insert)합니다.
+                      • {t('staff_gsheet_info_2') || 'IMEI를 고유 키로 하여 이미 등록된 기기는 정보를 덮어쓰고(Update), 새로운 기기는 자동으로 추가(Insert)합니다.'}
                     </p>
                     <p style={{ marginTop: '6px' }}>
-                      • 연동 시 데이터 용량에 따라 완료까지 수 초 정도 소요될 수 있으니 완료 토스트창이 뜰 때까지 기다려 주세요.
+                      • {t('staff_gsheet_info_3') || '연동 시 데이터 용량에 따라 완료까지 수 초 정도 소요될 수 있으니 완료 토스트창이 뜰 때까지 기다려 주세요.'}
                     </p>
                   </div>
                   
@@ -2719,7 +2759,7 @@ export default function StaffDashboard() {
                     disabled={importingCSV}
                     style={{ margin: '8px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                   >
-                    {importingCSV ? '🔄 구글 시트 데이터 로딩 및 동기화 중...' : '🌐 구글 시트에서 실시간 불러오기 시작'}
+                    {importingCSV ? (t('staff_btn_gsheet_loading') || '🔄 구글 시트 데이터 로딩 및 동기화 중...') : (t('staff_btn_gsheet_start') || '🌐 구글 시트에서 실시간 불러오기 시작')}
                   </button>
                 </div>
               )}
@@ -2728,8 +2768,8 @@ export default function StaffDashboard() {
               {intakeMethod === 'file' && (
                 <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div style={{ background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', fontSize: '12px', lineHeight: 1.6, color: 'var(--t2)' }}>
-                    <h4 style={{ fontWeight: 800, color: 'var(--t1)', marginBottom: '8px' }}>📁 CSV 파일 내보내기 안내</h4>
-                    <p>구글 스프레드시트 또는 엑셀에서 [파일] ➔ [다운로드] ➔ [쉼표로 구분된 값(.csv)]으로 저장한 뒤 아래에 업로드해 주세요.</p>
+                    <h4 style={{ fontWeight: 800, color: 'var(--t1)', marginBottom: '8px' }}>{t('staff_csv_info_title') || '📁 CSV 파일 내보내기 안내'}</h4>
+                    <p>{t('staff_csv_info_1') || '구글 스프레드시트 또는 엑셀에서 [파일] ➔ [다운로드] ➔ [쉼표로 구분된 값(.csv)]으로 저장한 뒤 아래에 업로드해 주세요.'}</p>
                   </div>
 
                   <div style={{ border: '2px dashed var(--border)', borderRadius: '12px', padding: '24px', textAlign: 'center', background: '#f8fafc', position: 'relative' }}>
@@ -2739,13 +2779,13 @@ export default function StaffDashboard() {
                       onChange={handleFileChange}
                       style={{ display: 'block', margin: '0 auto 12px' }}
                     />
-                    <span style={{ fontSize: '11px', color: '#64748b' }}>UTF-8 인코딩 형식의 파일만 지원됩니다.</span>
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>{t('staff_csv_info_2') || 'UTF-8 인코딩 형식의 파일만 지원됩니다.'}</span>
                   </div>
 
                   {csvFileText && (
                     <div className="animate-fade-in" style={{ marginTop: '8px' }}>
                       <label className="form-label" style={{ fontSize: '11px', fontWeight: 700, color: 'var(--t2)', marginBottom: '6px', display: 'block' }}>
-                        📄 로드된 CSV 파일 데이터 일부 미리보기
+                        {t('staff_csv_preview') || '📄 로드된 CSV 파일 데이터 일부 미리보기'}
                       </label>
                       <textarea
                         rows={4}
@@ -2764,7 +2804,7 @@ export default function StaffDashboard() {
                     disabled={importingCSV || !csvFileText}
                     style={{ margin: '8px 0 0' }}
                   >
-                    {importingCSV ? '🔄 기기 업로드 처리 중...' : '🚀 업로드된 CSV 데이터 일괄 등록'}
+                    {importingCSV ? (t('staff_btn_csv_upload_loading') || '🔄 기기 업로드 처리 중...') : (t('staff_btn_csv_upload') || '🚀 업로드된 CSV 데이터 일괄 등록')}
                   </button>
                 </div>
               )}
@@ -2773,17 +2813,17 @@ export default function StaffDashboard() {
               {intakeMethod === 'paste' && (
                 <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div style={{ background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', fontSize: '12px', lineHeight: 1.6, color: 'var(--t2)' }}>
-                    <h4 style={{ fontWeight: 800, color: 'var(--t1)', marginBottom: '8px' }}>📋 복사 붙여넣기(Ctrl+C / Ctrl+V) 안내</h4>
-                    <p>엑셀 이나 구글 시트의 데이터 영역(행들과 열들)을 마우스 드래그로 복사(Ctrl+C)한 후, 아래 입력창에 바로 붙여넣기(Ctrl+V) 하시면 자동으로 탭 구분 기호를 분석하여 즉시 입고합니다.</p>
+                    <h4 style={{ fontWeight: 800, color: 'var(--t1)', marginBottom: '8px' }}>{t('staff_paste_info_title') || '📋 복사 붙여넣기(Ctrl+C / Ctrl+V) 안내'}</h4>
+                    <p>{t('staff_paste_info_1') || '엑셀 이나 구글 시트의 데이터 영역(행들과 열들)을 마우스 드래그로 복사(Ctrl+C)한 후, 아래 입력창에 바로 붙여넣기(Ctrl+V) 하시면 자동으로 탭 구분 기호를 분석하여 즉시 입고합니다.'}</p>
                   </div>
 
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label" style={{ fontSize: '11px', fontWeight: 700, color: 'var(--t2)', marginBottom: '6px', display: 'block' }}>
-                      ✍️ 여기에 복사한 데이터 붙여넣기
+                      {t('staff_paste_input_label') || '✍️ 여기에 복사한 데이터 붙여넣기'}
                     </label>
                     <textarea
                       rows={6}
-                      placeholder="구글 시트의 행 영역을 복사해서 붙여넣으세요...&#10;예시:&#10;26. 6. 8.	[판매날짜]	...	M12345	iPhone 14 Pro	351234567890123	Gold	FALSE	Shop	90%"
+                      placeholder={t('staff_paste_placeholder') || "구글 시트의 행 영역을 복사해서 붙여넣으세요..."}
                       value={pasteText}
                       onChange={(e) => setPasteText(e.target.value)}
                       className="form-textarea"
@@ -2798,7 +2838,7 @@ export default function StaffDashboard() {
                     disabled={importingCSV || !pasteText.trim()}
                     style={{ margin: '8px 0 0' }}
                   >
-                    {importingCSV ? '🔄 붙여넣은 데이터 구문 분석 및 등록 중...' : '🚀 붙여넣은 데이터 일괄 등록'}
+                    {importingCSV ? (t('staff_btn_paste_upload_loading') || '🔄 붙여넣은 데이터 구문 분석 및 등록 중...') : (t('staff_btn_paste_upload') || '🚀 붙여넣은 데이터 일괄 등록')}
                   </button>
                 </div>
               )}
@@ -2815,7 +2855,7 @@ export default function StaffDashboard() {
                 }} 
                 style={{ padding: '10px 20px', borderRadius: '8px', fontSize: '13px' }}
               >
-                닫기 (Close)
+                {t('staff_btn_close_dialog') || '닫기 (Close)'}
               </button>
             </div>
           </div>
@@ -2828,7 +2868,7 @@ export default function StaffDashboard() {
           <div className="modal animate-slide-up" style={{ maxWidth: '500px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-hd">
               <span className="modal-title">
-                {editingDevice ? '✏️ 단말기 세부 정보 수정' : '➕ 단말기 수동 개별 입고'}
+                {editingDevice ? t('staff_modal_edit_device') : t('staff_modal_add_device')}
               </span>
               <button className="modal-x" onClick={() => {
                 setIsManualModalOpen(false);
@@ -2839,7 +2879,7 @@ export default function StaffDashboard() {
             <div className="modal-body" style={{ padding: '20px', maxHeight: '65vh', overflowY: 'auto' }}>
               
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">스티커 번호 (Sticker No.)</label>
+                <label className="form-label">{t('staff_label_sticker')}</label>
                 <input
                   type="text"
                   placeholder="M080174753"
@@ -2852,7 +2892,7 @@ export default function StaffDashboard() {
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">모델명 (Model Name) *</label>
+                <label className="form-label">{t('staff_label_model')}</label>
                 <select
                   value={isCustomModel ? '___new___' : modelName}
                   onChange={(e) => handleModelSelectChange(e.target.value)}
@@ -2860,18 +2900,18 @@ export default function StaffDashboard() {
                   style={{ margin: 0 }}
                   disabled={!!editingDevice && staffProfile?.role !== 'admin'}
                 >
-                  <option value="">-- 모델명 선택 --</option>
+                  <option value="">{t('staff_select_model_placeholder')}</option>
                   {modelOptions.map((mod) => (
                     <option key={mod.id} value={mod.name}>{mod.name}</option>
                   ))}
-                  <option value="___new___" style={{ color: 'var(--purple)', fontWeight: 700 }}>+ ➕ 새 모델명 직접 등록</option>
+                  <option value="___new___" style={{ color: 'var(--purple)', fontWeight: 700 }}>{t('staff_select_model_new')}</option>
                 </select>
                 
                 {isCustomModel && (
                   <div className="animate-slide-up" style={{ marginTop: '8px' }}>
                     <input
                       type="text"
-                      placeholder="예: iPhone 15 Pro 128GB"
+                      placeholder={t('staff_placeholder_model_example') || '예: iPhone 15 Pro 128GB'}
                       value={customModelName}
                       onChange={(e) => setCustomModelName(e.target.value)}
                       className="form-input"
@@ -2879,14 +2919,14 @@ export default function StaffDashboard() {
                       disabled={!!editingDevice && staffProfile?.role !== 'admin'}
                     />
                     <small style={{ color: 'var(--purple)', fontSize: '11px', marginTop: '4px', display: 'block' }}>
-                      새로 입력하신 모델명은 기준 정보에 자동 추가됩니다.
+                      {t('staff_model_auto_add_notice')}
                     </small>
                   </div>
                 )}
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">IMEI 번호 *</label>
+                <label className="form-label">{t('staff_label_imei')}</label>
                 <input
                   type="text"
                   placeholder="353884196315840"
@@ -2899,7 +2939,7 @@ export default function StaffDashboard() {
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">색상 (Color)</label>
+                <label className="form-label">{t('staff_label_color')}</label>
                 <input
                   type="text"
                   placeholder="BLACK"
@@ -2911,10 +2951,10 @@ export default function StaffDashboard() {
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">배터리 성능 % / 액정 상태</label>
+                <label className="form-label">{t('staff_label_battery_screen')}</label>
                 <input
                   type="text"
-                  placeholder="85 또는 จอปลอม"
+                  placeholder={t('staff_placeholder_battery_example') || '85 또는 จอปลอม'}
                   value={batteryPct}
                   onChange={(e) => setBatteryPct(e.target.value)}
                   className="form-input"
@@ -2923,39 +2963,39 @@ export default function StaffDashboard() {
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">보관 위치 (Location)</label>
+                <label className="form-label">{t('staff_label_location')}</label>
                 <select
                   value={isCustomLocation ? '___new___' : location}
                   onChange={(e) => handleLocationSelectChange(e.target.value)}
                   className="form-input"
                   style={{ margin: 0 }}
                 >
-                  <option value="">-- 위치 선택 --</option>
+                  <option value="">{t('staff_select_location_placeholder')}</option>
                   {locationOptions.map((loc) => (
                     <option key={loc.id} value={loc.name}>{loc.name}</option>
                   ))}
-                  <option value="___new___" style={{ color: 'var(--purple)', fontWeight: 700 }}>+ ➕ 새 위치 직접 등록</option>
+                  <option value="___new___" style={{ color: 'var(--purple)', fontWeight: 700 }}>{t('staff_select_location_new')}</option>
                 </select>
 
                 {isCustomLocation && (
                   <div className="animate-slide-up" style={{ marginTop: '8px' }}>
                     <input
                       type="text"
-                      placeholder="예: Mr.han 2층"
+                      placeholder={t('staff_placeholder_location_example') || '예: Mr.han 2층'}
                       value={customLocationName}
                       onChange={(e) => setCustomLocationName(e.target.value)}
                       className="form-input"
                       style={{ margin: 0, borderColor: 'var(--purple)' }}
                     />
                     <small style={{ color: 'var(--purple)', fontSize: '11px', marginTop: '4px', display: 'block' }}>
-                      새로 입력하신 위치는 기준 정보에 자동 추가됩니다.
+                      {t('staff_location_auto_add_notice')}
                     </small>
                   </div>
                 )}
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">매입원가 (KRW ₩) *</label>
+                <label className="form-label">{t('staff_label_purchase_cost')}</label>
                 <input
                   type="number"
                   placeholder="550000"
@@ -2967,7 +3007,7 @@ export default function StaffDashboard() {
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">소매판매가 (THB ฿) *</label>
+                <label className="form-label">{t('staff_label_selling_price')}</label>
                 <input
                   type="number"
                   placeholder="14900"
@@ -2979,7 +3019,7 @@ export default function StaffDashboard() {
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">입고 날짜</label>
+                <label className="form-label">{t('staff_label_intake_date')}</label>
                 <input
                   type="text"
                   placeholder="26. 6. 8."
@@ -2992,9 +3032,9 @@ export default function StaffDashboard() {
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">상세 비고 (Notes)</label>
+                <label className="form-label">{t('staff_label_notes')}</label>
                 <textarea
-                  placeholder="스크래치, 부품 교체 기록 등..."
+                  placeholder={t('staff_label_notes_placeholder') || '스크래치, 부품 교체 기록 등...'}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   className="form-textarea"
@@ -3011,7 +3051,7 @@ export default function StaffDashboard() {
                 disabled={savingDevice}
                 style={{ flex: 1, margin: 0 }}
               >
-                {savingDevice ? t('loading') : '💾 정보 저장'}
+                {savingDevice ? t('loading') : t('staff_btn_save')}
               </button>
               <button 
                 className="btn-sm btn-red" 
@@ -3033,18 +3073,18 @@ export default function StaffDashboard() {
         <div className="modal-bg open" style={{ display: 'flex', zIndex: 3000 }}>
           <div className="modal animate-slide-up" style={{ maxWidth: '450px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-hd">
-              <span className="modal-title">💸 판매 장부 등록</span>
+              <span className="modal-title">{t('staff_modal_sale_title')}</span>
               <button className="modal-x" onClick={() => setSellingDevice(null)}>✕</button>
             </div>
 
             <div className="modal-body" style={{ padding: '20px' }}>
               <p style={{ fontSize: '13px', marginBottom: '16px' }}>
-                기기명: <b style={{ color: 'var(--purple-l)' }}>{sellingDevice.model_name}</b><br />
+                {t('staff_label_device_name')}: <b style={{ color: 'var(--purple-l)' }}>{sellingDevice.model_name}</b><br />
                 IMEI: <span className="font-mono">{sellingDevice.imei}</span>
               </p>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">판매 일자 (Sale Date)</label>
+                <label className="form-label">{t('staff_label_sale_date')}</label>
                 <input
                   type="text"
                   placeholder="26. 6. 8."
@@ -3056,14 +3096,14 @@ export default function StaffDashboard() {
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">판매 사원명 (Seller Name) *</label>
+                <label className="form-label">{t('staff_label_seller')}</label>
                 <select
                   value={sellerName}
                   onChange={(e) => setSellerName(e.target.value)}
                   className="form-input"
                   style={{ margin: 0 }}
                 >
-                  <option value="">-- 판매 사원 선택 --</option>
+                  <option value="">{t('staff_select_seller_placeholder')}</option>
                   {staffMembers.map(member => (
                     <option key={member.id} value={member.name}>{member.name}</option>
                   ))}
@@ -3071,10 +3111,10 @@ export default function StaffDashboard() {
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">판매 메모 / 수금 정보</label>
+                <label className="form-label">{t('staff_label_sale_memo')}</label>
                 <input
                   type="text"
-                  placeholder="현금 수금 14,900 또는 할부계약(IRIS0000126)"
+                  placeholder={t('staff_label_sale_memo_placeholder')}
                   value={saleNotes}
                   onChange={(e) => setSaleNotes(e.target.value)}
                   className="form-input"
@@ -3090,7 +3130,7 @@ export default function StaffDashboard() {
                 disabled={processingSale}
                 style={{ flex: 1, margin: 0, background: 'var(--green)' }}
               >
-                {processingSale ? t('loading') : '💸 판매 승인'}
+                {processingSale ? t('loading') : t('staff_btn_approve_sale')}
               </button>
               <button 
                 className="btn-sm btn-red" 
@@ -3109,25 +3149,25 @@ export default function StaffDashboard() {
         <div className="modal-bg open" style={{ display: 'flex', zIndex: 3000 }}>
           <div className="modal animate-slide-up" style={{ maxWidth: '450px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-hd">
-              <span className="modal-title">📌 단말기 예약 등록</span>
+              <span className="modal-title">{t('staff_modal_reserve_title')}</span>
               <button className="modal-x" onClick={() => setReservingDevice(null)}>✕</button>
             </div>
 
             <div className="modal-body" style={{ padding: '20px' }}>
               <p style={{ fontSize: '13px', marginBottom: '16px' }}>
-                기기명: <b style={{ color: 'var(--purple-l)' }}>{reservingDevice.model_name}</b><br />
+                {t('staff_label_device_name')}: <b style={{ color: 'var(--purple-l)' }}>{reservingDevice.model_name}</b><br />
                 IMEI: <span className="font-mono">{reservingDevice.imei}</span>
               </p>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">예약 사원명 (Reserver Name) *</label>
+                <label className="form-label">{t('staff_label_reserver')}</label>
                 <select
                   value={reserverName}
                   onChange={(e) => setReserverName(e.target.value)}
                   className="form-input"
                   style={{ margin: 0 }}
                 >
-                  <option value="">-- 예약 사원 선택 --</option>
+                  <option value="">{t('staff_select_reserver_placeholder')}</option>
                   {staffMembers.map(member => (
                     <option key={member.id} value={member.name}>{member.name}</option>
                   ))}
@@ -3135,10 +3175,10 @@ export default function StaffDashboard() {
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">예약 상세 메모</label>
+                <label className="form-label">{t('staff_label_reserve_memo')}</label>
                 <input
                   type="text"
-                  placeholder="예: 금주 토요일 수령 예정, 계약금 1,000바트 수령"
+                  placeholder={t('staff_label_reserve_memo_placeholder')}
                   value={reservationNotes}
                   onChange={(e) => setReservationNotes(e.target.value)}
                   className="form-input"
@@ -3154,7 +3194,7 @@ export default function StaffDashboard() {
                 disabled={processingReservation}
                 style={{ flex: 1, margin: 0, background: '#f59e0b', color: '#fff' }}
               >
-                {processingReservation ? t('loading') : '📌 예약 확정'}
+                {processingReservation ? t('loading') : t('staff_btn_confirm_reserve')}
               </button>
               <button 
                 className="btn-sm btn-red" 
