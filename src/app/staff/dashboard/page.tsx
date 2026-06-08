@@ -51,8 +51,8 @@ export default function StaffDashboard() {
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [redirectCountdown, setRedirectCountdown] = useState(3);
 
-  // Active Tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake'
-  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake'>('overview');
+  // Active Tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake' | 'history_log'
+  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake' | 'history_log'>('overview');
 
   // Sorting States
   const [sortField, setSortField] = useState<string>('created_at');
@@ -92,6 +92,12 @@ export default function StaffDashboard() {
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [auditText, setAuditText] = useState('');
   const [auditActiveTab, setAuditActiveTab] = useState<'not_in_db' | 'not_in_paste' | 'matched'>('not_in_db');
+  const [auditLocationFilter, setAuditLocationFilter] = useState('all');
+  // Daily History Log states
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [historyMonthFilter, setHistoryMonthFilter] = useState('all');
+  const [selectedHistoryLogDate, setSelectedHistoryLogDate] = useState<string | null>(null);
+  const [historyLogDetailTab, setHistoryLogDetailTab] = useState<'ingested' | 'sold' | 'stock'>('ingested');
   const [csvFileText, setCsvFileText] = useState('');
   const [importingCSV, setImportingCSV] = useState(false);
   const [intakeMethod, setIntakeMethod] = useState<'file' | 'paste'>('file');
@@ -1090,7 +1096,11 @@ export default function StaffDashboard() {
     }
 
     // Active stock only: !deleted_at && !is_sold && stock_location !== 'DHL'
-    const activeDevices = devices.filter(d => !d.deleted_at && !d.is_sold && d.stock_location !== 'DHL');
+    const activeDevices = devices.filter(d => {
+      if (d.deleted_at || d.is_sold || d.stock_location === 'DHL') return false;
+      if (auditLocationFilter !== 'all' && d.stock_location !== auditLocationFilter) return false;
+      return true;
+    });
     const activeImeiMap = new Map<string, typeof activeDevices[0]>();
     activeDevices.forEach(d => {
       if (d.imei) {
@@ -1132,6 +1142,10 @@ export default function StaffDashboard() {
             status = '입고 대기 중 (DHL)';
             badgeColor = '#d97706'; // yellow/orange
             deviceDetail = ` [${found.model_name || ''}]`;
+          } else if (!found.deleted_at && !found.is_sold && found.stock_location !== 'DHL' && auditLocationFilter !== 'all' && found.stock_location !== auditLocationFilter) {
+            status = `다른 위치에 있음 (${found.stock_location})`;
+            badgeColor = '#3b82f6'; // blue
+            deviceDetail = ` [${found.model_name || ''}]`;
           } else {
             status = '매칭 불가/기타 상태';
             deviceDetail = ` [${found.model_name || ''}]`;
@@ -1159,7 +1173,111 @@ export default function StaffDashboard() {
       missingFromPasted,
       matchedDevices
     };
-  }, [devices, auditText]);
+  }, [devices, auditText, auditLocationFilter]);
+
+  // --- Daily Log Memos ---
+  const uniqueDates = useMemo(() => {
+    const dates = new Set<string>();
+    devices.forEach(d => {
+      if (d.deleted_at) return;
+      if (d.site_date) dates.add(d.site_date.trim());
+      if (d.is_sold && d.sale_date) dates.add(d.sale_date.trim());
+    });
+
+    const parseYYMD = (dateStr?: string): number => {
+      if (!dateStr) return 0;
+      const parts = dateStr.split('.').map(p => p.trim()).filter(Boolean);
+      if (parts.length < 3) return 0;
+      const yy = parseInt(parts[0], 10) || 0;
+      const mm = parseInt(parts[1], 10) || 0;
+      const dd = parseInt(parts[2], 10) || 0;
+      return yy * 10000 + mm * 100 + dd;
+    };
+
+    return Array.from(dates).sort((a, b) => parseYYMD(b) - parseYYMD(a));
+  }, [devices]);
+
+  const dailyStats = useMemo(() => {
+    const parseYYMD = (dateStr?: string): number => {
+      if (!dateStr) return 0;
+      const parts = dateStr.split('.').map(p => p.trim()).filter(Boolean);
+      if (parts.length < 3) return 0;
+      const yy = parseInt(parts[0], 10) || 0;
+      const mm = parseInt(parts[1], 10) || 0;
+      const dd = parseInt(parts[2], 10) || 0;
+      return yy * 10000 + mm * 100 + dd;
+    };
+
+    return uniqueDates.map(date => {
+      const targetVal = parseYYMD(date);
+
+      // Ingested on this date (not deleted, location !== DHL)
+      const ingested = devices.filter(d => !d.deleted_at && d.stock_location !== 'DHL' && parseYYMD(d.site_date) === targetVal);
+
+      // Sold on this date
+      const sold = devices.filter(d => !d.deleted_at && d.is_sold && parseYYMD(d.sale_date) === targetVal);
+
+      // Stock at the end of this date
+      const stock = devices.filter(d => {
+        if (d.deleted_at || d.stock_location === 'DHL') return false;
+        const intakeVal = parseYYMD(d.site_date);
+        if (intakeVal === 0 || intakeVal > targetVal) return false;
+        
+        if (!d.is_sold) return true;
+        const saleVal = parseYYMD(d.sale_date);
+        return saleVal > targetVal;
+      });
+
+      return {
+        date,
+        ingestedCount: ingested.length,
+        soldCount: sold.length,
+        stockCount: stock.length,
+        ingestedList: ingested,
+        soldList: sold,
+        stockList: stock
+      };
+    });
+  }, [uniqueDates, devices]);
+
+  const historyMonths = useMemo(() => {
+    const months = new Set<string>();
+    uniqueDates.forEach(d => {
+      const parts = d.split('.').map(p => p.trim()).filter(Boolean);
+      if (parts.length >= 2) {
+        months.add(`${parts[0]}.${parts[1]}`); // e.g. "26.6"
+      }
+    });
+    return Array.from(months).sort((a, b) => {
+      const [ya, ma] = a.split('.').map(Number);
+      const [yb, mb] = b.split('.').map(Number);
+      if (ya !== yb) return yb - ya;
+      return mb - ma;
+    });
+  }, [uniqueDates]);
+
+  const filteredDailyStats = useMemo(() => {
+    return dailyStats.filter(stat => {
+      // 1. Month Filter
+      if (historyMonthFilter !== 'all') {
+        const parts = stat.date.split('.').map(p => p.trim()).filter(Boolean);
+        if (parts.length >= 2) {
+          const m = `${parts[0]}.${parts[1]}`;
+          if (m !== historyMonthFilter) return false;
+        } else {
+          return false;
+        }
+      }
+
+      // 2. Search Query (matches date string, e.g., '6.1' or '26.6.1')
+      if (historySearchQuery.trim()) {
+        const q = historySearchQuery.toLowerCase();
+        return stat.date.toLowerCase().includes(q);
+      }
+
+      return true;
+    });
+  }, [dailyStats, historyMonthFilter, historySearchQuery]);
 
   // 4. CSV File Parsing Helper
   function parseCSV(text: string): string[][] {
@@ -2411,7 +2529,7 @@ export default function StaffDashboard() {
   };
 
   // Tab Change Handler
-  const handleTabChange = (tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake') => {
+  const handleTabChange = (tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake' | 'history_log') => {
     setActiveTab(tab);
     setSelectedIds([]);
     setCategoryFilter('all');
@@ -2419,6 +2537,8 @@ export default function StaffDashboard() {
     setSoldSearchQuery('');
     setInstallmentSearchQuery('');
     setTrashSearchQuery('');
+    setHistorySearchQuery('');
+    setHistoryMonthFilter('all');
   };
 
   // CSV Reader trigger for file upload selector
@@ -2502,6 +2622,13 @@ export default function StaffDashboard() {
             <span className="ico">💸</span> {t('staff_menu_sales') || '판매 완료 처리'}
           </button>
 
+          <button 
+            className={`sb-link ${activeTab === 'history_log' ? 'active' : ''}`}
+            onClick={() => handleTabChange('history_log')}
+          >
+            <span className="ico">📋</span> 재고/판매 로그
+          </button>
+
           {(staffProfile?.role === 'admin' || staffProfile?.role === 'manager') && (
             <button 
               className={`sb-link ${activeTab === 'installment' ? 'active' : ''}`}
@@ -2571,6 +2698,8 @@ export default function StaffDashboard() {
               {activeTab === 'overview' && `📊 ${t('staff_menu_overview') || '경영 개요'}`}
               {activeTab === 'ledger' && `📱 ${t('staff_menu_inventory') || '사내 재고 관리'}`}
               {activeTab === 'sales' && `💸 ${t('staff_menu_sales') || '판매 완료 처리'}`}
+              {activeTab === 'pending_intake' && `📥 입고 대기 목록`}
+              {activeTab === 'history_log' && `📋 재고/판매 로그`}
               {activeTab === 'installment' && `💳 할부 수금 및 고객 관리`}
               {activeTab === 'settings' && `⚙️ ${t('staff_menu_settings') || '기준 정보 관리'}`}
               {activeTab === 'margin' && `📈 마진 및 정산관리`}
@@ -5025,6 +5154,100 @@ export default function StaffDashboard() {
           </div>
         )}
 
+        {/* ==================== VIEW 7: DAILY HISTORY LOG ==================== */}
+        {activeTab === 'history_log' && (
+          <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            
+            {/* Search & Filters */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '8px 12px' }}>
+              <div style={{ display: 'flex', gap: '8px', flex: 1, alignItems: 'center' }}>
+                <input
+                  type="text"
+                  placeholder="날짜 검색 (예: 6.1 또는 26.6.1)"
+                  value={historySearchQuery}
+                  onChange={(e) => setHistorySearchQuery(e.target.value)}
+                  className="form-input"
+                  style={{ maxWidth: '220px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
+                />
+
+                <select
+                  value={historyMonthFilter}
+                  onChange={(e) => setHistoryMonthFilter(e.target.value)}
+                  className="form-input"
+                  style={{ maxWidth: '180px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
+                >
+                  <option value="all">전체 월 (All Months)</option>
+                  {historyMonths.map(m => {
+                    const parts = m.split('.');
+                    const yr = 2000 + parseInt(parts[0], 10);
+                    const mo = parseInt(parts[1], 10);
+                    return (
+                      <option key={m} value={m}>{`${yr}년 ${mo}월`}</option>
+                    );
+                  })}
+                </select>
+
+                <div style={{ display: 'flex', alignItems: 'center', fontSize: '13px', fontWeight: 700, color: 'var(--purple-l)', marginLeft: '12px', whiteSpace: 'nowrap' }}>
+                  총 {filteredDailyStats.length}일의 기록
+                </div>
+              </div>
+            </div>
+
+            {/* Daily History Table */}
+            <div className="tbl-wrap" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px' }}>
+              <table className="tbl" style={{ tableLayout: 'fixed', width: '100%' }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: '25%' }}>날짜 (Date)</th>
+                    <th style={{ width: '20%', textAlign: 'center' }}>당일 입고 대수</th>
+                    <th style={{ width: '20%', textAlign: 'center' }}>당일 판매 대수</th>
+                    <th style={{ width: '20%', textAlign: 'center' }}>당일 마감 재고</th>
+                    <th style={{ width: '15%', textAlign: 'center' }}>상세</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredDailyStats.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
+                        일치하는 날짜 로그 기록이 없습니다.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredDailyStats.map(stat => (
+                      <tr key={stat.date}>
+                        <td style={{ fontWeight: 700, color: 'var(--t1)' }}>{stat.date}</td>
+                        <td style={{ textAlign: 'center', fontWeight: 700, color: stat.ingestedCount > 0 ? 'var(--blue)' : 'var(--t2)' }}>
+                          {stat.ingestedCount > 0 ? `+${stat.ingestedCount}대` : '0대'}
+                        </td>
+                        <td style={{ textAlign: 'center', fontWeight: 700, color: stat.soldCount > 0 ? 'var(--green)' : 'var(--t2)' }}>
+                          {stat.soldCount > 0 ? `-${stat.soldCount}대` : '0대'}
+                        </td>
+                        <td style={{ textAlign: 'center', fontWeight: 800, color: 'var(--purple-l)' }}>
+                          {stat.stockCount}대
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            className="btn-sm btn-blue"
+                            onClick={() => {
+                              setSelectedHistoryLogDate(stat.date);
+                              setHistoryLogDetailTab('ingested');
+                            }}
+                            style={{ padding: '6px 12px', fontSize: '11px', borderRadius: '6px', cursor: 'pointer' }}
+                          >
+                            상세 보기
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        )}
+
       </main>
 
       {/* BULK INTAKE MODAL */}
@@ -5174,9 +5397,26 @@ export default function StaffDashboard() {
               </div>
 
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontSize: '11px', fontWeight: 700, color: 'var(--t2)', marginBottom: '6px', display: 'block' }}>
-                  ✍️ 비교할 IMEI 리스트 붙여넣기
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label className="form-label" style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--t2)', margin: 0 }}>
+                    ✍️ 비교할 IMEI 리스트 붙여넣기
+                  </label>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--t2)' }}>📍 실사 위치:</span>
+                    <select
+                      value={auditLocationFilter}
+                      onChange={(e) => setAuditLocationFilter(e.target.value)}
+                      className="form-input"
+                      style={{ margin: 0, padding: '4px 8px', fontSize: '12.5px', minWidth: '150px', height: '32px' }}
+                    >
+                      <option value="all">전체 위치 비교</option>
+                      {locations.map(loc => (
+                        <option key={loc.id} value={loc.name}>{loc.name} 재고만 비교</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
                 <textarea
                   rows={5}
                   placeholder="예:&#10;356630558151225&#10;353854130184776&#10;864809043231439"
@@ -5404,6 +5644,189 @@ export default function StaffDashboard() {
           </div>
         </div>
       )}
+
+      {/* DAILY HISTORY LOG DETAILS MODAL */}
+      {selectedHistoryLogDate && (() => {
+        const stat = dailyStats.find(s => s.date === selectedHistoryLogDate);
+        if (!stat) return null;
+
+        return (
+          <div className="modal-bg open" style={{ display: 'flex', zIndex: 3000 }} onClick={() => setSelectedHistoryLogDate(null)}>
+            <div className="modal animate-slide-up" style={{ maxWidth: '850px', width: '95%', background: '#fff', borderRadius: '16px', overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
+              <div className="modal-hd" style={{ borderBottom: '1px solid var(--border)', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="modal-title" style={{ fontSize: '16px', fontWeight: 800 }}>📋 {selectedHistoryLogDate} 일자별 상세 내역</span>
+                <button className="modal-x" onClick={() => setSelectedHistoryLogDate(null)} style={{ border: 'none', background: 'none', fontSize: '18px', cursor: 'pointer' }}>✕</button>
+              </div>
+
+              <div className="modal-body" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                
+                {/* Modal Tabs */}
+                <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryLogDetailTab('ingested')}
+                    style={{
+                      padding: '10px 16px',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      border: 'none',
+                      borderBottom: historyLogDetailTab === 'ingested' ? '2px solid var(--purple-l)' : '2px solid transparent',
+                      background: 'none',
+                      color: historyLogDetailTab === 'ingested' ? 'var(--purple-l)' : 'var(--t2)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    📥 당일 입고 기기 ({stat.ingestedList.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryLogDetailTab('sold')}
+                    style={{
+                      padding: '10px 16px',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      border: 'none',
+                      borderBottom: historyLogDetailTab === 'sold' ? '2px solid var(--purple-l)' : '2px solid transparent',
+                      background: 'none',
+                      color: historyLogDetailTab === 'sold' ? 'var(--purple-l)' : 'var(--t2)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    💸 당일 판매 기기 ({stat.soldList.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryLogDetailTab('stock')}
+                    style={{
+                      padding: '10px 16px',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      border: 'none',
+                      borderBottom: historyLogDetailTab === 'stock' ? '2px solid var(--purple-l)' : '2px solid transparent',
+                      background: 'none',
+                      color: historyLogDetailTab === 'stock' ? 'var(--purple-l)' : 'var(--t2)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    📦 당일 마감 재고 기기 ({stat.stockList.length})
+                  </button>
+                </div>
+
+                {/* Tab Content Tables */}
+                <div style={{ maxHeight: '350px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
+                  
+                  {/* INGESTED LIST */}
+                  {historyLogDetailTab === 'ingested' && (
+                    <div>
+                      {stat.ingestedList.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)', fontSize: '13px' }}>
+                          당일 입고 등록된 기기가 없습니다.
+                        </div>
+                      ) : (
+                        <table className="tbl" style={{ width: '100%' }}>
+                          <thead>
+                            <tr>
+                              <th style={{ width: '25%' }}>스티커 번호</th>
+                              <th style={{ width: '35%' }}>모델명</th>
+                              <th style={{ width: '40%' }}>IMEI</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {stat.ingestedList.map((item) => (
+                              <tr key={item.id}>
+                                <td style={{ color: 'var(--t2)', fontSize: '11.5px' }}>{item.sticker || '-'}</td>
+                                <td style={{ fontWeight: 700, fontSize: '11.5px' }}>{item.model_name}</td>
+                                <td className="font-mono" style={{ fontSize: '12px' }}>{item.imei}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  )}
+
+                  {/* SOLD LIST */}
+                  {historyLogDetailTab === 'sold' && (
+                    <div>
+                      {stat.soldList.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)', fontSize: '13px' }}>
+                          당일 판매 완료된 기기가 없습니다.
+                        </div>
+                      ) : (
+                        <table className="tbl" style={{ width: '100%' }}>
+                          <thead>
+                            <tr>
+                              <th style={{ width: '25%' }}>스티커 번호</th>
+                              <th style={{ width: '30%' }}>모델명</th>
+                              <th style={{ width: '20%', textAlign: 'right' }}>판매가</th>
+                              <th style={{ width: '25%' }}>판매원</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {stat.soldList.map((item) => (
+                              <tr key={item.id}>
+                                <td style={{ color: 'var(--t2)', fontSize: '11.5px' }}>{item.sticker || '-'}</td>
+                                <td style={{ fontWeight: 700, fontSize: '11.5px' }}>{item.model_name}</td>
+                                <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)', fontSize: '12px' }}>฿{formatPrice(item.selling_price)}</td>
+                                <td style={{ fontSize: '11.5px' }}>{item.seller_name || '-'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  )}
+
+                  {/* STOCK LIST */}
+                  {historyLogDetailTab === 'stock' && (
+                    <div>
+                      {stat.stockList.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)', fontSize: '13px' }}>
+                          당일 마감 재고가 없습니다.
+                        </div>
+                      ) : (
+                        <table className="tbl" style={{ width: '100%' }}>
+                          <thead>
+                            <tr>
+                              <th style={{ width: '25%' }}>스티커 번호</th>
+                              <th style={{ width: '35%' }}>모델명</th>
+                              <th style={{ width: '40%' }}>IMEI</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {stat.stockList.map((item) => (
+                              <tr key={item.id}>
+                                <td style={{ color: 'var(--t2)', fontSize: '11.5px' }}>{item.sticker || '-'}</td>
+                                <td style={{ fontWeight: 700, fontSize: '11.5px' }}>{item.model_name}</td>
+                                <td className="font-mono" style={{ fontSize: '12px' }}>{item.imei}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  )}
+
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '12px 20px 20px', borderTop: '1px solid var(--border)' }}>
+                <button 
+                  type="button"
+                  className="btn-sm btn-red" 
+                  onClick={() => setSelectedHistoryLogDate(null)} 
+                  style={{ padding: '10px 20px', borderRadius: '8px', fontSize: '13px' }}
+                >
+                  닫기 (Close)
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* MANUAL INTAKE & EDIT MODAL */}
       {isManualModalOpen && (
