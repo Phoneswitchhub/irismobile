@@ -162,9 +162,15 @@ export async function GET(request: Request) {
         continue;
       }
 
-      const imei = row[imeiIdx] ? row[imeiIdx].trim().replace(/\s+/g, '') : '';
-      if (!imei || imei.toLowerCase() === 'imei' || isNaN(Number(imei.slice(0, 5)))) {
-        // Skip header or invalid rows
+      let imei = row[imeiIdx] ? row[imeiIdx].trim().replace(/\s+/g, '') : '';
+
+      // Fallback: If IMEI is empty but sticker exists, use sticker as temporary IMEI
+      if (!imei && serialNo) {
+        imei = serialNo.replace(/\s+/g, '');
+      }
+
+      // Skip header or invalid rows
+      if (!imei || imei.toLowerCase() === 'imei' || imei.toLowerCase() === 'imei/serial' || imei.length < 4) {
         continue;
       }
 

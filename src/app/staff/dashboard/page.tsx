@@ -92,6 +92,10 @@ export default function StaffDashboard() {
   // Edit Modal States
   const [editingDevice, setEditingDevice] = useState<DeviceItem | null>(null);
 
+  // Inline Edit States
+  const [editingCell, setEditingCell] = useState<{ id: string; field: 'sticker' | 'site_date' | 'model_name' } | null>(null);
+  const [editCellValue, setEditCellValue] = useState<string>('');
+
   // Toast Alerts
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
@@ -604,8 +608,12 @@ export default function StaffDashboard() {
         }
 
         // Skip rows with no valid IMEI
-        const rawImei = row[imeiIdx] ? row[imeiIdx].trim().replace(/\s+/g, '') : '';
-        if (!rawImei || rawImei.toLowerCase() === 'imei' || isNaN(Number(rawImei.slice(0, 5)))) {
+        let rawImei = row[imeiIdx] ? row[imeiIdx].trim().replace(/\s+/g, '') : '';
+        if (!rawImei && stickerNo) {
+          rawImei = stickerNo.replace(/\s+/g, '');
+        }
+
+        if (!rawImei || rawImei.toLowerCase() === 'imei' || rawImei.toLowerCase() === 'imei/serial' || rawImei.length < 4) {
           continue;
         }
 
@@ -849,8 +857,12 @@ export default function StaffDashboard() {
         }
 
         // Skip rows with no valid IMEI
-        const rawImei = row[imeiIdx] ? row[imeiIdx].trim().replace(/\s+/g, '') : '';
-        if (!rawImei || rawImei.toLowerCase() === 'imei' || isNaN(Number(rawImei.slice(0, 5)))) {
+        let rawImei = row[imeiIdx] ? row[imeiIdx].trim().replace(/\s+/g, '') : '';
+        if (!rawImei && stickerNo) {
+          rawImei = stickerNo.replace(/\s+/g, '');
+        }
+
+        if (!rawImei || rawImei.toLowerCase() === 'imei' || rawImei.toLowerCase() === 'imei/serial' || rawImei.length < 4) {
           continue;
         }
 
@@ -987,9 +999,13 @@ export default function StaffDashboard() {
           .update(payload)
           .eq('id', editingDevice.id));
       } else {
+        const newPayload = {
+          ...payload,
+          id: typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : undefined
+        };
         ({ error } = await supabase
           .from('sheets_inventory')
-          .insert(payload));
+          .insert(newPayload));
       }
 
       if (error) throw error;
@@ -1022,6 +1038,26 @@ export default function StaffDashboard() {
       showToast('❌ Error: ' + err.message, 'error');
     } finally {
       setSavingDevice(false);
+    }
+  };
+
+  // Inline Cell Save Handler
+  const handleInlineSave = async (id: string, field: 'sticker' | 'site_date' | 'model_name', value: string) => {
+    try {
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .update({ [field]: value.trim() })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Update local state
+      setDevices(prev => prev.map(d => d.id === id ? { ...d, [field]: value.trim() } : d));
+      showToast('✅ 인라인 수정이 반영되었습니다.', 'success');
+    } catch (err: any) {
+      showToast('❌ 수정 실패: ' + err.message, 'error');
+    } finally {
+      setEditingCell(null);
     }
   };
 
@@ -1466,9 +1502,90 @@ export default function StaffDashboard() {
                   ) : (
                     filteredActiveDevices.map(item => (
                       <tr key={item.id}>
-                        <td style={{ fontWeight: 700, color: 'var(--purple-l)' }}>{item.sticker || '-'}</td>
-                        <td style={{ color: 'var(--t2)' }}>{item.site_date || '-'}</td>
-                        <td style={{ fontWeight: 700, wordBreak: 'break-all' }}>{item.model_name}</td>
+                        <td 
+                          style={{ fontWeight: 700, color: 'var(--purple-l)', cursor: 'pointer' }}
+                          onClick={() => {
+                            if (editingCell?.id !== item.id || editingCell?.field !== 'sticker') {
+                              setEditingCell({ id: item.id, field: 'sticker' });
+                              setEditCellValue(item.sticker || '');
+                            }
+                          }}
+                        >
+                          {editingCell?.id === item.id && editingCell?.field === 'sticker' ? (
+                            <input
+                              type="text"
+                              value={editCellValue}
+                              onChange={(e) => setEditCellValue(e.target.value)}
+                              onBlur={() => handleInlineSave(item.id, 'sticker', editCellValue)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleInlineSave(item.id, 'sticker', editCellValue);
+                                if (e.key === 'Escape') setEditingCell(null);
+                              }}
+                              autoFocus
+                              className="form-input"
+                              style={{ margin: 0, padding: '2px 4px', fontSize: '12px', width: '90%' }}
+                            />
+                          ) : (
+                            item.sticker || '-'
+                          )}
+                        </td>
+                        <td 
+                          style={{ color: 'var(--t2)', cursor: 'pointer' }}
+                          onClick={() => {
+                            if (editingCell?.id !== item.id || editingCell?.field !== 'site_date') {
+                              setEditingCell({ id: item.id, field: 'site_date' });
+                              setEditCellValue(item.site_date || '');
+                            }
+                          }}
+                        >
+                          {editingCell?.id === item.id && editingCell?.field === 'site_date' ? (
+                            <input
+                              type="text"
+                              value={editCellValue}
+                              onChange={(e) => setEditCellValue(e.target.value)}
+                              onBlur={() => handleInlineSave(item.id, 'site_date', editCellValue)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleInlineSave(item.id, 'site_date', editCellValue);
+                                if (e.key === 'Escape') setEditingCell(null);
+                              }}
+                              autoFocus
+                              className="form-input"
+                              style={{ margin: 0, padding: '2px 4px', fontSize: '12px', width: '90%' }}
+                            />
+                          ) : (
+                            item.site_date || '-'
+                          )}
+                        </td>
+                        <td 
+                          style={{ fontWeight: 700, wordBreak: 'break-all', cursor: 'pointer' }}
+                          onClick={() => {
+                            if (editingCell?.id !== item.id || editingCell?.field !== 'model_name') {
+                              setEditingCell({ id: item.id, field: 'model_name' });
+                              setEditCellValue(item.model_name || '');
+                            }
+                          }}
+                        >
+                          {editingCell?.id === item.id && editingCell?.field === 'model_name' ? (
+                            <select
+                              value={editCellValue}
+                              onChange={(e) => {
+                                setEditCellValue(e.target.value);
+                                handleInlineSave(item.id, 'model_name', e.target.value);
+                              }}
+                              onBlur={() => setEditingCell(null)}
+                              autoFocus
+                              className="form-input"
+                              style={{ margin: 0, padding: '2px 4px', fontSize: '12px', width: '90%' }}
+                            >
+                              <option value="">-- 모델명 선택 --</option>
+                              {models.map(mod => (
+                                <option key={mod.id} value={mod.name}>{mod.name}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            item.model_name
+                          )}
+                        </td>
                         <td className="font-mono" style={{ fontSize: '11px', wordBreak: 'break-all' }}>{item.imei}</td>
                         <td>{item.color || '-'}</td>
                         <td style={{ textAlign: 'center' }}>

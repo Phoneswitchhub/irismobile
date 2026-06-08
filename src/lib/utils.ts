@@ -10,7 +10,7 @@ export function makePassword(pin: string, phone: string): string {
 // Format price with ฿ currency symbol
 export function formatPrice(n: number | string): string {
   const num = typeof n === 'number' ? n : parseFloat(n) || 0;
-  return '฿' + num.toLocaleString();
+  return num.toLocaleString();
 }
 
 // Format date according to language context
