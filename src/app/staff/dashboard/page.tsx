@@ -51,6 +51,8 @@ export default function StaffDashboard() {
   const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
   const [csvFileText, setCsvFileText] = useState('');
   const [importingCSV, setImportingCSV] = useState(false);
+  const [intakeMethod, setIntakeMethod] = useState<'sync' | 'file' | 'paste'>('sync');
+  const [pasteText, setPasteText] = useState('');
 
   // Manual Input Form State
   const [sticker, setSticker] = useState('');
@@ -353,6 +355,142 @@ export default function StaffDashboard() {
     } catch (err: any) {
       console.error(err);
       showToast('❌ Import error: ' + err.message, 'error');
+    } finally {
+      setImportingCSV(false);
+    }
+  };
+
+  // Live Sync from Google Sheets API
+  const handleLiveSync = async () => {
+    setImportingCSV(true);
+    try {
+      const res = await fetch('/api/inventory?all=true');
+      if (!res.ok) throw new Error('Failed to fetch live sheet data');
+      const items = await res.json();
+      if (items.error) throw new Error(items.error);
+
+      // Map incoming keys to DB columns
+      const records = items.map((x: any) => ({
+        sticker: x.serialNo || null,
+        model_name: x.model,
+        imei: x.imei,
+        color: x.color || null,
+        is_sold: x.isSold,
+        stock_location: x.location || 'Shop',
+        battery_pct: x.battery || '100',
+        seller_name: x.seller || null,
+        notes: x.notes || null,
+        selling_price: x.price || 0,
+        market_price: x.marketPrice || 0,
+        purchase_cost_krw: x.purchaseCost || 0,
+        site_date: x.siteDate || null,
+        sale_date: x.saleDate || null
+      }));
+
+      if (records.length === 0) {
+        showToast('❌ No records retrieved from spreadsheet.', 'error');
+        setImportingCSV(false);
+        return;
+      }
+
+      // Bulk upsert to Supabase
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .upsert(records, { onConflict: 'imei' });
+
+      if (error) throw error;
+
+      showToast(`🌐 구글 시트로부터 ${records.length}개 기기 실시간 동기화 완료!`, 'success');
+      setIsCSVModalOpen(false);
+      loadLedgerData();
+    } catch (err: any) {
+      console.error(err);
+      showToast('❌ 동기화 실패: ' + err.message, 'error');
+    } finally {
+      setImportingCSV(false);
+    }
+  };
+
+  // Clipboard Paste Ingestion Handler
+  const handlePasteImport = async () => {
+    if (!pasteText.trim()) {
+      showToast('❌ 붙여넣은 텍스트가 없습니다.', 'error');
+      return;
+    }
+    setImportingCSV(true);
+    try {
+      const rows = pasteText.trim().split(/\r?\n/).map(row => row.split('\t'));
+      if (rows.length === 0) {
+        showToast('❌ 유효한 텍스트 데이터가 없습니다.', 'error');
+        setImportingCSV(false);
+        return;
+      }
+
+      const records = [];
+      const nowString = new Date().toISOString();
+
+      for (const row of rows) {
+        if (row.length < 5) continue;
+
+        // Skip rows with no valid IMEI
+        const rawImei = row[5] ? row[5].trim().replace(/\s+/g, '') : '';
+        if (!rawImei || rawImei.toLowerCase() === 'imei' || isNaN(Number(rawImei.slice(0, 5)))) {
+          continue;
+        }
+
+        const siteD = row[0] ? row[0].trim() : '';
+        const saleD = row[1] ? row[1].trim() : '';
+        const stickerNo = row[3] ? row[3].trim() : '';
+        const model = row[4] ? row[4].trim() : '';
+        const colorVal = row[6] ? row[6].trim() : '';
+        const isSoldVal = row[7] ? row[7].trim().toUpperCase() === 'TRUE' : false;
+        const loc = row[8] ? row[8].trim() : 'Shop';
+        const battery = row[9] ? row[9].trim() : '100';
+        const seller = row[10] ? row[10].trim() : '';
+        const note = row[11] ? row[11].trim() : '';
+
+        const sellingPriceVal = parseInt(row[15]?.replace(/[^\d]/g, '')) || 0;
+        const marketPriceVal = parseInt(row[16]?.replace(/[^\d]/g, '')) || 0;
+        const purchaseCostVal = parseInt(row[18]?.replace(/[^\d]/g, '')) || 0;
+
+        records.push({
+          site_date: siteD,
+          sale_date: saleD,
+          sticker: stickerNo,
+          model_name: model,
+          imei: rawImei,
+          color: colorVal,
+          is_sold: isSoldVal,
+          stock_location: loc,
+          battery_pct: battery,
+          seller_name: seller,
+          notes: note,
+          selling_price: sellingPriceVal,
+          market_price: marketPriceVal,
+          purchase_cost_krw: purchaseCostVal,
+          created_at: nowString
+        });
+      }
+
+      if (records.length === 0) {
+        showToast('❌ 파싱된 유효한 기기 데이터가 없습니다.', 'error');
+        setImportingCSV(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .upsert(records, { onConflict: 'imei' });
+
+      if (error) throw error;
+
+      showToast(`📋 붙여넣기를 통해 ${records.length}개 기기 입고 완료!`, 'success');
+      setIsCSVModalOpen(false);
+      setPasteText('');
+      loadLedgerData();
+    } catch (err: any) {
+      console.error(err);
+      showToast('❌ 붙여넣기 입고 실패: ' + err.message, 'error');
     } finally {
       setImportingCSV(false);
     }
@@ -771,7 +909,7 @@ export default function StaffDashboard() {
                   style={{ margin: 0, background: '#f1f5f9', border: '1px solid var(--border)', color: '#334155' }}
                   onClick={() => setIsCSVModalOpen(true)}
                 >
-                  📥 엑셀/CSV 일괄 입고
+                  📥 대량 기기 입고 (시트/CSV/Ctrl+V)
                 </button>
                 <button 
                   className="btn-submit"
@@ -954,63 +1092,166 @@ export default function StaffDashboard() {
 
       </main>
 
-      {/* CSV IMPORT MODAL */}
+      {/* BULK INTAKE MODAL */}
       {isCSVModalOpen && (
-        <div className="modal-bg open" style={{ display: 'flex', zIndex: 3000 }}>
-          <div className="modal animate-slide-up" style={{ maxWidth: '600px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-hd">
-              <span className="modal-title">📥 엑셀/CSV 일괄 입고</span>
-              <button className="modal-x" onClick={() => setIsCSVModalOpen(false)}>✕</button>
+        <div className="modal-bg open" style={{ display: 'flex', zIndex: 3000 }} onClick={() => setIsCSVModalOpen(false)}>
+          <div className="modal animate-slide-up" style={{ maxWidth: '650px', width: '90%', background: '#fff', borderRadius: '16px', overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-hd" style={{ borderBottom: '1px solid var(--border)', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="modal-title" style={{ fontSize: '16px', fontWeight: 800 }}>📥 대량 기기 입고 (Bulk Device Ingestion)</span>
+              <button className="modal-x" onClick={() => setIsCSVModalOpen(false)} style={{ border: 'none', background: 'none', fontSize: '18px', cursor: 'pointer' }}>✕</button>
             </div>
             
-            <div className="form-group" style={{ padding: '20px' }}>
-              <p style={{ fontSize: '12px', color: 'var(--t2)', lineHeight: 1.6, marginBottom: '16px' }}>
-                • 구글 스프레드시트 또는 엑셀에서 파일 ➔ 다운로드 ➔ <b>쉼표로 구분된 값(.csv)</b>으로 내보낸 파일을 아래 선택하여 올려주세요.<br />
-                • 첫 줄 헤더 행을 감지하고, 열 순서에 맞춰 IMEI 중복을 걸러내고 대량 인서트합니다.
-              </p>
-
-              <div style={{ border: '2px dashed var(--border)', borderRadius: '12px', padding: '24px', textAlign: 'center', background: '#f8fafc', cursor: 'pointer' }}>
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleFileChange}
-                  style={{ display: 'block', margin: '0 auto 12px' }}
-                />
-                <span style={{ fontSize: '11px', color: '#64748b' }}>UTF-8 인코딩의 CSV 파일 형식을 권장합니다.</span>
+            <div className="modal-body" style={{ padding: '20px' }}>
+              {/* Method Switcher Tabs */}
+              <div className="auth-tabs" style={{ display: 'flex', background: 'rgba(0, 0, 0, .03)', borderRadius: '10px', padding: '4px', marginBottom: '20px' }}>
+                <button 
+                  type="button"
+                  className={`tab-btn ${intakeMethod === 'sync' ? 'active' : ''}`}
+                  onClick={() => setIntakeMethod('sync')}
+                  style={{ flex: 1, padding: '10px', border: 'none', background: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, transition: 'all 0.2s' }}
+                >
+                  🌐 구글 시트 실시간 연동
+                </button>
+                <button 
+                  type="button"
+                  className={`tab-btn ${intakeMethod === 'file' ? 'active' : ''}`}
+                  onClick={() => setIntakeMethod('file')}
+                  style={{ flex: 1, padding: '10px', border: 'none', background: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, transition: 'all 0.2s' }}
+                >
+                  📁 CSV 파일 업로드
+                </button>
+                <button 
+                  type="button"
+                  className={`tab-btn ${intakeMethod === 'paste' ? 'active' : ''}`}
+                  onClick={() => setIntakeMethod('paste')}
+                  style={{ flex: 1, padding: '10px', border: 'none', background: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, transition: 'all 0.2s' }}
+                >
+                  📋 복사 붙여넣기 (Ctrl+C/V)
+                </button>
               </div>
 
-              {csvFileText && (
-                <div style={{ marginTop: '16px' }}>
-                  <label className="form-label">로드된 데이터 미리보기 (일부)</label>
-                  <textarea
-                    rows={4}
-                    readOnly
-                    value={csvFileText.slice(0, 1200) + '...'}
-                    className="form-textarea animate-fade-in"
-                    style={{ fontSize: '10px', fontFamily: 'monospace' }}
-                  />
+              {/* METHOD 1: Google Sheets Live Sync */}
+              {intakeMethod === 'sync' && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', fontSize: '12px', lineHeight: 1.6, color: 'var(--t2)' }}>
+                    <h4 style={{ fontWeight: 800, color: 'var(--t1)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>💡</span> 실시간 구글 스프레드시트 동기화 안내
+                    </h4>
+                    <p>
+                      Phoneswitchhub 공식 구글 시트(<a href="https://docs.google.com/spreadsheets/d/1NpSAZNB9xb0pYZxs5sKp9hxXQraMPXcpxWyhUO2o4DM/edit" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--purple)', textDecoration: 'underline', fontWeight: 600 }}>장부 링크</a>)에서 실시간으로 전체 기기 내역을 조회해 데이터베이스에 동기화합니다.
+                    </p>
+                    <p style={{ marginTop: '6px' }}>
+                      • <b>IMEI를 고유 키</b>로 하여 이미 등록된 기기는 정보를 덮어쓰고(Update), 새로운 기기는 자동으로 추가(Insert)합니다.
+                    </p>
+                    <p style={{ marginTop: '6px' }}>
+                      • 연동 시 데이터 용량에 따라 완료까지 수 초 정도 소요될 수 있으니 완료 토스트창이 뜰 때까지 기다려 주세요.
+                    </p>
+                  </div>
+                  
+                  <button 
+                    type="button"
+                    className="btn-submit"
+                    onClick={handleLiveSync}
+                    disabled={importingCSV}
+                    style={{ margin: '8px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  >
+                    {importingCSV ? '🔄 구글 시트 데이터 로딩 및 동기화 중...' : '🌐 구글 시트에서 실시간 불러오기 시작'}
+                  </button>
+                </div>
+              )}
+
+              {/* METHOD 2: CSV File Upload */}
+              {intakeMethod === 'file' && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', fontSize: '12px', lineHeight: 1.6, color: 'var(--t2)' }}>
+                    <h4 style={{ fontWeight: 800, color: 'var(--t1)', marginBottom: '8px' }}>📁 CSV 파일 내보내기 안내</h4>
+                    <p>구글 스프레드시트 또는 엑셀에서 [파일] ➔ [다운로드] ➔ [쉼표로 구분된 값(.csv)]으로 저장한 뒤 아래에 업로드해 주세요.</p>
+                  </div>
+
+                  <div style={{ border: '2px dashed var(--border)', borderRadius: '12px', padding: '24px', textAlign: 'center', background: '#f8fafc', position: 'relative' }}>
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={handleFileChange}
+                      style={{ display: 'block', margin: '0 auto 12px' }}
+                    />
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>UTF-8 인코딩 형식의 파일만 지원됩니다.</span>
+                  </div>
+
+                  {csvFileText && (
+                    <div className="animate-fade-in" style={{ marginTop: '8px' }}>
+                      <label className="form-label" style={{ fontSize: '11px', fontWeight: 700, color: 'var(--t2)', marginBottom: '6px', display: 'block' }}>
+                        📄 로드된 CSV 파일 데이터 일부 미리보기
+                      </label>
+                      <textarea
+                        rows={4}
+                        readOnly
+                        value={csvFileText.slice(0, 1000) + (csvFileText.length > 1000 ? '\n...[생략]...' : '')}
+                        className="form-textarea"
+                        style={{ fontSize: '11px', fontFamily: 'monospace', background: '#f1f5f9', color: '#334155', resize: 'none' }}
+                      />
+                    </div>
+                  )}
+
+                  <button 
+                    type="button"
+                    className="btn-submit" 
+                    onClick={handleCSVImport} 
+                    disabled={importingCSV || !csvFileText}
+                    style={{ margin: '8px 0 0' }}
+                  >
+                    {importingCSV ? '🔄 기기 업로드 처리 중...' : '🚀 업로드된 CSV 데이터 일괄 등록'}
+                  </button>
+                </div>
+              )}
+
+              {/* METHOD 3: Clipboard Copy Paste */}
+              {intakeMethod === 'paste' && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', fontSize: '12px', lineHeight: 1.6, color: 'var(--t2)' }}>
+                    <h4 style={{ fontWeight: 800, color: 'var(--t1)', marginBottom: '8px' }}>📋 복사 붙여넣기(Ctrl+C / Ctrl+V) 안내</h4>
+                    <p>엑셀 이나 구글 시트의 데이터 영역(행들과 열들)을 마우스 드래그로 복사(Ctrl+C)한 후, 아래 입력창에 바로 붙여넣기(Ctrl+V) 하시면 자동으로 탭 구분 기호를 분석하여 즉시 입고합니다.</p>
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontSize: '11px', fontWeight: 700, color: 'var(--t2)', marginBottom: '6px', display: 'block' }}>
+                      ✍️ 여기에 복사한 데이터 붙여넣기
+                    </label>
+                    <textarea
+                      rows={6}
+                      placeholder="구글 시트의 행 영역을 복사해서 붙여넣으세요...&#10;예시:&#10;26. 6. 8.	[판매날짜]	...	M12345	iPhone 14 Pro	351234567890123	Gold	FALSE	Shop	90%"
+                      value={pasteText}
+                      onChange={(e) => setPasteText(e.target.value)}
+                      className="form-textarea"
+                      style={{ fontSize: '11px', fontFamily: 'monospace', lineHeight: '1.4' }}
+                    />
+                  </div>
+
+                  <button 
+                    type="button"
+                    className="btn-submit" 
+                    onClick={handlePasteImport} 
+                    disabled={importingCSV || !pasteText.trim()}
+                    style={{ margin: '8px 0 0' }}
+                  >
+                    {importingCSV ? '🔄 붙여넣은 데이터 구문 분석 및 등록 중...' : '🚀 붙여넣은 데이터 일괄 등록'}
+                  </button>
                 </div>
               )}
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', padding: '0 20px 20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '12px 20px 20px', borderTop: '1px solid var(--border)' }}>
               <button 
-                className="btn-submit" 
-                onClick={handleCSVImport} 
-                disabled={importingCSV || !csvFileText}
-                style={{ flex: 1, margin: 0 }}
-              >
-                {importingCSV ? 'Importing Devices...' : '🚀 일괄 업로드 실행'}
-              </button>
-              <button 
+                type="button"
                 className="btn-sm btn-red" 
                 onClick={() => {
                   setIsCSVModalOpen(false);
                   setCsvFileText('');
+                  setPasteText('');
                 }} 
-                style={{ padding: '14px 20px', borderRadius: 'var(--r)' }}
+                style={{ padding: '10px 20px', borderRadius: '8px', fontSize: '13px' }}
               >
-                {t('cancel')}
+                닫기 (Close)
               </button>
             </div>
           </div>
