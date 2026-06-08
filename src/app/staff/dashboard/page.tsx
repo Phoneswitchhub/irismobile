@@ -277,44 +277,135 @@ export default function StaffDashboard() {
         return;
       }
 
-      // Identify indexes based on header row (row[0])
-      // We will parse dynamically, fallback to index values matching our sheets view
+      // Detect header row by scanning the first few rows for IMEI column
+      let headerRowIdx = 0;
+      for (let r = 0; r < Math.min(rows.length, 6); r++) {
+        const row = rows[r];
+        const hasImei = row.some(cell => cell && cell.toLowerCase().replace(/\s+/g, '').includes('imei'));
+        if (hasImei) {
+          headerRowIdx = r;
+          break;
+        }
+      }
+
+      const headerRow = rows[headerRowIdx];
+
+      // Default indices mapping (fallbacks)
+      let siteDateIdx = -1;
+      let saleDateIdx = -1;
+      let stickerIdx = -1;
+      let modelIdx = -1;
+      let imeiIdx = -1;
+      let colorIdx = -1;
+      let isSoldIdx = -1;
+      let locationIdx = -1;
+      let batteryIdx = -1;
+      let sellerIdx = -1;
+      let notesIdx = -1;
+      let sellingPriceIdx = -1;
+      let marketPriceIdx = -1;
+      let purchaseCostIdx = -1;
+
+      // First pass for exact or strong matches
+      headerRow.forEach((cell, idx) => {
+        const clean = cell.toLowerCase().replace(/\s+/g, '');
+        if (clean.includes('입고날짜') || clean.includes('sitedate') || (clean.includes('date') && clean.includes('site'))) {
+          siteDateIdx = idx;
+        } else if (clean.includes('판매날짜') || clean.includes('saledate') || (clean.includes('date') && clean.includes('sale'))) {
+          saleDateIdx = idx;
+        } else if (clean.includes('스티커') || clean.includes('sticker') || clean.includes('serial')) {
+          stickerIdx = idx;
+        } else if (clean.includes('modelname') || clean.includes('모델명') || (clean.includes('model') && !clean.includes('price'))) {
+          modelIdx = idx;
+        } else if (clean === 'imei' || clean.includes('imei')) {
+          imeiIdx = idx;
+        } else if (clean.includes('color') || clean.includes('색상')) {
+          colorIdx = idx;
+        } else if (clean.includes('ขายแล้ว') || clean.includes('issold') || clean.includes('판매여부')) {
+          isSoldIdx = idx;
+        } else if (clean.includes('location') || clean.includes('stocklocation') || clean.includes('위치')) {
+          locationIdx = idx;
+        } else if (clean.includes('battery') || clean.includes('배터리')) {
+          batteryIdx = idx;
+        } else if (clean.includes('คนขาย') || clean.includes('seller') || clean.includes('판매자') || clean.includes('판매사원')) {
+          sellerIdx = idx;
+        } else if (clean.includes('notes') || clean.includes('note') || clean.includes('비고')) {
+          notesIdx = idx;
+        } else if (clean.includes('매입원가') || clean.includes('매입') || clean.includes('입고금액') || clean.includes('입고가') || clean.includes('purchasecost') || (clean.includes('cost') && clean.includes('krw'))) {
+          purchaseCostIdx = idx;
+        } else if (clean.includes('selligprice(b+') || (clean.includes('sellingprice') && !clean.includes('도매') && !clean.includes('마진'))) {
+          sellingPriceIdx = idx;
+        } else if (clean.includes('marketprice') || clean === 'market' || (clean.includes('market') && !clean.includes('cost'))) {
+          marketPriceIdx = idx;
+        }
+      });
+
+      // Second pass for looser matches
+      headerRow.forEach((cell, idx) => {
+        const clean = cell.toLowerCase().replace(/\s+/g, '');
+        if (sellingPriceIdx === -1 && (clean === 'price' || clean.includes('sellingprice') || clean.includes('판매가') || clean.includes('소매가'))) {
+          sellingPriceIdx = idx;
+        }
+        if (marketPriceIdx === -1 && (clean.includes('도매가격') || (clean.includes('도매') && !clean.includes('마진') && !clean.includes('수수료')))) {
+          marketPriceIdx = idx;
+        }
+      });
+
+      // Fallbacks
+      if (siteDateIdx === -1) siteDateIdx = 0;
+      if (saleDateIdx === -1) saleDateIdx = 1;
+      if (stickerIdx === -1) stickerIdx = 3;
+      if (modelIdx === -1) modelIdx = 4;
+      if (imeiIdx === -1) imeiIdx = 5;
+      if (colorIdx === -1) colorIdx = 6;
+      if (isSoldIdx === -1) isSoldIdx = 7;
+      if (locationIdx === -1) locationIdx = 8;
+      if (batteryIdx === -1) batteryIdx = 9;
+      if (sellerIdx === -1) sellerIdx = 10;
+      if (notesIdx === -1) notesIdx = 11;
+      if (sellingPriceIdx === -1) sellingPriceIdx = 15;
+      if (marketPriceIdx === -1) marketPriceIdx = 16;
+      if (purchaseCostIdx === -1) purchaseCostIdx = 18;
+
       const recordsToInsert = [];
       const nowString = new Date().toISOString();
 
-      for (let i = 1; i < rows.length; i++) {
+      for (let i = headerRowIdx + 1; i < rows.length; i++) {
         const row = rows[i];
-        if (row.length < 6) continue;
+        if (row.length <= imeiIdx) continue;
+
+        // Filter: only load rows that have sticker data
+        const stickerNo = row[stickerIdx] ? row[stickerIdx].trim() : '';
+        if (!stickerNo) {
+          continue;
+        }
 
         // Skip rows with no valid IMEI
-        const rawImei = row[5] ? row[5].trim().replace(/\s+/g, '') : '';
+        const rawImei = row[imeiIdx] ? row[imeiIdx].trim().replace(/\s+/g, '') : '';
         if (!rawImei || rawImei.toLowerCase() === 'imei' || isNaN(Number(rawImei.slice(0, 5)))) {
           continue;
         }
 
-        const stickerNo = row[3] ? row[3].trim() : '';
-        const model = row[4] ? row[4].trim() : '';
-        const colorVal = row[6] ? row[6].trim() : '';
-        const soldFlag = row[7] ? row[7].trim().toUpperCase() === 'TRUE' : false;
-        const loc = row[8] ? row[8].trim() : 'Shop';
-        const battery = row[9] ? row[9].trim() : '100';
-        const seller = row[10] ? row[10].trim() : '';
-        const note = row[11] ? row[11].trim() : '';
+        const model = row[modelIdx] ? row[modelIdx].trim() : '';
+        const colorVal = row[colorIdx] ? row[colorIdx].trim() : '';
+        const isSoldStr = row[isSoldIdx] ? row[isSoldIdx].trim().toUpperCase() : 'FALSE';
+        const soldFlag = isSoldStr === 'TRUE' || isSoldStr === 'YES' || isSoldStr === '예' || isSoldStr === '1';
+        const loc = row[locationIdx] ? row[locationIdx].trim() : 'Shop';
+        const battery = row[batteryIdx] ? row[batteryIdx].trim() : '100';
+        const seller = row[sellerIdx] ? row[sellerIdx].trim() : '';
+        const note = row[notesIdx] ? row[notesIdx].trim() : '';
 
-        // Extract Selling Price (Index 15, col P 'Sellig Price (B+,other)')
-        const sellingPriceStr = row[15] ? row[15].trim() : '0';
+        const sellingPriceStr = row[sellingPriceIdx] ? row[sellingPriceIdx].trim() : '0';
         const sellingPriceVal = parseInt(sellingPriceStr.replace(/[^\d]/g, '')) || 0;
 
-        // Extract Market Price (Index 16, col Q)
-        const marketPriceStr = row[16] ? row[16].trim() : '0';
+        const marketPriceStr = row[marketPriceIdx] ? row[marketPriceIdx].trim() : '0';
         const marketPriceVal = parseInt(marketPriceStr.replace(/[^\d]/g, '')) || 0;
 
-        // Extract Purchase Cost KRW (Index 18, col S '매입원가')
-        const purchaseCostStr = row[18] ? row[18].trim() : '0';
+        const purchaseCostStr = row[purchaseCostIdx] ? row[purchaseCostIdx].trim() : '0';
         const purchaseCostVal = parseInt(purchaseCostStr.replace(/[^\d]/g, '')) || 0;
 
-        const saleD = row[1] ? row[1].trim() : '';
-        const siteD = row[0] ? row[0].trim() : '';
+        const saleD = row[saleDateIdx] ? row[saleDateIdx].trim() : '';
+        const siteD = row[siteDateIdx] ? row[siteDateIdx].trim() : '';
 
         recordsToInsert.push({
           site_date: siteD,
@@ -341,7 +432,7 @@ export default function StaffDashboard() {
         return;
       }
 
-      // Upsert batch to database (concluding duplicate imei key collision overwriting)
+      // Upsert batch to database
       const { error } = await supabase
         .from('sheets_inventory')
         .upsert(recordsToInsert, { onConflict: 'imei' });
@@ -426,32 +517,134 @@ export default function StaffDashboard() {
         return;
       }
 
+      // Detect header row by scanning first 6 rows for IMEI keyword
+      let headerRowIdx = 0;
+      let headerDetected = false;
+      for (let r = 0; r < Math.min(rows.length, 6); r++) {
+        const row = rows[r];
+        const hasImei = row.some(cell => cell && cell.toLowerCase().replace(/\s+/g, '').includes('imei'));
+        if (hasImei) {
+          headerRowIdx = r;
+          headerDetected = true;
+          break;
+        }
+      }
+
+      // Default indices mapping (fallbacks)
+      let siteDateIdx = -1;
+      let saleDateIdx = -1;
+      let stickerIdx = -1;
+      let modelIdx = -1;
+      let imeiIdx = -1;
+      let colorIdx = -1;
+      let isSoldIdx = -1;
+      let locationIdx = -1;
+      let batteryIdx = -1;
+      let sellerIdx = -1;
+      let notesIdx = -1;
+      let sellingPriceIdx = -1;
+      let marketPriceIdx = -1;
+      let purchaseCostIdx = -1;
+
+      if (headerDetected) {
+        const headerRow = rows[headerRowIdx];
+        
+        // First pass for exact or strong matches
+        headerRow.forEach((cell, idx) => {
+          const clean = cell.toLowerCase().replace(/\s+/g, '');
+          if (clean.includes('입고날짜') || clean.includes('sitedate') || (clean.includes('date') && clean.includes('site'))) {
+            siteDateIdx = idx;
+          } else if (clean.includes('판매날짜') || clean.includes('saledate') || (clean.includes('date') && clean.includes('sale'))) {
+            saleDateIdx = idx;
+          } else if (clean.includes('스티커') || clean.includes('sticker') || clean.includes('serial')) {
+            stickerIdx = idx;
+          } else if (clean.includes('modelname') || clean.includes('모델명') || (clean.includes('model') && !clean.includes('price'))) {
+            modelIdx = idx;
+          } else if (clean === 'imei' || clean.includes('imei')) {
+            imeiIdx = idx;
+          } else if (clean.includes('color') || clean.includes('색상')) {
+            colorIdx = idx;
+          } else if (clean.includes('ขายแล้ว') || clean.includes('issold') || clean.includes('판매여부')) {
+            isSoldIdx = idx;
+          } else if (clean.includes('location') || clean.includes('stocklocation') || clean.includes('위치')) {
+            locationIdx = idx;
+          } else if (clean.includes('battery') || clean.includes('배터리')) {
+            batteryIdx = idx;
+          } else if (clean.includes('คนขาย') || clean.includes('seller') || clean.includes('판매자') || clean.includes('판매사원')) {
+            sellerIdx = idx;
+          } else if (clean.includes('notes') || clean.includes('note') || clean.includes('비고')) {
+            notesIdx = idx;
+          } else if (clean.includes('매입원가') || clean.includes('매입') || clean.includes('입고금액') || clean.includes('입고가') || clean.includes('purchasecost') || (clean.includes('cost') && clean.includes('krw'))) {
+            purchaseCostIdx = idx;
+          } else if (clean.includes('selligprice(b+') || (clean.includes('sellingprice') && !clean.includes('도매') && !clean.includes('마진'))) {
+            sellingPriceIdx = idx;
+          } else if (clean.includes('marketprice') || clean === 'market' || (clean.includes('market') && !clean.includes('cost'))) {
+            marketPriceIdx = idx;
+          }
+        });
+
+        // Second pass for looser matches
+        headerRow.forEach((cell, idx) => {
+          const clean = cell.toLowerCase().replace(/\s+/g, '');
+          if (sellingPriceIdx === -1 && (clean === 'price' || clean.includes('sellingprice') || clean.includes('판매가') || clean.includes('소매가'))) {
+            sellingPriceIdx = idx;
+          }
+          if (marketPriceIdx === -1 && (clean.includes('도매가격') || (clean.includes('도매') && !clean.includes('마진') && !clean.includes('수수료')))) {
+            marketPriceIdx = idx;
+          }
+        });
+      }
+
+      // Fallbacks
+      if (siteDateIdx === -1) siteDateIdx = 0;
+      if (saleDateIdx === -1) saleDateIdx = 1;
+      if (stickerIdx === -1) stickerIdx = 3;
+      if (modelIdx === -1) modelIdx = 4;
+      if (imeiIdx === -1) imeiIdx = 5;
+      if (colorIdx === -1) colorIdx = 6;
+      if (isSoldIdx === -1) isSoldIdx = 7;
+      if (locationIdx === -1) locationIdx = 8;
+      if (batteryIdx === -1) batteryIdx = 9;
+      if (sellerIdx === -1) sellerIdx = 10;
+      if (notesIdx === -1) notesIdx = 11;
+      if (sellingPriceIdx === -1) sellingPriceIdx = 15;
+      if (marketPriceIdx === -1) marketPriceIdx = 16;
+      if (purchaseCostIdx === -1) purchaseCostIdx = 18;
+
       const records = [];
       const nowString = new Date().toISOString();
+      const startIdx = headerDetected ? headerRowIdx + 1 : 0;
 
-      for (const row of rows) {
-        if (row.length < 5) continue;
+      for (let i = startIdx; i < rows.length; i++) {
+        const row = rows[i];
+        if (row.length <= imeiIdx) continue;
+
+        // Filter: only load rows that have sticker data
+        const stickerNo = row[stickerIdx] ? row[stickerIdx].trim() : '';
+        if (!stickerNo) {
+          continue;
+        }
 
         // Skip rows with no valid IMEI
-        const rawImei = row[5] ? row[5].trim().replace(/\s+/g, '') : '';
+        const rawImei = row[imeiIdx] ? row[imeiIdx].trim().replace(/\s+/g, '') : '';
         if (!rawImei || rawImei.toLowerCase() === 'imei' || isNaN(Number(rawImei.slice(0, 5)))) {
           continue;
         }
 
-        const siteD = row[0] ? row[0].trim() : '';
-        const saleD = row[1] ? row[1].trim() : '';
-        const stickerNo = row[3] ? row[3].trim() : '';
-        const model = row[4] ? row[4].trim() : '';
-        const colorVal = row[6] ? row[6].trim() : '';
-        const isSoldVal = row[7] ? row[7].trim().toUpperCase() === 'TRUE' : false;
-        const loc = row[8] ? row[8].trim() : 'Shop';
-        const battery = row[9] ? row[9].trim() : '100';
-        const seller = row[10] ? row[10].trim() : '';
-        const note = row[11] ? row[11].trim() : '';
+        const siteD = row[siteDateIdx] ? row[siteDateIdx].trim() : '';
+        const saleD = row[saleDateIdx] ? row[saleDateIdx].trim() : '';
+        const model = row[modelIdx] ? row[modelIdx].trim() : '';
+        const colorVal = row[colorIdx] ? row[colorIdx].trim() : '';
+        const isSoldStr = row[isSoldIdx] ? row[isSoldIdx].trim().toUpperCase() : 'FALSE';
+        const isSoldVal = isSoldStr === 'TRUE' || isSoldStr === 'YES' || isSoldStr === '예' || isSoldStr === '1';
+        const loc = row[locationIdx] ? row[locationIdx].trim() : 'Shop';
+        const battery = row[batteryIdx] ? row[batteryIdx].trim() : '100';
+        const seller = row[sellerIdx] ? row[sellerIdx].trim() : '';
+        const note = row[notesIdx] ? row[notesIdx].trim() : '';
 
-        const sellingPriceVal = parseInt(row[15]?.replace(/[^\d]/g, '')) || 0;
-        const marketPriceVal = parseInt(row[16]?.replace(/[^\d]/g, '')) || 0;
-        const purchaseCostVal = parseInt(row[18]?.replace(/[^\d]/g, '')) || 0;
+        const sellingPriceVal = parseInt(row[sellingPriceIdx]?.replace(/[^\d]/g, '')) || 0;
+        const marketPriceVal = parseInt(row[marketPriceIdx]?.replace(/[^\d]/g, '')) || 0;
+        const purchaseCostVal = parseInt(row[purchaseCostIdx]?.replace(/[^\d]/g, '')) || 0;
 
         records.push({
           site_date: siteD,
