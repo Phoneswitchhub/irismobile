@@ -683,6 +683,10 @@ export default function StaffDashboard() {
     return [...sortDevices(reserved), ...sortDevices(normal)];
   }, [devices, searchQuery, locationFilter, categoryFilter, matchesCategory, sortDevices, normalizeModelName]);
 
+  const filteredActiveDevicesPurchaseCost = useMemo(() => {
+    return filteredActiveDevices.reduce((sum, d) => sum + Number(d.purchase_cost_krw || 0), 0);
+  }, [filteredActiveDevices]);
+
   const filteredSoldDevices = useMemo(() => {
     const list = devices.filter(d => {
       if (d.deleted_at || !d.is_sold) return false;
@@ -2031,7 +2035,7 @@ export default function StaffDashboard() {
                 </select>
 
                 <div style={{ display: 'flex', alignItems: 'center', fontSize: '13px', fontWeight: 700, color: 'var(--purple-l)', marginLeft: '12px', whiteSpace: 'nowrap' }}>
-                  {t('staff_viewed_stock', { count: filteredActiveDevices.length })}
+                  {t('staff_viewed_stock', { count: filteredActiveDevices.length, cost: formatPrice(filteredActiveDevicesPurchaseCost) })}
                 </div>
               </div>
 
