@@ -88,6 +88,10 @@ export default function StaffDashboard() {
   // Intake Modals (Manual & CSV Upload)
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
+  // IMEI auditor states
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
+  const [auditText, setAuditText] = useState('');
+  const [auditActiveTab, setAuditActiveTab] = useState<'not_in_db' | 'not_in_paste' | 'matched'>('not_in_db');
   const [csvFileText, setCsvFileText] = useState('');
   const [importingCSV, setImportingCSV] = useState(false);
   const [intakeMethod, setIntakeMethod] = useState<'file' | 'paste'>('file');
@@ -1074,6 +1078,88 @@ export default function StaffDashboard() {
     });
     return sortDevices(list);
   }, [devices, trashSearchQuery, sortDevices, normalizeModelName]);
+
+  // IMEI Auditor Results calculation
+  const auditResults = useMemo(() => {
+    if (!auditText.trim()) {
+      return {
+        notInInventory: [],
+        missingFromPasted: [],
+        matchedDevices: []
+      };
+    }
+
+    // Active stock only: !deleted_at && !is_sold && stock_location !== 'DHL'
+    const activeDevices = devices.filter(d => !d.deleted_at && !d.is_sold && d.stock_location !== 'DHL');
+    const activeImeiMap = new Map<string, typeof activeDevices[0]>();
+    activeDevices.forEach(d => {
+      if (d.imei) {
+        activeImeiMap.set(d.imei.trim(), d);
+      }
+    });
+
+    // Parse pasted IMEIs (split by whitespace/newline/comma/semicolon)
+    const parsedIMEIs = auditText
+      .split(/[\s,;\n\r]+/)
+      .map(v => v.trim())
+      .filter(Boolean);
+
+    // Get unique list of pasted IMEIs
+    const uniquePastedIMEIs = Array.from(new Set(parsedIMEIs));
+
+    // 1. Pasted IMEIs not in active inventory
+    const notInInventory = uniquePastedIMEIs
+      .map(imei => {
+        const matchingActive = activeImeiMap.get(imei);
+        if (matchingActive) return null; // it is in active stock
+
+        // Find if this IMEI exists anywhere else in our DB (sold, pending/DHL, deleted)
+        const found = devices.find(d => d.imei?.trim() === imei);
+        let status = '미등록 (신규 기기)';
+        let badgeColor = '#64748b'; // slate/gray
+        let deviceDetail = '';
+
+        if (found) {
+          if (found.deleted_at) {
+            status = '휴지통에 있음';
+            badgeColor = '#ef4444'; // red
+            deviceDetail = ` [${found.model_name || ''}]`;
+          } else if (found.is_sold) {
+            status = `판매 완료됨 (${found.sale_date || ''})`;
+            badgeColor = '#10b981'; // green
+            deviceDetail = ` [${found.model_name || ''}]`;
+          } else if (found.stock_location === 'DHL') {
+            status = '입고 대기 중 (DHL)';
+            badgeColor = '#d97706'; // yellow/orange
+            deviceDetail = ` [${found.model_name || ''}]`;
+          } else {
+            status = '매칭 불가/기타 상태';
+            deviceDetail = ` [${found.model_name || ''}]`;
+          }
+        }
+
+        return {
+          imei,
+          status,
+          badgeColor,
+          deviceDetail
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+
+    // 2. Active inventory devices not in pasted list
+    const pastedImeiSet = new Set(uniquePastedIMEIs);
+    const missingFromPasted = activeDevices.filter(d => !d.imei || !pastedImeiSet.has(d.imei.trim()));
+
+    // 3. Matched devices
+    const matchedDevices = activeDevices.filter(d => d.imei && pastedImeiSet.has(d.imei.trim()));
+
+    return {
+      notInInventory,
+      missingFromPasted,
+      matchedDevices
+    };
+  }, [devices, auditText]);
 
   // 4. CSV File Parsing Helper
   function parseCSV(text: string): string[][] {
@@ -3049,6 +3135,16 @@ export default function StaffDashboard() {
                     🗑️ {t('staff_btn_delete_selected')} ({selectedIds.length})
                   </button>
                 )}
+                <button 
+                  style={{ margin: 0, background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.25)', color: 'var(--purple-l)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    setAuditText('');
+                    setAuditActiveTab('not_in_db');
+                    setIsAuditModalOpen(true);
+                  }}
+                >
+                  🔍 IMEI 비교/실사 (Audit)
+                </button>
                 <button 
                   style={{ margin: 0, background: '#f1f5f9', border: '1px solid var(--border)', color: '#334155', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                   onClick={() => setIsCSVModalOpen(true)}
@@ -5053,6 +5149,256 @@ export default function StaffDashboard() {
                 style={{ padding: '10px 20px', borderRadius: '8px', fontSize: '13px' }}
               >
                 {t('staff_btn_close_dialog') || '닫기 (Close)'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* IMEI AUDITOR MODAL */}
+      {isAuditModalOpen && (
+        <div className="modal-bg open" style={{ display: 'flex', zIndex: 3000 }} onClick={() => setIsAuditModalOpen(false)}>
+          <div className="modal animate-slide-up" style={{ maxWidth: '850px', width: '95%', background: '#fff', borderRadius: '16px', overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-hd" style={{ borderBottom: '1px solid var(--border)', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="modal-title" style={{ fontSize: '16px', fontWeight: 800 }}>🔍 IMEI 재고 실사 비교기 (IMEI Inventory Auditor)</span>
+              <button className="modal-x" onClick={() => setIsAuditModalOpen(false)} style={{ border: 'none', background: 'none', fontSize: '18px', cursor: 'pointer' }}>✕</button>
+            </div>
+            
+            <div className="modal-body" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '12px', padding: '12px 16px', fontSize: '12px', lineHeight: 1.6, color: 'var(--t2)' }}>
+                <h4 style={{ fontWeight: 800, color: 'var(--t1)', marginBottom: '4px' }}>💡 사용 방법</h4>
+                <p style={{ margin: 0 }}>
+                  실사 및 확인하려는 IMEI 리스트를 아래 입력창에 줄바꿈 또는 공백으로 구분하여 붙여넣으세요.
+                  현재 사내 재고 목록(입고 대기 DHL 제외)과 실시간으로 비교하여 미등록 및 누락 기기를 분류합니다.
+                </p>
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontSize: '11px', fontWeight: 700, color: 'var(--t2)', marginBottom: '6px', display: 'block' }}>
+                  ✍️ 비교할 IMEI 리스트 붙여넣기
+                </label>
+                <textarea
+                  rows={5}
+                  placeholder="예:&#10;356630558151225&#10;353854130184776&#10;864809043231439"
+                  value={auditText}
+                  onChange={(e) => setAuditText(e.target.value)}
+                  className="form-textarea"
+                  style={{ fontSize: '12px', fontFamily: 'monospace', lineHeight: '1.4', width: '100%', resize: 'vertical' }}
+                />
+              </div>
+
+              {auditText.trim() ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {/* Tabs */}
+                  <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setAuditActiveTab('not_in_db')}
+                      style={{
+                        padding: '10px 16px',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        border: 'none',
+                        borderBottom: auditActiveTab === 'not_in_db' ? '2px solid var(--purple-l)' : '2px solid transparent',
+                        background: 'none',
+                        color: auditActiveTab === 'not_in_db' ? 'var(--purple-l)' : 'var(--t2)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      ❌ 미등록 기기 ({auditResults.notInInventory.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAuditActiveTab('not_in_paste')}
+                      style={{
+                        padding: '10px 16px',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        border: 'none',
+                        borderBottom: auditActiveTab === 'not_in_paste' ? '2px solid var(--purple-l)' : '2px solid transparent',
+                        background: 'none',
+                        color: auditActiveTab === 'not_in_paste' ? 'var(--purple-l)' : 'var(--t2)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      ⚠️ 재고 누락 의심 ({auditResults.missingFromPasted.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAuditActiveTab('matched')}
+                      style={{
+                        padding: '10px 16px',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        border: 'none',
+                        borderBottom: auditActiveTab === 'matched' ? '2px solid var(--purple-l)' : '2px solid transparent',
+                        background: 'none',
+                        color: auditActiveTab === 'matched' ? 'var(--purple-l)' : 'var(--t2)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      ✅ 일치 재고 ({auditResults.matchedDevices.length})
+                    </button>
+                  </div>
+
+                  {/* Tab Contents */}
+                  <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
+                    
+                    {/* TAB 1: NOT IN DB */}
+                    {auditActiveTab === 'not_in_db' && (
+                      <div>
+                        {auditResults.notInInventory.length === 0 ? (
+                          <div style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)', fontSize: '13px' }}>
+                            입력하신 모든 IMEI가 현재 사내 재고에 등록되어 있습니다.
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '4px' }}>
+                              <button
+                                type="button"
+                                className="btn-sm btn-blue"
+                                style={{ padding: '4px 10px', fontSize: '11px', borderRadius: '4px', cursor: 'pointer' }}
+                                onClick={() => {
+                                  const textToCopy = auditResults.notInInventory.map(item => item.imei).join('\n');
+                                  navigator.clipboard.writeText(textToCopy);
+                                  alert('미등록 기기 IMEI 리스트가 클립보드에 복사되었습니다.');
+                                }}
+                              >
+                                📋 IMEI 목록 복사
+                              </button>
+                            </div>
+                            <table className="tbl" style={{ width: '100%' }}>
+                              <thead>
+                                <tr>
+                                  <th style={{ width: '40%' }}>IMEI</th>
+                                  <th style={{ width: '25%', textAlign: 'center' }}>상태</th>
+                                  <th style={{ width: '35%' }}>DB 정보</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {auditResults.notInInventory.map((item, idx) => (
+                                  <tr key={idx}>
+                                    <td className="font-mono" style={{ fontSize: '12px', fontWeight: 700 }}>{item.imei}</td>
+                                    <td style={{ textAlign: 'center' }}>
+                                      <span style={{
+                                        background: item.badgeColor + '1a',
+                                        color: item.badgeColor,
+                                        padding: '2px 8px',
+                                        borderRadius: '4px',
+                                        fontSize: '11px',
+                                        fontWeight: 800
+                                      }}>
+                                        {item.status}
+                                      </span>
+                                    </td>
+                                    <td style={{ fontSize: '11.5px', color: 'var(--t2)' }}>
+                                      {item.deviceDetail || '-'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* TAB 2: NOT IN PASTE (MISSING FROM SCAN) */}
+                    {auditActiveTab === 'not_in_paste' && (
+                      <div>
+                        {auditResults.missingFromPasted.length === 0 ? (
+                          <div style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)', fontSize: '13px' }}>
+                            현재 사내 재고에 등록된 모든 기기가 입력하신 리스트에 포함되어 있습니다.
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '4px' }}>
+                              <button
+                                type="button"
+                                className="btn-sm btn-blue"
+                                style={{ padding: '4px 10px', fontSize: '11px', borderRadius: '4px', cursor: 'pointer' }}
+                                onClick={() => {
+                                  const textToCopy = auditResults.missingFromPasted.map(item => item.imei).filter(Boolean).join('\n');
+                                  navigator.clipboard.writeText(textToCopy);
+                                  alert('누락 의심 기기 IMEI 리스트가 클립보드에 복사되었습니다.');
+                                }}
+                              >
+                                📋 IMEI 목록 복사
+                              </button>
+                            </div>
+                            <table className="tbl" style={{ width: '100%' }}>
+                              <thead>
+                                <tr>
+                                  <th style={{ width: '25%' }}>스티커 번호</th>
+                                  <th style={{ width: '35%' }}>모델명</th>
+                                  <th style={{ width: '40%' }}>IMEI</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {auditResults.missingFromPasted.map((item, idx) => (
+                                  <tr key={idx}>
+                                    <td style={{ color: 'var(--t2)', fontSize: '11.5px' }}>{item.sticker || '-'}</td>
+                                    <td style={{ fontWeight: 700, fontSize: '11.5px' }}>{item.model_name}</td>
+                                    <td className="font-mono" style={{ fontSize: '12px' }}>{item.imei}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* TAB 3: MATCHED */}
+                    {auditActiveTab === 'matched' && (
+                      <div>
+                        {auditResults.matchedDevices.length === 0 ? (
+                          <div style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)', fontSize: '13px' }}>
+                            입력하신 리스트와 일치하는 사내 재고 기기가 없습니다.
+                          </div>
+                        ) : (
+                          <table className="tbl" style={{ width: '100%' }}>
+                            <thead>
+                              <tr>
+                                <th style={{ width: '25%' }}>스티커 번호</th>
+                                <th style={{ width: '35%' }}>모델명</th>
+                                <th style={{ width: '40%' }}>IMEI</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {auditResults.matchedDevices.map((item, idx) => (
+                                  <tr key={idx}>
+                                    <td style={{ color: 'var(--t2)', fontSize: '11.5px' }}>{item.sticker || '-'}</td>
+                                    <td style={{ fontWeight: 700, fontSize: '11.5px' }}>{item.model_name}</td>
+                                    <td className="font-mono" style={{ fontSize: '12px' }}>{item.imei}</td>
+                                  </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    )}
+
+                  </div>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '36px', color: 'var(--t2)', fontSize: '13px', background: '#fafafa', borderRadius: '8px', border: '1px dashed var(--border)' }}>
+                  📝 위에 IMEI 리스트를 붙여넣으시면 실시간으로 비교 분석 결과가 여기에 표시됩니다.
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '12px 20px 20px', borderTop: '1px solid var(--border)' }}>
+              <button 
+                type="button"
+                className="btn-sm btn-red" 
+                onClick={() => setIsAuditModalOpen(false)} 
+                style={{ padding: '10px 20px', borderRadius: '8px', fontSize: '13px' }}
+              >
+                닫기 (Close)
               </button>
             </div>
           </div>
