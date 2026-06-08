@@ -567,10 +567,46 @@ export default function StaffDashboard() {
     };
   }, [devices]);
 
-  // Extract unique models present in current tab's scope (active vs sold)
+  // categoryFilter를 제외한 검색/위치 필터만 적용된 기기 목록의 길이 (Ledger & Sales)
+  const baseActiveDevicesCount = useMemo(() => {
+    return devices.filter(d => {
+      if (d.deleted_at || d.is_sold) return false;
+      const matchSearch = d.model_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (d.imei && d.imei.includes(searchQuery)) ||
+                          (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchLoc = locationFilter === 'all' || d.stock_location === locationFilter;
+      return matchSearch && matchLoc;
+    }).length;
+  }, [devices, searchQuery, locationFilter]);
+
+  const baseSoldDevicesCount = useMemo(() => {
+    return devices.filter(d => {
+      if (d.deleted_at || !d.is_sold) return false;
+      const matchSearch = d.model_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (d.imei && d.imei.includes(searchQuery)) ||
+                          (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchSearch;
+    }).length;
+  }, [devices, searchQuery]);
+
+  // Extract unique models present in current tab's scope (active vs sold) based on active search/location filters
   const uniqueModels = useMemo(() => {
-    const activeStock = devices.filter(d => !d.deleted_at && !d.is_sold);
-    const soldList = devices.filter(d => !d.deleted_at && d.is_sold);
+    const activeStock = devices.filter(d => {
+      if (d.deleted_at || d.is_sold) return false;
+      const matchSearch = d.model_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (d.imei && d.imei.includes(searchQuery)) ||
+                          (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchLoc = locationFilter === 'all' || d.stock_location === locationFilter;
+      return matchSearch && matchLoc;
+    });
+
+    const soldList = devices.filter(d => {
+      if (d.deleted_at || !d.is_sold) return false;
+      const matchSearch = d.model_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (d.imei && d.imei.includes(searchQuery)) ||
+                          (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchSearch;
+    });
 
     const activeModelMap: Record<string, number> = {};
     activeStock.forEach(d => {
@@ -592,7 +628,7 @@ export default function StaffDashboard() {
       active: Object.entries(activeModelMap).sort(sortFn),
       sold: Object.entries(soldModelMap).sort(sortFn)
     };
-  }, [devices]);
+  }, [devices, searchQuery, locationFilter]);
 
   // Helper to check category
   const matchesCategory = useCallback((modelName: string, filter: string) => {
@@ -1747,9 +1783,16 @@ export default function StaffDashboard() {
                 {/* High level category bars */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {/* iPhone */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div 
+                    style={{ display: 'flex', flexDirection: 'column', gap: '4px', cursor: 'pointer' }}
+                    onClick={() => {
+                      handleTabChange('ledger');
+                      setSearchQuery('iPhone');
+                    }}
+                    title="재고 관리에서 아이폰만 보기"
+                  >
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
-                      <span>아이폰 (iPhone)</span>
+                      <span>아이폰 (iPhone) ➔</span>
                       <span style={{ color: 'var(--t2)' }}>{stats.iphoneCount}대 ({stats.totalStockCount > 0 ? ((stats.iphoneCount / stats.totalStockCount) * 100).toFixed(1) : 0}%)</span>
                     </div>
                     <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
@@ -1758,9 +1801,16 @@ export default function StaffDashboard() {
                   </div>
 
                   {/* Galaxy */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div 
+                    style={{ display: 'flex', flexDirection: 'column', gap: '4px', cursor: 'pointer' }}
+                    onClick={() => {
+                      handleTabChange('ledger');
+                      setSearchQuery('Galaxy');
+                    }}
+                    title="재고 관리에서 갤럭시만 보기"
+                  >
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
-                      <span>갤럭시 (Galaxy)</span>
+                      <span>갤럭시 (Galaxy) ➔</span>
                       <span style={{ color: 'var(--t2)' }}>{stats.galaxyCount}대 ({stats.totalStockCount > 0 ? ((stats.galaxyCount / stats.totalStockCount) * 100).toFixed(1) : 0}%)</span>
                     </div>
                     <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
@@ -1769,9 +1819,16 @@ export default function StaffDashboard() {
                   </div>
 
                   {/* Other */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div 
+                    style={{ display: 'flex', flexDirection: 'column', gap: '4px', cursor: 'pointer' }}
+                    onClick={() => {
+                      handleTabChange('ledger');
+                      setSearchQuery('Other');
+                    }}
+                    title="재고 관리에서 기타 브랜드만 보기"
+                  >
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
-                      <span>기타 (Other)</span>
+                      <span>기타 (Other) ➔</span>
                       <span style={{ color: 'var(--t2)' }}>{stats.otherCount}대 ({stats.totalStockCount > 0 ? ((stats.otherCount / stats.totalStockCount) * 100).toFixed(1) : 0}%)</span>
                     </div>
                     <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
@@ -1784,16 +1841,24 @@ export default function StaffDashboard() {
                 
                 {/* Detailed Series Counts */}
                 <div>
-                  <h4 style={{ fontSize: '12px', fontWeight: 800, marginBottom: '10px', color: 'var(--t1)' }}>📋 상세 기종 시리즈 현황</h4>
+                  <h4 style={{ fontSize: '12px', fontWeight: 800, marginBottom: '10px', color: 'var(--t1)' }}>📋 상세 기종 시리즈 현황 (클릭 시 이동)</h4>
                   <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px' }}>
                     {Object.entries(stats.seriesCounts)
                       .filter(([_, count]) => count > 0)
                       .map(([series, count]) => {
                         const pct = stats.totalStockCount > 0 ? (count / stats.totalStockCount) * 100 : 0;
                         return (
-                          <div key={series} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <div 
+                            key={series} 
+                            style={{ display: 'flex', flexDirection: 'column', gap: '3px', cursor: 'pointer' }}
+                            onClick={() => {
+                              handleTabChange('ledger');
+                              setSearchQuery(series.replace(' 기타', '').replace(' 브랜드', '').replace('기타 ', ''));
+                            }}
+                            title={`재고 관리에서 ${series} 필터링`}
+                          >
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 700 }}>
-                              <span>{series}</span>
+                              <span>{series} ➔</span>
                               <span style={{ color: 'var(--purple-l)' }}>{count}대 ({pct.toFixed(1)}%)</span>
                             </div>
                             <div style={{ width: '100%', height: '5px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
@@ -1812,11 +1877,19 @@ export default function StaffDashboard() {
 
                 {/* Top 10 Exact Model Names */}
                 <div>
-                  <h4 style={{ fontSize: '12px', fontWeight: 800, marginBottom: '10px', color: 'var(--t1)' }}>💎 실재고 단일 모델 TOP 10</h4>
+                  <h4 style={{ fontSize: '12px', fontWeight: 800, marginBottom: '10px', color: 'var(--t1)' }}>💎 실재고 단일 모델 TOP 10 (클릭 시 이동)</h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto', paddingRight: '4px' }}>
                     {stats.topIndividualModels.slice(0, 10).map(([model, count]) => (
-                      <div key={model} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', padding: '6px 10px', background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '8px', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 700, color: 'var(--t1)' }}>{model}</span>
+                      <div 
+                        key={model} 
+                        style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', padding: '6px 10px', background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '8px', alignItems: 'center', cursor: 'pointer' }}
+                        onClick={() => {
+                          handleTabChange('ledger');
+                          setCategoryFilter(model);
+                        }}
+                        title={`재고 관리에서 ${model}만 보기`}
+                      >
+                        <span style={{ fontWeight: 700, color: 'var(--t1)' }}>{model} ➔</span>
                         <span style={{ fontWeight: 800, color: 'var(--green)', fontSize: '12px' }}>{count}대</span>
                       </div>
                     ))}
@@ -1877,7 +1950,7 @@ export default function StaffDashboard() {
                   className="form-input"
                   style={{ maxWidth: '180px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                 >
-                  <option value="all">전체 기종 ({devices.filter(d => !d.deleted_at && !d.is_sold).length}대)</option>
+                  <option value="all">전체 기종 ({baseActiveDevicesCount}대)</option>
                   {uniqueModels.active.map(([model, count]) => (
                     <option key={model} value={model}>{model} ({count}대)</option>
                   ))}
@@ -2176,7 +2249,7 @@ export default function StaffDashboard() {
                   className="form-input"
                   style={{ maxWidth: '180px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                 >
-                  <option value="all">전체 기종 ({devices.filter(d => !d.deleted_at && d.is_sold).length}대)</option>
+                  <option value="all">전체 기종 ({baseSoldDevicesCount}대)</option>
                   {uniqueModels.sold.map(([model, count]) => (
                     <option key={model} value={model}>{model} ({count}대)</option>
                   ))}
