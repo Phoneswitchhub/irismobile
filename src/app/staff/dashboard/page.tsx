@@ -65,6 +65,7 @@ export default function StaffDashboard() {
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [locationFilter, setLocationFilter] = useState('all');
+  const [selectedStatsLocation, setSelectedStatsLocation] = useState('all');
 
   // Intake Modals (Manual & CSV Upload)
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
@@ -482,6 +483,13 @@ export default function StaffDashboard() {
       locationCounts[loc] = (locationCounts[loc] || 0) + 1;
     });
 
+    // Subset for models filtered by location
+    const activeStockForModels = selectedStatsLocation === 'all'
+      ? activeStock
+      : activeStock.filter(d => (d.stock_location || 'Shop') === selectedStatsLocation);
+
+    const totalStockCountForModels = activeStockForModels.length;
+
     // Model group distribution (iPhone vs Galaxy vs Other)
     let iphoneCount = 0;
     let galaxyCount = 0;
@@ -511,7 +519,7 @@ export default function StaffDashboard() {
     // Top individual models
     const individualModelCounts: Record<string, number> = {};
 
-    activeStock.forEach(d => {
+    activeStockForModels.forEach(d => {
       const name = d.model_name.toLowerCase();
       individualModelCounts[d.model_name] = (individualModelCounts[d.model_name] || 0) + 1;
 
@@ -553,6 +561,7 @@ export default function StaffDashboard() {
 
     return {
       totalStockCount,
+      totalStockCountForModels,
       reservedCount,
       totalPurchaseCostKRW,
       totalSellingValueTHB,
@@ -565,7 +574,7 @@ export default function StaffDashboard() {
       seriesCounts,
       topIndividualModels
     };
-  }, [devices]);
+  }, [devices, selectedStatsLocation]);
 
   // categoryFilter를 제외한 검색/위치 필터만 적용된 기기 목록의 길이 (Ledger & Sales)
   const baseActiveDevicesCount = useMemo(() => {
@@ -1830,23 +1839,48 @@ export default function StaffDashboard() {
               
               {/* Location distribution */}
               <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 800, marginBottom: '16px' }}>📍 {t('staff_stock_by_location') || '보관 장소별 재고 현황'}</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h3 style={{ fontSize: '14px', fontWeight: 800, margin: 0 }}>📍 {t('staff_stock_by_location') || '보관 장소별 재고 현황'}</h3>
+                  {selectedStatsLocation !== 'all' && (
+                    <button 
+                      onClick={() => setSelectedStatsLocation('all')}
+                      style={{ background: 'none', border: 'none', color: 'var(--purple-l)', fontSize: '11px', fontWeight: 800, cursor: 'pointer', padding: 0 }}
+                    >
+                      🔄 {lang === 'ko' ? '전체 보기' : (lang === 'th' ? 'ดูทั้งหมด' : 'Show All')}
+                    </button>
+                  )}
+                </div>
                 {Object.keys(stats.locationCounts).length === 0 ? (
                   <div style={{ color: 'var(--t2)', fontSize: '12px', textAlign: 'center', padding: '24px' }}>No active inventory found.</div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {Object.entries(stats.locationCounts).map(([loc, count]) => {
                       const pct = stats.totalStockCount > 0 ? (count / stats.totalStockCount) * 100 : 0;
+                      const isSelected = selectedStatsLocation === loc;
                       return (
-                         <div key={loc} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
-                             <span>{loc}</span>
-                             <span style={{ color: 'var(--t2)' }}>{count}{t('staff_qty_unit') || '대'} ({pct.toFixed(1)}%)</span>
-                           </div>
-                           <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
-                             <div style={{ width: `${pct}%`, height: '100%', background: 'var(--purple-l)', borderRadius: '999px' }}></div>
-                           </div>
-                         </div>
+                         <div 
+                           key={loc} 
+                           style={{ 
+                             display: 'flex', 
+                             flexDirection: 'column', 
+                             gap: '4px', 
+                             cursor: 'pointer',
+                             padding: '6px 10px',
+                             borderRadius: '10px',
+                             background: isSelected ? 'rgba(124, 58, 237, 0.08)' : 'transparent',
+                             border: isSelected ? '1px solid rgba(124, 58, 237, 0.2)' : '1px solid transparent',
+                             transition: 'all 0.2s'
+                           }}
+                           onClick={() => setSelectedStatsLocation(prev => prev === loc ? 'all' : loc)}
+                         >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
+                              <span style={{ color: isSelected ? 'var(--purple-l)' : 'inherit' }}>{loc} {isSelected ? '✓' : ''}</span>
+                              <span style={{ color: isSelected ? 'var(--purple-l)' : 'var(--t2)' }}>{count}{t('staff_qty_unit') || '대'} ({pct.toFixed(1)}%)</span>
+                            </div>
+                            <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
+                              <div style={{ width: `${pct}%`, height: '100%', background: isSelected ? 'var(--purple)' : 'var(--purple-l)', borderRadius: '999px' }}></div>
+                            </div>
+                          </div>
                       );
                     })}
                   </div>
@@ -1855,7 +1889,12 @@ export default function StaffDashboard() {
 
               {/* Model distribution */}
               <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 800 }}>📱 {t('staff_stock_by_model') || '기종별 재고 현황'}</h3>
+                <h3 style={{ fontSize: '14px', fontWeight: 800 }}>
+                  📱 {t('staff_stock_by_model') || '기종별 재고 현황'}
+                  {selectedStatsLocation !== 'all' && (
+                    <span style={{ color: 'var(--purple-l)', marginLeft: '6px', fontSize: '12px' }}>({selectedStatsLocation})</span>
+                  )}
+                </h3>
                 
                 {/* High level category bars */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1864,7 +1903,7 @@ export default function StaffDashboard() {
                     style={{ display: 'flex', flexDirection: 'column', gap: '4px', cursor: 'pointer' }}
                     onClick={() => {
                       handleTabChange('ledger');
-                      setLocationFilter('all');
+                      setLocationFilter(selectedStatsLocation);
                       setCategoryFilter('all');
                       setSearchQuery('iPhone');
                     }}
@@ -1872,10 +1911,10 @@ export default function StaffDashboard() {
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
                       <span>{lang === 'ko' ? '아이폰 (iPhone) ➔' : (lang === 'th' ? 'ไอโฟน (iPhone) ➔' : 'iPhone ➔')}</span>
-                      <span style={{ color: 'var(--t2)' }}>{stats.iphoneCount}{t('staff_qty_unit') || '대'} ({stats.totalStockCount > 0 ? ((stats.iphoneCount / stats.totalStockCount) * 100).toFixed(1) : 0}%)</span>
+                      <span style={{ color: 'var(--t2)' }}>{stats.iphoneCount}{t('staff_qty_unit') || '대'} ({stats.totalStockCountForModels > 0 ? ((stats.iphoneCount / stats.totalStockCountForModels) * 100).toFixed(1) : 0}%)</span>
                     </div>
                     <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
-                      <div style={{ width: `${stats.totalStockCount > 0 ? (stats.iphoneCount / stats.totalStockCount) * 100 : 0}%`, height: '100%', background: 'var(--purple)', borderRadius: '999px' }}></div>
+                      <div style={{ width: `${stats.totalStockCountForModels > 0 ? (stats.iphoneCount / stats.totalStockCountForModels) * 100 : 0}%`, height: '100%', background: 'var(--purple)', borderRadius: '999px' }}></div>
                     </div>
                   </div>
 
@@ -1884,7 +1923,7 @@ export default function StaffDashboard() {
                     style={{ display: 'flex', flexDirection: 'column', gap: '4px', cursor: 'pointer' }}
                     onClick={() => {
                       handleTabChange('ledger');
-                      setLocationFilter('all');
+                      setLocationFilter(selectedStatsLocation);
                       setCategoryFilter('all');
                       setSearchQuery('Galaxy');
                     }}
@@ -1892,10 +1931,10 @@ export default function StaffDashboard() {
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
                       <span>{lang === 'ko' ? '갤럭시 (Galaxy) ➔' : (lang === 'th' ? 'กาแลคซี่ (Galaxy) ➔' : 'Galaxy ➔')}</span>
-                      <span style={{ color: 'var(--t2)' }}>{stats.galaxyCount}{t('staff_qty_unit') || '대'} ({stats.totalStockCount > 0 ? ((stats.galaxyCount / stats.totalStockCount) * 100).toFixed(1) : 0}%)</span>
+                      <span style={{ color: 'var(--t2)' }}>{stats.galaxyCount}{t('staff_qty_unit') || '대'} ({stats.totalStockCountForModels > 0 ? ((stats.galaxyCount / stats.totalStockCountForModels) * 100).toFixed(1) : 0}%)</span>
                     </div>
                     <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
-                      <div style={{ width: `${stats.totalStockCount > 0 ? (stats.galaxyCount / stats.totalStockCount) * 100 : 0}%`, height: '100%', background: 'var(--cyan)', borderRadius: '999px' }}></div>
+                      <div style={{ width: `${stats.totalStockCountForModels > 0 ? (stats.galaxyCount / stats.totalStockCountForModels) * 100 : 0}%`, height: '100%', background: 'var(--cyan)', borderRadius: '999px' }}></div>
                     </div>
                   </div>
 
@@ -1904,7 +1943,7 @@ export default function StaffDashboard() {
                     style={{ display: 'flex', flexDirection: 'column', gap: '4px', cursor: 'pointer' }}
                     onClick={() => {
                       handleTabChange('ledger');
-                      setLocationFilter('all');
+                      setLocationFilter(selectedStatsLocation);
                       setCategoryFilter('all');
                       setSearchQuery('Other');
                     }}
@@ -1912,10 +1951,10 @@ export default function StaffDashboard() {
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
                       <span>{lang === 'ko' ? '기타 (Other) ➔' : (lang === 'th' ? 'อื่นๆ (Other) ➔' : 'Other ➔')}</span>
-                      <span style={{ color: 'var(--t2)' }}>{stats.otherCount}{t('staff_qty_unit') || '대'} ({stats.totalStockCount > 0 ? ((stats.otherCount / stats.totalStockCount) * 100).toFixed(1) : 0}%)</span>
+                      <span style={{ color: 'var(--t2)' }}>{stats.otherCount}{t('staff_qty_unit') || '대'} ({stats.totalStockCountForModels > 0 ? ((stats.otherCount / stats.totalStockCountForModels) * 100).toFixed(1) : 0}%)</span>
                     </div>
                     <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
-                      <div style={{ width: `${stats.totalStockCount > 0 ? (stats.otherCount / stats.totalStockCount) * 100 : 0}%`, height: '100%', background: 'var(--t3)', borderRadius: '999px' }}></div>
+                      <div style={{ width: `${stats.totalStockCountForModels > 0 ? (stats.otherCount / stats.totalStockCountForModels) * 100 : 0}%`, height: '100%', background: 'var(--t3)', borderRadius: '999px' }}></div>
                     </div>
                   </div>
                 </div>
@@ -1929,14 +1968,14 @@ export default function StaffDashboard() {
                     {Object.entries(stats.seriesCounts)
                       .filter(([_, count]) => count > 0)
                       .map(([series, count]) => {
-                        const pct = stats.totalStockCount > 0 ? (count / stats.totalStockCount) * 100 : 0;
+                        const pct = stats.totalStockCountForModels > 0 ? (count / stats.totalStockCountForModels) * 100 : 0;
                         return (
                           <div 
                             key={series} 
                             style={{ display: 'flex', flexDirection: 'column', gap: '3px', cursor: 'pointer' }}
                             onClick={() => {
                               handleTabChange('ledger');
-                              setLocationFilter('all');
+                              setLocationFilter(selectedStatsLocation);
                               setCategoryFilter('all');
                               setSearchQuery(series.replace(' 기타', '').replace(' 브랜드', '').replace('기타 ', ''));
                             }}
@@ -1970,7 +2009,7 @@ export default function StaffDashboard() {
                         style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', padding: '6px 10px', background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '8px', alignItems: 'center', cursor: 'pointer' }}
                         onClick={() => {
                           handleTabChange('ledger');
-                          setLocationFilter('all');
+                          setLocationFilter(selectedStatsLocation);
                           setSearchQuery('');
                           setCategoryFilter(model);
                         }}
@@ -2411,11 +2450,10 @@ export default function StaffDashboard() {
                           )}
                         </td>
                         <td 
-                          style={{ fontSize: '11px', color: 'var(--t2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }} 
+                          style={{ fontSize: '11px', color: 'var(--t2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }} 
                           title={item.is_reserved ? `${lang === 'ko' ? '예약자' : 'Reserver'}: ${item.reserved_by} | ${item.notes || ''}` : item.notes || ''}
                           onClick={() => {
-                            if (staffProfile?.role !== 'admin') return;
-                            if (item.is_reserved) return; // Do not edit note inline if reserved (has special display)
+                            if (item.is_reserved) return;
                             if (editingCell?.id !== item.id || editingCell?.field !== 'notes') {
                               setEditingCell({ id: item.id, field: 'notes' });
                               setEditCellValue(item.notes || '');
