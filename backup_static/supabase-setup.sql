@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id          UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   phone       TEXT UNIQUE NOT NULL,
   name        TEXT NOT NULL,
-  role        TEXT NOT NULL DEFAULT 'buyer' CHECK (role IN ('admin', 'seller', 'buyer')),
+  role        TEXT NOT NULL DEFAULT 'buyer' CHECK (role IN ('admin', 'seller', 'buyer', 'staff', 'manager')),
   store_name  TEXT,
   profile_image TEXT,
   description TEXT,
