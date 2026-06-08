@@ -1678,14 +1678,117 @@ img {
 @media(max-width:900px) {
   .sidebar {
     width: 100%;
-    height: auto;
-    position: relative;
+    height: 54px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    overflow-y: visible;
+    overflow-x: hidden;
+    padding: 0 12px;
+    z-index: 1000;
   }
+  
+  .sb-head {
+    display: none !important;
+  }
+  
+  .sb-sec-lbl {
+    display: none !important;
+  }
+  
+  .sb-nav {
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    height: 100%;
+    align-items: center;
+    gap: 4px;
+  }
+  
+  .sb-nav::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .sb-link {
+    display: inline-flex;
+    width: auto;
+    white-space: nowrap;
+    padding: 8px 12px;
+    font-size: 12px;
+    border-left: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    margin: 0;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .sb-link.active {
+    border-left-color: transparent;
+    border-bottom-color: var(--purple);
+    background: transparent;
+    color: var(--purple-l);
+  }
+  
+  .sb-link .ico {
+    margin-right: 2px;
+  }
+  
+  .sb-foot {
+    padding: 0;
+    border-top: none;
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    height: 100%;
+  }
+  
+  .sb-user {
+    gap: 6px;
+  }
+  
+  .sb-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+  }
+  
+  .sb-uname, .sb-urole {
+    display: none !important;
+  }
+
   .main {
     margin-left: 0;
+    padding-top: 54px;
   }
+  
   .db-wrap {
     flex-direction: column;
+  }
+
+  /* Table overflow fix to support landscape table swipe on mobile */
+  .tbl-container,
+  .table-responsive {
+    width: 100% !important;
+    overflow-x: auto !important;
+    display: block !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .tbl {
+    min-width: 950px !important;
   }
 }
 
@@ -1694,10 +1797,46 @@ img {
     padding: 28px 20px;
   }
   .main-body {
-    padding: 16px;
+    padding: 12px;
   }
   .content-body {
-    padding: 16px;
+    padding: 12px;
+  }
+  
+  /* Convert multi-column grid layouts into single-column layouts for dashboard readability on mobile */
+  .overview-grid, 
+  .stats-grid, 
+  .grid-2, 
+  .grid-3, 
+  .grid-4,
+  .sellers-grid,
+  .products-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  
+  /* Stack filter controls and action items vertically on smaller screens */
+  .main-hd {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    padding: 10px 12px !important;
+  }
+  
+  .search-bar-container,
+  .toolbar-flex,
+  .filter-flex,
+  .controls-row,
+  .sidebar-tabs {
+    flex-direction: column !important;
+    width: 100% !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+  
+  .form-grid-2, .form-grid-3 {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
   }
 }
 
