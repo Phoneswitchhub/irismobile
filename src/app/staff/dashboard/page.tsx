@@ -592,13 +592,28 @@ export default function StaffDashboard() {
   // Model Name Normalization helper to support searching 'AIP' models with 'iPhone' queries.
   const normalizeModelName = useCallback((str: string) => {
     if (!str) return '';
-    let res = str.toLowerCase();
+    let res = str.toLowerCase().trim();
     if (res.includes('ipad')) {
       return res.replace(/\s+/g, '');
     }
-    res = res.replace(/aip|ip|아이폰/g, 'iphone');
-    res = res.replace(/sec|갤/g, 'galaxy');
+    res = res.replace(/iphone|aip|(?<!fl)ip|아이폰/g, 'iphone');
+    res = res.replace(/galaxy|sec|갤럭시|갤/g, 'galaxy');
+    res = res.replace(/other|기타|기타브랜드/g, 'other');
     res = res.replace(/\s+/g, '');
+
+    if (res.includes('iphone')) {
+      if (!res.startsWith('iphone')) {
+        res = 'iphone' + res;
+      }
+    } else if (res.includes('galaxy') || res.includes('s2') || res.includes('s3') || res.includes('s4') || res.includes('flip') || res.includes('fold')) {
+      if (!res.startsWith('galaxy')) {
+        res = 'galaxy' + res.replace('galaxy', '');
+      }
+    } else {
+      if (!res.startsWith('other')) {
+        res = 'other' + res;
+      }
+    }
     return res;
   }, []);
 
