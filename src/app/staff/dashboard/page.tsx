@@ -843,38 +843,6 @@ export default function StaffDashboard() {
     };
   }, [devices, selectedStatsLocation]);
 
-  // categoryFilter를 제외한 검색/위치 필터만 적용된 기기 목록의 길이 (Ledger & Sales)
-  const baseActiveDevicesCount = useMemo(() => {
-    return devices.filter(d => {
-      if (d.deleted_at || d.is_sold || d.stock_location === 'DHL') return false;
-      const matchSearch = d.model_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          (d.imei && d.imei.includes(searchQuery)) ||
-                          (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchLoc = locationFilter === 'all' || d.stock_location === locationFilter;
-      return matchSearch && matchLoc;
-    }).length;
-  }, [devices, searchQuery, locationFilter]);
-
-  const basePendingDevicesCount = useMemo(() => {
-    return devices.filter(d => {
-      if (d.deleted_at || d.is_sold || d.stock_location !== 'DHL') return false;
-      const matchSearch = d.model_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          (d.imei && d.imei.includes(searchQuery)) ||
-                          (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
-      return matchSearch;
-    }).length;
-  }, [devices, searchQuery]);
-
-  const baseSoldDevicesCount = useMemo(() => {
-    return devices.filter(d => {
-      if (d.deleted_at || !d.is_sold) return false;
-      const matchSearch = d.model_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          (d.imei && d.imei.includes(searchQuery)) ||
-                          (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
-      return matchSearch;
-    }).length;
-  }, [devices, searchQuery]);
-
   // Model Name Normalization helper to support searching 'AIP' models with 'iPhone' queries.
   const normalizeModelName = useCallback((str: string) => {
     if (!str) return '';
@@ -903,6 +871,54 @@ export default function StaffDashboard() {
     return res;
   }, []);
 
+  // categoryFilter를 제외한 검색/위치 필터만 적용된 기기 목록의 길이 (Ledger & Sales)
+  const baseActiveDevicesCount = useMemo(() => {
+    return devices.filter(d => {
+      if (d.deleted_at || d.is_sold || d.stock_location === 'DHL') return false;
+      const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
+                          (d.imei && d.imei.includes(searchQuery)) ||
+                          (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchLoc = locationFilter === 'all' || d.stock_location === locationFilter;
+      return matchSearch && matchLoc;
+    }).length;
+  }, [devices, searchQuery, locationFilter, normalizeModelName]);
+
+  const basePendingDevicesCount = useMemo(() => {
+    return devices.filter(d => {
+      if (d.deleted_at || d.is_sold || d.stock_location !== 'DHL') return false;
+      const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
+                          (d.imei && d.imei.includes(searchQuery)) ||
+                          (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchSearch;
+    }).length;
+  }, [devices, searchQuery, normalizeModelName]);
+
+  const baseSoldDevicesCount = useMemo(() => {
+    const getSaleDay = (saleDateStr?: string): number | null => {
+      if (!saleDateStr) return null;
+      const parts = saleDateStr.split('.').map(p => p.trim()).filter(Boolean);
+      if (parts.length >= 3) {
+        return parseInt(parts[2], 10) || null;
+      }
+      return null;
+    };
+
+    return devices.filter(d => {
+      if (d.deleted_at || !d.is_sold) return false;
+      const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(soldSearchQuery)) || 
+                          (d.imei && d.imei.includes(soldSearchQuery)) ||
+                          (d.sticker && d.sticker.toLowerCase().includes(soldSearchQuery.toLowerCase()));
+      
+      let matchDay = true;
+      if (soldSelectedDays.length > 0) {
+        const day = getSaleDay(d.sale_date);
+        matchDay = day !== null && soldSelectedDays.includes(day);
+      }
+
+      return matchSearch && matchDay;
+    }).length;
+  }, [devices, soldSearchQuery, soldSelectedDays, normalizeModelName]);
+
   // Extract unique models present in current tab's scope (active vs sold vs pending) based on active search/location filters
   const uniqueModels = useMemo(() => {
     const activeStock = devices.filter(d => {
@@ -927,7 +943,21 @@ export default function StaffDashboard() {
       const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(soldSearchQuery)) || 
                           (d.imei && d.imei.includes(soldSearchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(soldSearchQuery.toLowerCase()));
-      return matchSearch;
+      
+      let matchDay = true;
+      if (soldSelectedDays.length > 0) {
+        const getSaleDay = (saleDateStr?: string): number | null => {
+          if (!saleDateStr) return null;
+          const parts = saleDateStr.split('.').map(p => p.trim()).filter(Boolean);
+          if (parts.length >= 3) {
+            return parseInt(parts[2], 10) || null;
+          }
+          return null;
+        };
+        const day = getSaleDay(d.sale_date);
+        matchDay = day !== null && soldSelectedDays.includes(day);
+      }
+      return matchSearch && matchDay;
     });
 
     const activeModelMap: Record<string, number> = {};
@@ -958,7 +988,7 @@ export default function StaffDashboard() {
       pending: Object.entries(pendingModelMap).sort(sortFn),
       sold: Object.entries(soldModelMap).sort(sortFn)
     };
-  }, [devices, searchQuery, soldSearchQuery, locationFilter, normalizeModelName]);
+  }, [devices, searchQuery, soldSearchQuery, locationFilter, normalizeModelName, soldSelectedDays]);
 
   // Helper to check category
   const matchesCategory = useCallback((modelName: string, filter: string) => {
