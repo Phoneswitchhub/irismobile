@@ -36,6 +36,7 @@ interface DeviceItem {
   payment_status?: string;
   customer_name?: string;
   customer_phone?: string;
+  installment_number?: string;
   is_approved?: boolean;
   installment_history?: any[];
 }
@@ -129,6 +130,7 @@ export default function StaffDashboard() {
   const [instMonthlyPayment, setInstMonthlyPayment] = useState<number | string>(0);
   const [custName, setCustName] = useState('');
   const [custPhone, setCustPhone] = useState('');
+  const [instNumber, setInstNumber] = useState('');
   const [exchangeRate, setExchangeRate] = useState<number>(40.0);
 
   const calculatedFinalPrice = useMemo(() => {
@@ -228,7 +230,7 @@ export default function StaffDashboard() {
   const [editingDevice, setEditingDevice] = useState<DeviceItem | null>(null);
 
   // Inline Edit States
-  const [editingCell, setEditingCell] = useState<{ id: string; field: 'sticker' | 'site_date' | 'model_name' | 'imei' | 'color' | 'battery_pct' | 'purchase_cost_krw' | 'selling_price' | 'stock_location' | 'notes' } | null>(null);
+  const [editingCell, setEditingCell] = useState<{ id: string; field: 'sticker' | 'site_date' | 'model_name' | 'imei' | 'color' | 'battery_pct' | 'purchase_cost_krw' | 'selling_price' | 'stock_location' | 'notes' | 'customer_name' | 'customer_phone' | 'installment_number' } | null>(null);
   const [editCellValue, setEditCellValue] = useState<string>('');
 
   // Toast Alerts
@@ -337,6 +339,44 @@ export default function StaffDashboard() {
       setLoadingData(false);
     }
   }, [isAuthorized, showToast, t]);
+
+  const fetchNextInstallmentNumber = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sheets_inventory')
+        .select('installment_number')
+        .not('installment_number', 'is', null)
+        .order('installment_number', { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+
+      if (data && data.length > 0 && data[0].installment_number) {
+        const lastNumStr = data[0].installment_number;
+        const match = lastNumStr.match(/IRIS(\d+)/i);
+        if (match) {
+          const nextNum = parseInt(match[1]) + 1;
+          const padded = String(nextNum).padStart(6, '0');
+          return `IRIS${padded}`;
+        }
+      }
+      return 'IRIS000001';
+    } catch (err) {
+      console.error('Error fetching next installment number:', err);
+      return 'IRIS000001';
+    }
+  };
+
+  useEffect(() => {
+    if (saleType === 'installment' && sellingDevice && !instNumber) {
+      const initNextInstNo = async () => {
+        const nextNo = await fetchNextInstallmentNumber();
+        const numPart = nextNo.replace(/IRIS/i, '');
+        setInstNumber(numPart);
+      };
+      initNextInstNo();
+    }
+  }, [saleType, sellingDevice, instNumber]);
 
   const loadSettingsData = useCallback(async () => {
     if (!isAuthorized) return;
@@ -1444,7 +1484,7 @@ export default function StaffDashboard() {
   // Inline Cell Save Handler
   const handleInlineSave = async (
     id: string, 
-    field: 'sticker' | 'site_date' | 'model_name' | 'imei' | 'color' | 'battery_pct' | 'purchase_cost_krw' | 'selling_price' | 'stock_location' | 'notes', 
+    field: 'sticker' | 'site_date' | 'model_name' | 'imei' | 'color' | 'battery_pct' | 'purchase_cost_krw' | 'selling_price' | 'stock_location' | 'notes' | 'customer_name' | 'customer_phone' | 'installment_number', 
     value: string
   ) => {
     try {
@@ -1527,6 +1567,7 @@ export default function StaffDashboard() {
     setInstMonthlyPayment(0);
     setCustName('');
     setCustPhone('');
+    setInstNumber('');
   };
 
   const handleProcessSale = async () => {
@@ -1543,6 +1584,10 @@ export default function StaffDashboard() {
       }
       if (!custPhone.trim()) {
         showToast('고객 연락처를 입력해 주세요. (Customer Phone is required.)', 'error');
+        return;
+      }
+      if (!instNumber.trim()) {
+        showToast('할부 번호를 입력해 주세요. (Installment Number is required.)', 'error');
         return;
       }
     }
@@ -1588,8 +1633,9 @@ export default function StaffDashboard() {
           installment_months: saleType === 'installment' ? (Number(instMonths) || 0) : 0,
           installment_amount: saleType === 'installment' ? (Number(instMonthlyPayment) || 0) : 0,
           payment_status: paymentStatus,
-          customer_name: saleType === 'installment' ? custName.trim() : null,
-          customer_phone: saleType === 'installment' ? custPhone.trim() : null,
+          customer_name: custName.trim() || null,
+          customer_phone: custPhone.trim() || null,
+          installment_number: saleType === 'installment' && instNumber.trim() ? `IRIS${instNumber.trim()}` : null,
           is_approved: false, // New sale requires admin approval to hit margin log
           installment_history: saleType === 'installment' ? instHistory : []
         })
@@ -2999,7 +3045,19 @@ export default function StaffDashboard() {
                         <td className="font-mono" style={{ fontSize: '11px', wordBreak: 'break-all' }}>{item.imei}</td>
                         <td style={{ textAlign: 'right', color: '#94a3b8' }}>₩{formatPrice(item.purchase_cost_krw)}</td>
                         <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)' }}>฿{formatPrice(item.selling_price)}</td>
-                        <td style={{ fontSize: '11.5px', color: 'var(--t1)' }}>{getSaleDetailsLabel(item)}</td>
+                        <td style={{ fontSize: '11.5px', color: 'var(--t1)' }}>
+                          {getSaleDetailsLabel(item)}
+                          {item.installment_number && (
+                            <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--purple-l)', fontWeight: 800 }}>
+                              📄 {item.installment_number}
+                            </div>
+                          )}
+                          {(item.customer_name || item.customer_phone) && (
+                            <div style={{ marginTop: '2px', fontSize: '10.5px', color: 'var(--t2)', fontWeight: 'normal' }}>
+                              👤 {item.customer_name || '미기입'} {item.customer_phone ? `(${item.customer_phone})` : ''}
+                            </div>
+                          )}
+                        </td>
                         <td style={{ textAlign: 'center' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
                             {getPaymentStatusBadge(item.payment_status)}
@@ -3145,13 +3203,13 @@ export default function StaffDashboard() {
                 <table className="tbl" style={{ tableLayout: 'fixed', width: '100%' }}>
                   <thead>
                     <tr>
-                      <th style={{ width: '10%' }}>구매일</th>
-                      <th style={{ width: '15%' }}>기기 정보</th>
-                      <th style={{ width: '12%' }}>고객명 / 연락처</th>
-                      <th style={{ width: '18%' }}>할부 조건 (계약 금액)</th>
-                      <th style={{ width: '12%', textAlign: 'right' }}>수납액 / 할부총액</th>
-                      <th style={{ width: '25%' }}>회차별 수금 관리 (클릭 시 수납 처리)</th>
-                      <th style={{ width: '8%', textAlign: 'center' }}>조작</th>
+                      <th style={{ width: '8%' }}>구매일</th>
+                      <th style={{ width: '13%' }}>기기 정보</th>
+                      <th style={{ width: '15%' }}>할부번호 / 고객정보</th>
+                      <th style={{ width: '14%' }}>할부 조건 (계약 금액)</th>
+                      <th style={{ width: '10%', textAlign: 'right' }}>수납액 / 할부총액</th>
+                      <th style={{ width: '34%' }}>회차별 수금 관리 (클릭 시 수납 처리)</th>
+                      <th style={{ width: '6%', textAlign: 'center' }}>조작</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3177,8 +3235,116 @@ export default function StaffDashboard() {
                               <div style={{ fontSize: '10.5px', color: 'var(--t3)', fontFamily: 'monospace' }}>IMEI: {item.imei}</div>
                             </td>
                             <td>
-                              <div style={{ fontWeight: 700, color: 'var(--purple-l)' }}>👤 {item.customer_name || '미기입'}</div>
-                              <div style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '2px' }}>📞 {item.customer_phone || '미기입'}</div>
+                              {/* Installment Number Inline Edit */}
+                              {editingCell?.id === item.id && editingCell?.field === 'installment_number' ? (
+                                <div style={{ display: 'flex', alignItems: 'center', margin: '2px 0' }}>
+                                  <span style={{ 
+                                    background: 'var(--bg2)', 
+                                    padding: '4px 6px', 
+                                    border: '1px solid var(--border)', 
+                                    borderRight: 'none',
+                                    borderRadius: '4px 0 0 4px',
+                                    fontSize: '11px',
+                                    fontWeight: 'bold',
+                                    color: 'var(--t2)',
+                                    height: '26px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    boxSizing: 'border-box'
+                                  }}>
+                                    IRIS
+                                  </span>
+                                  <input
+                                    type="text"
+                                    value={editCellValue.replace(/IRIS/i, '')}
+                                    onChange={(e) => setEditCellValue('IRIS' + e.target.value.replace(/[^\d]/g, ''))}
+                                    onBlur={() => handleInlineSave(item.id, 'installment_number', editCellValue)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleInlineSave(item.id, 'installment_number', editCellValue);
+                                      if (e.key === 'Escape') setEditingCell(null);
+                                    }}
+                                    autoFocus
+                                    className="form-input"
+                                    style={{ 
+                                      margin: 0, 
+                                      padding: '2px 6px', 
+                                      fontSize: '11px', 
+                                      width: '65px',
+                                      height: '26px',
+                                      borderRadius: '0 4px 4px 0',
+                                      borderLeft: 'none',
+                                      boxSizing: 'border-box'
+                                    }}
+                                  />
+                                </div>
+                              ) : (
+                                <div 
+                                  style={{ fontWeight: 800, color: 'var(--purple-l)', cursor: 'pointer', marginBottom: '6px', fontSize: '12.5px' }}
+                                  onClick={() => {
+                                    setEditingCell({ id: item.id, field: 'installment_number' });
+                                    setEditCellValue(item.installment_number || 'IRIS000000');
+                                  }}
+                                  title="클릭하여 수정"
+                                >
+                                  📄 {item.installment_number || 'IRIS000000'}
+                                </div>
+                              )}
+
+                              {/* Customer Name Inline Edit */}
+                              {editingCell?.id === item.id && editingCell?.field === 'customer_name' ? (
+                                <input
+                                  type="text"
+                                  value={editCellValue}
+                                  onChange={(e) => setEditCellValue(e.target.value)}
+                                  onBlur={() => handleInlineSave(item.id, 'customer_name', editCellValue)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleInlineSave(item.id, 'customer_name', editCellValue);
+                                    if (e.key === 'Escape') setEditingCell(null);
+                                  }}
+                                  autoFocus
+                                  className="form-input"
+                                  style={{ margin: '2px 0', padding: '4px 8px', fontSize: '12px', width: '95%' }}
+                                />
+                              ) : (
+                                <div 
+                                  style={{ fontWeight: 700, color: 'var(--t1)', cursor: 'pointer', fontSize: '11.5px' }}
+                                  onClick={() => {
+                                    setEditingCell({ id: item.id, field: 'customer_name' });
+                                    setEditCellValue(item.customer_name || '');
+                                  }}
+                                  title="클릭하여 수정"
+                                >
+                                  👤 {item.customer_name || '미기입'}
+                                </div>
+                              )}
+
+                              {/* Customer Phone Inline Edit */}
+                              {editingCell?.id === item.id && editingCell?.field === 'customer_phone' ? (
+                                <input
+                                  type="text"
+                                  value={editCellValue}
+                                  onChange={(e) => setEditCellValue(e.target.value)}
+                                  onBlur={() => handleInlineSave(item.id, 'customer_phone', editCellValue)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleInlineSave(item.id, 'customer_phone', editCellValue);
+                                    if (e.key === 'Escape') setEditingCell(null);
+                                  }}
+                                  autoFocus
+                                  className="form-input"
+                                  style={{ margin: '2px 0', padding: '4px 8px', fontSize: '12px', width: '95%' }}
+                                />
+                              ) : (
+                                <div 
+                                  style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '4px', cursor: 'pointer' }}
+                                  onClick={() => {
+                                    setEditingCell({ id: item.id, field: 'customer_phone' });
+                                    setEditCellValue(item.customer_phone || '');
+                                  }}
+                                  title="클릭하여 수정"
+                                >
+                                  📞 {item.customer_phone || '미기입'}
+                                </div>
+                              )}
                             </td>
                             <td>
                               <div style={{ fontSize: '11px', color: 'var(--t2)' }}>인도금: ฿{formatPrice(item.deposit_amount || 0)}</div>
@@ -3190,7 +3356,7 @@ export default function StaffDashboard() {
                               <span style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 'normal' }}> / ฿{formatPrice(totalInstPrice)}</span>
                             </td>
                             <td>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
                                 {history.map((inst: any, idx: number) => {
                                   const isPaid = inst.status === 'paid';
                                   return (
@@ -3198,15 +3364,17 @@ export default function StaffDashboard() {
                                       key={idx}
                                       onClick={() => handleToggleInstallmentStatus(item.id, inst.sequence)}
                                       style={{
-                                        padding: '3px 6px',
+                                        width: '100%',
+                                        padding: '4px 2px',
                                         borderRadius: '6px',
-                                        fontSize: '10.5px',
+                                        fontSize: '10px',
                                         fontWeight: 700,
                                         background: isPaid ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
                                         color: isPaid ? 'var(--green)' : 'var(--red)',
                                         border: `1px solid ${isPaid ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}`,
                                         cursor: 'pointer',
-                                        whiteSpace: 'nowrap'
+                                        textAlign: 'center',
+                                        boxSizing: 'border-box'
                                       }}
                                       title={`예정일: ${inst.due_date}${inst.paid_date ? ` (수금일: ${inst.paid_date})` : ''}`}
                                     >
@@ -3597,7 +3765,19 @@ export default function StaffDashboard() {
                             <td style={{ fontWeight: 700 }}>{item.model_name}</td>
                             <td style={{ textAlign: 'right', color: '#94a3b8' }}>₩{formatPrice(cost)}</td>
                             <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)' }}>฿{formatPrice(price)}</td>
-                            <td style={{ fontSize: '11.5px' }}>{getSaleDetailsLabel(item)}</td>
+                            <td style={{ fontSize: '11.5px' }}>
+                              {getSaleDetailsLabel(item)}
+                              {item.installment_number && (
+                                <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--purple-l)', fontWeight: 800 }}>
+                                  📄 {item.installment_number}
+                                </div>
+                              )}
+                              {(item.customer_name || item.customer_phone) && (
+                                <div style={{ marginTop: '2px', fontSize: '10.5px', color: 'var(--t2)', fontWeight: 'normal' }}>
+                                  👤 {item.customer_name || '미기입'} {item.customer_phone ? `(${item.customer_phone})` : ''}
+                                </div>
+                              )}
+                            </td>
                             <td style={{ textAlign: 'center' }}>{getPaymentStatusBadge(item.payment_status)}</td>
                             <td>{item.seller_name || '-'}</td>
                             <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--green)' }}>
@@ -4197,6 +4377,70 @@ export default function StaffDashboard() {
                 </select>
               </div>
 
+              {/* Customer Info (Required for Installments, Optional for others) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">고객 성함 (Customer Name) {saleType === 'installment' ? '*' : ''}</label>
+                  <input
+                    type="text"
+                    placeholder="예: 홍길동"
+                    value={custName}
+                    onChange={(e) => setCustName(e.target.value)}
+                    className="form-input"
+                    style={{ margin: 0 }}
+                  />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">고객 연락처 (Customer Phone) {saleType === 'installment' ? '*' : ''}</label>
+                  <input
+                    type="text"
+                    placeholder="예: 010-1234-5678"
+                    value={custPhone}
+                    onChange={(e) => setCustPhone(e.target.value)}
+                    className="form-input"
+                    style={{ margin: 0 }}
+                  />
+                </div>
+              </div>
+
+              {/* Installment Number Input Group (Only for Installments) */}
+              {saleType === 'installment' && (
+                <div className="form-group" style={{ marginBottom: '12px' }}>
+                  <label className="form-label">할부 번호 (Installment No.) *</label>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <span style={{ 
+                      background: 'var(--bg2)', 
+                      padding: '10px 14px', 
+                      border: '1px solid var(--border)', 
+                      borderRight: 'none',
+                      borderRadius: '8px 0 0 8px',
+                      fontSize: '13px',
+                      fontWeight: 'bold',
+                      color: 'var(--t2)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      height: '42px',
+                      boxSizing: 'border-box'
+                    }}>
+                      IRIS
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="000125"
+                      value={instNumber}
+                      onChange={(e) => setInstNumber(e.target.value.replace(/[^\d]/g, ''))}
+                      className="form-input"
+                      style={{ 
+                        margin: 0, 
+                        borderRadius: '0 8px 8px 0',
+                        height: '42px',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Conditional rows */}
               {(saleType === 'transfer' || saleType === 'cash') && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
@@ -4250,30 +4494,6 @@ export default function StaffDashboard() {
 
               {saleType === 'installment' && (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label">고객 성함 (Customer Name) *</label>
-                      <input
-                        type="text"
-                        placeholder="예: 홍길동"
-                        value={custName}
-                        onChange={(e) => setCustName(e.target.value)}
-                        className="form-input"
-                        style={{ margin: 0 }}
-                      />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label">고객 연락처 (Customer Phone) *</label>
-                      <input
-                        type="text"
-                        placeholder="예: 010-1234-5678"
-                        value={custPhone}
-                        onChange={(e) => setCustPhone(e.target.value)}
-                        className="form-input"
-                        style={{ margin: 0 }}
-                      />
-                    </div>
-                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px', marginBottom: '12px' }}>
                     <div className="form-group" style={{ margin: 0 }}>
                       <label className="form-label">보증금 (Deposit)</label>
