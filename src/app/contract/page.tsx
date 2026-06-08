@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar';
 import { INTEREST_TABLE, getClosestPrice } from '@/lib/interestTable';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from '@/lib/i18n';
+import { THAILAND_PROVINCES } from '@/lib/addresses';
 
 export default function ContractPage() {
   const router = useRouter();
@@ -75,8 +76,8 @@ export default function ContractPage() {
   const [sellerProfile, setSellerProfile] = useState<any>(null);
   const [loadingSeller, setLoadingSeller] = useState(true);
 
-  // 5c. Sidebar Tabs: 'create' | 'history'
-  const [sidebarTab, setSidebarTab] = useState<'create' | 'history'>('create');
+  // 5c. Sidebar Tabs: 'create' | 'history' | 'shipping'
+  const [sidebarTab, setSidebarTab] = useState<'create' | 'history' | 'shipping'>('create');
   const [sentContracts, setSentContracts] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
@@ -92,6 +93,60 @@ export default function ContractPage() {
 
   // 6b. Installment Months Modal State
   const [showMonthsModal, setShowMonthsModal] = useState(false);
+
+  // 6c. Shipping Label States
+  const [senderName, setSenderName] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('sender_name') || '';
+    return '';
+  });
+  const [senderPhone, setSenderPhone] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('sender_phone') || '';
+    return '';
+  });
+  const [senderProvince, setSenderProvince] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('sender_province') || '';
+    return '';
+  });
+  const [senderDistrict, setSenderDistrict] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('sender_district') || '';
+    return '';
+  });
+  const [senderAddressDetail, setSenderAddressDetail] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('sender_address_detail') || '';
+    return '';
+  });
+
+  const senderDistricts = useMemo(() => {
+    if (!senderProvince) return [];
+    const provData = THAILAND_PROVINCES.find(p => p.name_en === senderProvince);
+    return provData ? provData.districts : [];
+  }, [senderProvince]);
+
+  const [receiverName, setReceiverName] = useState('');
+  const [receiverPhone, setReceiverPhone] = useState('');
+  const [receiverProvince, setReceiverProvince] = useState('');
+  const [receiverDistrict, setReceiverDistrict] = useState('');
+  const [receiverAddressDetail, setReceiverAddressDetail] = useState('');
+
+  const receiverDistricts = useMemo(() => {
+    if (!receiverProvince) return [];
+    const provData = THAILAND_PROVINCES.find(p => p.name_en === receiverProvince);
+    return provData ? provData.districts : [];
+  }, [receiverProvince]);
+
+  const [shippingType, setShippingType] = useState<'general' | 'cod'>('general');
+  const [codAmount, setCodAmount] = useState<number | string>('');
+
+  // Sync Sender information to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sender_name', senderName);
+      localStorage.setItem('sender_phone', senderPhone);
+      localStorage.setItem('sender_province', senderProvince);
+      localStorage.setItem('sender_district', senderDistrict);
+      localStorage.setItem('sender_address_detail', senderAddressDetail);
+    }
+  }, [senderName, senderPhone, senderProvince, senderDistrict, senderAddressDetail]);
 
   // Check login and fetch profile details
   useEffect(() => {
@@ -456,20 +511,47 @@ export default function ContractPage() {
     }
   }, [showSignModal]);
 
-  // 7. Google Sheets Inventory Autocomplete
+  // 7. Database (sheets_inventory) Autocomplete
   const [inventory, setInventory] = useState<any[]>([]);
   const [filteredInventory, setFilteredInventory] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
-    fetch('/api/inventory')
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setInventory(data);
+    const fetchInventoryFromDb = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('sheets_inventory')
+          .select('*')
+          .is('deleted_at', null)
+          .eq('is_sold', false);
+        
+        if (error) throw error;
+        
+        if (data) {
+          const mapped = data.map((item: any) => ({
+            serialNo: item.sticker || '',
+            model: item.model_name || '',
+            imei: item.imei || '',
+            color: item.color || '',
+            price: item.selling_price || 0,
+            isSold: item.is_sold || false,
+            battery: item.battery_pct || '100',
+            location: item.stock_location || 'Shop',
+            seller: item.seller_name || '',
+            notes: item.notes || '',
+            saleDate: item.sale_date || '',
+            siteDate: item.site_date || '',
+            purchaseCost: item.purchase_cost_krw || 0,
+            marketPrice: item.market_price || 0,
+          }));
+          setInventory(mapped);
         }
-      })
-      .catch((err) => console.error('Failed to load inventory:', err));
+      } catch (err) {
+        console.error('Failed to load inventory from Supabase:', err);
+      }
+    };
+
+    fetchInventoryFromDb();
   }, []);
 
   const handleImeiChange = (val: string) => {
@@ -533,6 +615,14 @@ export default function ContractPage() {
     setColor(item.color);
     setSerialNo(item.serialNo);
     setSellingPrice(item.price);
+    
+    // Auto-fill capacity if present in the model name (e.g. 128G, 256GB, 1TB)
+    const capMatch = item.model.match(/(\d+\s*(?:GB|G|TB|T))/i);
+    if (capMatch) {
+      setCapacity(capMatch[1].toUpperCase());
+    } else {
+      setCapacity('');
+    }
     
     // Auto-lookup interest table for this item's price
     if (item.price >= 5000 && item.price <= 40000) {
@@ -653,7 +743,7 @@ export default function ContractPage() {
       </div>
 
       {/* Main Split Screen Container */}
-      <div className="contract-container">
+      <div className={`contract-container ${sidebarTab === 'shipping' ? 'print-shipping-only' : 'print-contract-only'}`}>
         
         {/* LEFT COLUMN: Input form (Hidden on Print) */}
         <div className="sidebar no-print">
@@ -676,6 +766,12 @@ export default function ContractPage() {
                 onClick={() => setSidebarTab('history')}
               >
                 📋 {t('recent_contracts_sent')} (Sent)
+              </button>
+              <button 
+                className={`tab-btn ${sidebarTab === 'shipping' ? 'active' : ''}`}
+                onClick={() => setSidebarTab('shipping')}
+              >
+                📦 ส่งของ (Shipping)
               </button>
             </div>
           )}
@@ -926,7 +1022,7 @@ export default function ContractPage() {
                 </button>
               </div>
             </>
-          ) : (
+          ) : sidebarTab === 'history' ? (
             /* Tab 2: History List */
             <div className="history-wrapper">
               <h4>{t('recent_contracts_sent')}</h4>
@@ -976,12 +1072,255 @@ export default function ContractPage() {
                 </div>
               )}
             </div>
+          ) : (
+            /* Tab 3: Shipping Label Form */
+            <div className="form-sections-wrapper" style={{ textAlign: 'left' }}>
+              {/* 1. Sender Info */}
+              <div className="form-section-card">
+                <h4 style={{ color: '#22d3ee' }}>📦 ข้อมูลผู้ส่ง (Sender Info)</h4>
+                <div className="form-group">
+                  <label className="form-label">ชื่อ-สกุล ผู้ส่ง (Sender Name) *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="เช่น ไอริส โมบาย"
+                    value={senderName}
+                    onChange={(e) => setSenderName(e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">เบอร์โทรศัพท์ ผู้ส่ง (Sender Phone) *</label>
+                  <input
+                    type="tel"
+                    className="form-input"
+                    placeholder="เช่น 0891234567"
+                    value={senderPhone}
+                    onChange={(e) => setSenderPhone(e.target.value)}
+                  />
+                </div>
+                <div className="form-grid-2">
+                  <div className="form-group">
+                    <label className="form-label">จังหวัด ผู้ส่ง (Province) *</label>
+                    <select
+                      className="form-select"
+                      value={senderProvince}
+                      onChange={(e) => {
+                        setSenderProvince(e.target.value);
+                        setSenderDistrict('');
+                      }}
+                    >
+                      <option value="">เลือกจังหวัด (Select)</option>
+                      {THAILAND_PROVINCES.map((p) => (
+                        <option key={p.id} value={p.name_en}>
+                          {p.name_en} ({p.name_th})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">อำเภอ/เขต ผู้ส่ง (District) *</label>
+                    <select
+                      className="form-select"
+                      value={senderDistrict}
+                      onChange={(e) => setSenderDistrict(e.target.value)}
+                      disabled={!senderProvince}
+                    >
+                      <option value="">เลือกอำเภอ (Select)</option>
+                      {senderDistricts.map((d) => (
+                        <option key={d.id} value={d.name_en}>
+                          {d.name_en} ({d.name_th})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">ที่อยู่ผู้ส่ง (Sender Detail Address) *</label>
+                  <textarea
+                    className="form-textarea"
+                    rows={2}
+                    placeholder="เลขที่, ซอย, ถนน, ตำบล/แขวง"
+                    value={senderAddressDetail}
+                    onChange={(e) => setSenderAddressDetail(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* 2. Receiver Info */}
+              <div className="form-section-card">
+                <h4 style={{ color: '#10b981' }}>👤 ข้อมูลผู้รับ (Receiver Info)</h4>
+                <div className="form-group">
+                  <label className="form-label">ชื่อ-สกุล ผู้รับ (Receiver Name) *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="เช่น สมชาย มีสุข"
+                    value={receiverName}
+                    onChange={(e) => setReceiverName(e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">เบอร์โทรศัพท์ ผู้รับ (Receiver Phone) *</label>
+                  <input
+                    type="tel"
+                    className="form-input"
+                    placeholder="เช่น 0812345678"
+                    value={receiverPhone}
+                    onChange={(e) => setReceiverPhone(e.target.value)}
+                  />
+                </div>
+                <div className="form-grid-2">
+                  <div className="form-group">
+                    <label className="form-label">จังหวัด ผู้รับ (Province) *</label>
+                    <select
+                      className="form-select"
+                      value={receiverProvince}
+                      onChange={(e) => {
+                        setReceiverProvince(e.target.value);
+                        setReceiverDistrict('');
+                      }}
+                    >
+                      <option value="">เลือกจังหวัด (Select)</option>
+                      {THAILAND_PROVINCES.map((p) => (
+                        <option key={p.id} value={p.name_en}>
+                          {p.name_en} ({p.name_th})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">อำเภอ/เขต ผู้รับ (District) *</label>
+                    <select
+                      className="form-select"
+                      value={receiverDistrict}
+                      onChange={(e) => setReceiverDistrict(e.target.value)}
+                      disabled={!receiverProvince}
+                    >
+                      <option value="">เลือกอำเภอ (Select)</option>
+                      {receiverDistricts.map((d) => (
+                        <option key={d.id} value={d.name_en}>
+                          {d.name_en} ({d.name_th})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">ที่อยู่ผู้รับ (Receiver Detail Address) *</label>
+                  <textarea
+                    className="form-textarea"
+                    rows={2}
+                    placeholder="เลขที่, ซอย, ถนน, ตำบล/แขวง"
+                    value={receiverAddressDetail}
+                    onChange={(e) => setReceiverAddressDetail(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* 3. Shipping Options */}
+              <div className="form-section-card">
+                <h4>🚚 ประเภทการจัดส่ง (Shipping Options)</h4>
+                <div className="form-group">
+                  <div style={{ display: 'flex', gap: '20px', margin: '8px 0' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="shippingType"
+                        value="general"
+                        checked={shippingType === 'general'}
+                        onChange={() => setShippingType('general')}
+                      />
+                      ส่งทั่วไป (General)
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="shippingType"
+                        value="cod"
+                        checked={shippingType === 'cod'}
+                        onChange={() => setShippingType('cod')}
+                      />
+                      เก็บเงินปลายทาง (COD)
+                    </label>
+                  </div>
+                </div>
+                {shippingType === 'cod' && (
+                  <div className="form-group">
+                    <label className="form-label">ยอดเงิน COD (COD Amount - THB) *</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      placeholder="ระบุจำนวนเงิน เช่น 3000"
+                      value={codAmount}
+                      onChange={(e) => setCodAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div style={{ marginTop: '10px' }}>
+                <button className="btn-print" onClick={handlePrint}>
+                  🖨️ พิมพ์ใบปะหน้า (Print Shipping Label)
+                </button>
+              </div>
+            </div>
           )}
         </div>
 
         {/* RIGHT COLUMN: Real A4 Document Preview */}
         <div className="preview-container">
-          <div className="contract-document" id="printable-contract-area">
+          {sidebarTab === 'shipping' ? (
+            <div className="shipping-label-document" id="printable-shipping-area">
+              <div className="label-header">
+                <h2>PHONE SWITCH HUB CO., LTD.</h2>
+                <div className="label-sub">ใบปะหน้าพัสดุ (Shipping Label)</div>
+              </div>
+              
+              <div className="label-body">
+                {/* Sender section */}
+                <div className="label-section sender-box">
+                  <div className="section-hdr">ผู้ส่ง (SENDER)</div>
+                  <div className="section-content">
+                    <div className="name-row"><b>ชื่อ:</b> {senderName || '........................................................'}</div>
+                    <div className="phone-row"><b>โทร:</b> {senderPhone || '........................................................'}</div>
+                    <div className="address-row">
+                      <b>ที่อยู่:</b> {senderAddressDetail ? `${senderAddressDetail} ${senderDistrict ? `${senderDistrict}` : ''} ${senderProvince ? `${senderProvince}` : ''}` : '................................................................................................................................................'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Receiver section */}
+                <div className="label-section receiver-box">
+                  <div className="section-hdr">ผู้รับ (RECEIVER)</div>
+                  <div className="section-content">
+                    <div className="name-row" style={{ fontSize: '14px' }}><b>ชื่อ:</b> <b>{receiverName || '........................................................'}</b></div>
+                    <div className="phone-row" style={{ fontSize: '14px' }}><b>โทร:</b> <b>{receiverPhone || '........................................................'}</b></div>
+                    <div className="address-row" style={{ fontSize: '13px' }}>
+                      <b>ที่อยู่:</b> {receiverAddressDetail ? `${receiverAddressDetail} ${receiverDistrict ? `${receiverDistrict}` : ''} ${receiverProvince ? `${receiverProvince}` : ''}` : '................................................................................................................................................'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Shipping info footer */}
+                <div className="label-footer">
+                  {shippingType === 'cod' ? (
+                    <div className="cod-badge-container">
+                      <div className="cod-badge">COD</div>
+                      <div className="cod-amount-box">
+                        <div className="cod-title">ยอดเก็บเงินปลายทาง</div>
+                        <div className="cod-val">฿{codAmount ? Number(codAmount).toLocaleString() : '0'}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="general-shipping-badge">
+                      การจัดส่งทั่วไป (General Delivery)
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="contract-document" id="printable-contract-area">
             
             {/* Header Brand Area */}
             <div className="doc-header">
@@ -1166,6 +1505,7 @@ export default function ContractPage() {
 
             </div>
           </div>
+          )}
         </div>
 
       </div>
@@ -1872,11 +2212,16 @@ export default function ContractPage() {
             print-color-adjust: exact !important;
           }
           
-          /* Hide everything except the contract document */
+          /* Hide everything except the active printable area */
           body * {
             visibility: hidden !important;
           }
-          #printable-contract-area, #printable-contract-area * {
+          .print-contract-only #printable-contract-area,
+          .print-contract-only #printable-contract-area * {
+            visibility: visible !important;
+          }
+          .print-shipping-only #printable-shipping-area,
+          .print-shipping-only #printable-shipping-area * {
             visibility: visible !important;
           }
           
@@ -2169,6 +2514,179 @@ export default function ContractPage() {
         }
         .months-modal-close-btn:hover {
           background: #475569;
+        }
+
+        /* Shipping Label Styles */
+        .shipping-label-document {
+          width: 100mm;
+          min-height: 150mm;
+          background: #ffffff;
+          color: #000000;
+          padding: 8mm;
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+          font-family: 'Sarabun', 'Helvetica Neue', Arial, sans-serif;
+          font-size: 11.5px;
+          line-height: 1.4;
+          position: relative;
+          box-sizing: border-box;
+          border-radius: 6px;
+          display: flex;
+          flex-direction: column;
+          border: 1px solid #ddd;
+        }
+
+        .label-header {
+          text-align: center;
+          border-bottom: 2px dashed #000000;
+          padding-bottom: 6px;
+          margin-bottom: 10px;
+        }
+
+        .label-header h2 {
+          font-size: 15px;
+          font-weight: 850;
+          margin: 0;
+          color: #000000;
+        }
+
+        .label-sub {
+          font-size: 10px;
+          font-weight: bold;
+          color: #555555;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          display: block;
+          margin-top: 2px;
+        }
+
+        .label-body {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          flex: 1;
+        }
+
+        .label-section {
+          border: 1px solid #000000;
+          border-radius: 4px;
+          padding: 8px;
+        }
+
+        .section-hdr {
+          font-size: 9.5px;
+          font-weight: 800;
+          background: #000000;
+          color: #ffffff;
+          padding: 2px 6px;
+          border-radius: 2px;
+          display: inline-block;
+          margin-bottom: 4px;
+          text-transform: uppercase;
+        }
+
+        .section-content {
+          font-size: 11.5px;
+          text-align: left;
+        }
+
+        .name-row, .phone-row, .address-row {
+          margin-bottom: 3px;
+        }
+
+        .label-footer {
+          margin-top: auto;
+          padding-top: 10px;
+          border-top: 2px dashed #000000;
+        }
+
+        .cod-badge-container {
+          display: flex;
+          border: 2px solid #ef4444;
+          border-radius: 6px;
+          overflow: hidden;
+          background: #fef2f2;
+        }
+
+        .cod-badge {
+          background: #ef4444;
+          color: #ffffff;
+          font-size: 20px;
+          font-weight: 900;
+          padding: 8px 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .cod-amount-box {
+          flex: 1;
+          padding: 4px 8px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+        }
+
+        .cod-title {
+          font-size: 9px;
+          font-weight: bold;
+          color: #ef4444;
+        }
+
+        .cod-val {
+          font-size: 18px;
+          font-weight: 900;
+          color: #ef4444;
+        }
+
+        .general-shipping-badge {
+          border: 2px solid #10b981;
+          background: #ecfdf5;
+          color: #10b981;
+          font-size: 13px;
+          font-weight: 800;
+          text-align: center;
+          padding: 8px;
+          border-radius: 6px;
+        }
+
+        /* Responsive override for print preview on mobile screens */
+        @media screen and (max-width: 767px) {
+          .shipping-label-document {
+            zoom: 0.8;
+            transform-origin: top center;
+            margin: 0 auto;
+          }
+        }
+        @media screen and (max-width: 479px) {
+          .shipping-label-document {
+            zoom: 0.6;
+            transform-origin: top center;
+            margin: 0 auto;
+          }
+        }
+
+        /* Print Override for Shipping label sizing */
+        @media print {
+          .print-shipping-only #printable-shipping-area {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100mm !important;
+            height: 150mm !important;
+            min-height: 150mm !important;
+            padding: 5mm !important;
+            box-shadow: none !important;
+            border: none !important;
+            margin: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            page-break-after: avoid !important;
+            page-break-before: avoid !important;
+            border-radius: 0 !important;
+          }
         }
 
       `}</style>
