@@ -1676,7 +1676,7 @@ img {
 }
 
 @media(max-width:900px) {
-  .sidebar {
+  .db-wrap .sidebar {
     width: 100%;
     height: 54px;
     position: fixed;
@@ -1694,15 +1694,15 @@ img {
     z-index: 1000;
   }
   
-  .sb-head {
+  .db-wrap .sb-head {
     display: none !important;
   }
   
-  .sb-sec-lbl {
+  .db-wrap .sb-sec-lbl {
     display: none !important;
   }
   
-  .sb-nav {
+  .db-wrap .sb-nav {
     padding: 0;
     margin: 0;
     display: flex;
@@ -1716,11 +1716,11 @@ img {
     gap: 4px;
   }
   
-  .sb-nav::-webkit-scrollbar {
+  .db-wrap .sb-nav::-webkit-scrollbar {
     display: none;
   }
   
-  .sb-link {
+  .db-wrap .sb-link {
     display: inline-flex;
     width: auto;
     white-space: nowrap;
@@ -1735,18 +1735,18 @@ img {
     justify-content: center;
   }
   
-  .sb-link.active {
+  .db-wrap .sb-link.active {
     border-left-color: transparent;
     border-bottom-color: var(--purple);
     background: transparent;
     color: var(--purple-l);
   }
   
-  .sb-link .ico {
+  .db-wrap .sb-link .ico {
     margin-right: 2px;
   }
   
-  .sb-foot {
+  .db-wrap .sb-foot {
     padding: 0;
     border-top: none;
     margin-left: auto;
@@ -1755,21 +1755,21 @@ img {
     height: 100%;
   }
   
-  .sb-user {
+  .db-wrap .sb-user {
     gap: 6px;
   }
   
-  .sb-avatar {
+  .db-wrap .sb-avatar {
     width: 28px;
     height: 28px;
     border-radius: 8px;
   }
   
-  .sb-uname, .sb-urole {
+  .db-wrap .sb-uname, .db-wrap .sb-urole {
     display: none !important;
   }
 
-  .main {
+  .db-wrap .main {
     margin-left: 0;
     padding-top: 54px;
   }
