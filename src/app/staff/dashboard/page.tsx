@@ -515,7 +515,7 @@ export default function StaffDashboard() {
       const name = d.model_name.toLowerCase();
       individualModelCounts[d.model_name] = (individualModelCounts[d.model_name] || 0) + 1;
 
-      if (name.includes('iphone') || name.includes('aip') || name.includes('ip') || name.includes('아이폰')) {
+      if ((name.includes('iphone') || name.includes('aip') || name.includes('ip') || name.includes('아이폰')) && !name.includes('ipad')) {
         iphoneCount++;
         if (name.includes('16')) seriesCounts['iPhone 16']++;
         else if (name.includes('15')) seriesCounts['iPhone 15']++;
@@ -593,6 +593,9 @@ export default function StaffDashboard() {
   const normalizeModelName = useCallback((str: string) => {
     if (!str) return '';
     let res = str.toLowerCase();
+    if (res.includes('ipad')) {
+      return res.replace(/\s+/g, '');
+    }
     res = res.replace(/aip|ip|아이폰/g, 'iphone');
     res = res.replace(/sec|갤/g, 'galaxy');
     res = res.replace(/\s+/g, '');
