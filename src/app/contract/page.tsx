@@ -1314,9 +1314,9 @@ export default function ContractPage() {
                   <div className="label-section receiver-box">
                     <div className="section-hdr" style={{ backgroundColor: '#10b981' }}>ผู้รับ (RECEIVER)</div>
                     <div className="section-content">
-                      <div className="name-row" style={{ fontSize: '13px' }}><b>ชื่อ:</b> <b>{receiverName || '........................................................'}</b></div>
-                      <div className="phone-row" style={{ fontSize: '13px' }}><b>โทร:</b> <b>{receiverPhone || '........................................................'}</b></div>
-                      <div className="address-row" style={{ fontSize: '12px' }}>
+                      <div className="name-row"><b>ชื่อ:</b> <b>{receiverName || '........................................................'}</b></div>
+                      <div className="phone-row"><b>โทร:</b> <b>{receiverPhone || '........................................................'}</b></div>
+                      <div className="address-row">
                         <b>ที่อยู่:</b> {receiverAddressDetail ? `${receiverAddressDetail} ${receiverDistrict ? `${receiverDistrict}` : ''} ${receiverProvince ? `${receiverProvince}` : ''}` : '................................................................................................................................................'}
                       </div>
                     </div>
@@ -2600,9 +2600,9 @@ export default function ContractPage() {
         }
 
         .label-section {
-          border: 1px solid #000000;
-          border-radius: 4px;
-          padding: 8px;
+          border: 2px solid #000000;
+          border-radius: 6px;
+          padding: 14px;
         }
 
         .sender-box {
@@ -2614,24 +2614,30 @@ export default function ContractPage() {
         }
 
         .section-hdr {
-          font-size: 9.5px;
-          font-weight: 800;
+          font-size: 14px;
+          font-weight: 900;
           background: #000000;
           color: #ffffff;
-          padding: 2px 6px;
-          border-radius: 2px;
+          padding: 4px 10px;
+          border-radius: 4px;
           display: inline-block;
-          margin-bottom: 6px;
+          margin-bottom: 10px;
           text-transform: uppercase;
         }
 
         .section-content {
-          font-size: 11.5px;
           text-align: left;
+          line-height: 1.5;
         }
 
-        .name-row, .phone-row, .address-row {
-          margin-bottom: 4px;
+        .name-row, .phone-row {
+          font-size: 18px;
+          margin-bottom: 8px;
+        }
+
+        .address-row {
+          font-size: 14.5px;
+          margin-bottom: 6px;
         }
 
         .label-badge-area {
@@ -2714,6 +2720,11 @@ export default function ContractPage() {
 
         /* Print Override for Shipping label A5 Landscape sizing */
         @media print {
+          html, body {
+            -webkit-text-size-adjust: 100% !important;
+            text-size-adjust: 100% !important;
+          }
+
           .print-shipping-only #printable-shipping-area {
             position: absolute !important;
             left: 10mm !important;
@@ -2734,6 +2745,67 @@ export default function ContractPage() {
             box-sizing: border-box !important;
             zoom: 1 !important;
           }
+
+          /* Webkit grid print bug workaround: use float layout for printing */
+          .print-shipping-only #printable-shipping-area .label-grid {
+            display: block !important;
+            width: 100% !important;
+            height: calc(100% - 35px) !important;
+            box-sizing: border-box !important;
+          }
+
+          .print-shipping-only #printable-shipping-area .label-grid::after {
+            content: "" !important;
+            display: table !important;
+            clear: both !important;
+          }
+
+          .print-shipping-only #printable-shipping-area .grid-left {
+            float: left !important;
+            width: 48% !important;
+            height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: flex-start !important;
+            box-sizing: border-box !important;
+          }
+
+          .print-shipping-only #printable-shipping-area .grid-right {
+            float: right !important;
+            width: 48% !important;
+            height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: flex-end !important;
+            gap: 8px !important;
+            box-sizing: border-box !important;
+          }
+
+          .print-shipping-only #printable-shipping-area .label-section {
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+
+          .print-shipping-only #printable-shipping-area .sender-box {
+            height: 100% !important;
+          }
+
+          .print-shipping-only #printable-shipping-area .receiver-box {
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+
+          .print-shipping-only #printable-shipping-area .label-badge-area {
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+
+          .print-shipping-only #printable-shipping-area .cod-badge-container,
+          .print-shipping-only #printable-shipping-area .general-shipping-badge {
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+
           @page {
             size: A4 portrait !important;
             margin: 0 !important;
