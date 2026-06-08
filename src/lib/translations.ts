@@ -379,7 +379,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     staff_portal: "INTERNAL STAFF PORTAL",
     staff_menu_overview: "경영 개요",
     staff_menu_inventory: "사내 재고 관리",
-    staff_menu_sales: "판매 및 주문 처리",
+    staff_menu_sales: "판매 완료 처리",
     staff_total_stock_value: "총 재고 가치",
     staff_active_sku: "취급 상품 수 (SKU)",
     staff_monthly_sales: "이번 달 누적 판매",

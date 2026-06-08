@@ -23,6 +23,7 @@ interface DeviceItem {
   market_price: number;
   purchase_cost_krw: number;
   created_at: string;
+  deleted_at?: string;
 }
 
 export default function StaffDashboard() {
@@ -35,8 +36,15 @@ export default function StaffDashboard() {
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [redirectCountdown, setRedirectCountdown] = useState(3);
 
-  // Active Tab: 'overview' | 'ledger' | 'sales' | 'settings'
-  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'sales' | 'settings'>('overview');
+  // Active Tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin'
+  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin'>('overview');
+
+  // Sorting States
+  const [sortField, setSortField] = useState<string>('created_at');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Checkbox Selection States
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Ledger Data States
   const [devices, setDevices] = useState<DeviceItem[]>([]);
@@ -204,12 +212,31 @@ export default function StaffDashboard() {
     }
   }, [isAuthorized]);
 
+  const purgeOldTrash = useCallback(async () => {
+    try {
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .delete()
+        .not('deleted_at', 'is', null)
+        .lt('deleted_at', oneWeekAgo.toISOString());
+        
+      if (error) console.error('Purging trash error:', error);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   useEffect(() => {
     if (isAuthorized) {
-      loadLedgerData();
-      loadSettingsData();
+      purgeOldTrash().then(() => {
+        loadLedgerData();
+        loadSettingsData();
+      });
     }
-  }, [isAuthorized, loadLedgerData, loadSettingsData]);
+  }, [isAuthorized, loadLedgerData, loadSettingsData, purgeOldTrash]);
 
   // Model & Location options helper with dynamic temp additions for selected device edits
   const modelOptions = useMemo(() => {
@@ -380,10 +407,44 @@ export default function StaffDashboard() {
     }
   };
 
+  // Sorting Helper
+  const sortDevices = useCallback((list: DeviceItem[]) => {
+    return [...list].sort((a, b) => {
+      let valA: any = a[sortField as keyof DeviceItem];
+      let valB: any = b[sortField as keyof DeviceItem];
+
+      if (valA === undefined || valA === null) valA = '';
+      if (valB === undefined || valB === null) valB = '';
+
+      const isNumA = typeof valA === 'number';
+      const isNumB = typeof valB === 'number';
+
+      if (isNumA && isNumB) {
+        return sortDirection === 'asc' ? valA - valB : valB - valA;
+      }
+
+      const strA = String(valA).toLowerCase();
+      const strB = String(valB).toLowerCase();
+
+      return sortDirection === 'asc'
+        ? strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' })
+        : strB.localeCompare(strA, undefined, { numeric: true, sensitivity: 'base' });
+    });
+  }, [sortField, sortDirection]);
+
+  const toggleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
   // 3. Stats Calculations
   const stats = useMemo(() => {
-    const activeStock = devices.filter(d => !d.is_sold);
-    const soldList = devices.filter(d => d.is_sold);
+    const activeStock = devices.filter(d => !d.deleted_at && !d.is_sold);
+    const soldList = devices.filter(d => !d.deleted_at && d.is_sold);
 
     const totalStockCount = activeStock.length;
     const totalPurchaseCostKRW = activeStock.reduce((sum, d) => sum + Number(d.purchase_cost_krw || 0), 0);
@@ -430,25 +491,38 @@ export default function StaffDashboard() {
 
   // Filtered lists
   const filteredActiveDevices = useMemo(() => {
-    return devices.filter(d => {
-      if (d.is_sold) return false;
+    const list = devices.filter(d => {
+      if (d.deleted_at || d.is_sold) return false;
       const matchSearch = d.model_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchLoc = locationFilter === 'all' || d.stock_location === locationFilter;
       return matchSearch && matchLoc;
     });
-  }, [devices, searchQuery, locationFilter]);
+    return sortDevices(list);
+  }, [devices, searchQuery, locationFilter, sortDevices]);
 
   const filteredSoldDevices = useMemo(() => {
-    return devices.filter(d => {
-      if (!d.is_sold) return false;
+    const list = devices.filter(d => {
+      if (d.deleted_at || !d.is_sold) return false;
       const matchSearch = d.model_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
       return matchSearch;
     });
-  }, [devices, searchQuery]);
+    return sortDevices(list);
+  }, [devices, searchQuery, sortDevices]);
+
+  const filteredTrashDevices = useMemo(() => {
+    const list = devices.filter(d => {
+      if (!d.deleted_at) return false;
+      const matchSearch = d.model_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (d.imei && d.imei.includes(searchQuery)) ||
+                          (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchSearch;
+    });
+    return sortDevices(list);
+  }, [devices, searchQuery, sortDevices]);
 
   // 4. CSV File Parsing Helper
   function parseCSV(text: string): string[][] {
@@ -686,7 +760,7 @@ export default function StaffDashboard() {
   const handleLiveSync = async () => {
     setImportingCSV(true);
     try {
-      const res = await fetch('/api/inventory?all=true');
+      const res = await fetch(`/api/inventory?all=true&t=${Date.now()}`);
       if (!res.ok) throw new Error('Failed to fetch live sheet data');
       const items = await res.json();
       if (items.error) throw new Error(items.error);
@@ -1142,22 +1216,90 @@ export default function StaffDashboard() {
     }
   };
 
-  // Delete Device Handler
+  // Delete Device Handler (Soft Delete to Trash Bin)
   const handleDeleteDevice = async (deviceId: string) => {
-    if (!confirm('Are you sure you want to permanently delete this device ledger row?')) return;
+    if (!confirm('선택한 기기를 삭제하여 휴지통으로 이동하시겠습니까?')) return;
     try {
+      const nowStr = new Date().toISOString();
       const { error } = await supabase
         .from('sheets_inventory')
-        .delete()
+        .update({ deleted_at: nowStr })
         .eq('id', deviceId);
 
       if (error) throw error;
 
-      setDevices(prev => prev.filter(d => d.id !== deviceId));
-      showToast('🗑️ Device deleted from system.', 'success');
+      setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, deleted_at: nowStr } : d));
+      showToast('🗑️ 기기가 삭제되어 휴지통으로 이동했습니다.', 'success');
     } catch (err: any) {
       showToast('❌ Error: ' + err.message, 'error');
     }
+  };
+
+  // Bulk Soft Delete
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`선택한 ${selectedIds.length}개의 기기를 삭제하여 휴지통으로 이동하시겠습니까?`)) return;
+    try {
+      const nowStr = new Date().toISOString();
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .update({ deleted_at: nowStr })
+        .in('id', selectedIds);
+
+      if (error) throw error;
+
+      setDevices(prev => prev.map(d => selectedIds.includes(d.id) ? { ...d, deleted_at: nowStr } : d));
+      const deletedCount = selectedIds.length;
+      setSelectedIds([]);
+      showToast(`🗑️ 선택한 ${deletedCount}개 기기가 휴지통으로 이동했습니다.`, 'success');
+    } catch (err: any) {
+      showToast('❌ Error: ' + err.message, 'error');
+    }
+  };
+
+  // Bulk Restore from Trash
+  const handleBulkRestore = async () => {
+    if (selectedIds.length === 0) return;
+    try {
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .update({ deleted_at: null })
+        .in('id', selectedIds);
+
+      if (error) throw error;
+
+      setDevices(prev => prev.map(d => selectedIds.includes(d.id) ? { ...d, deleted_at: undefined } : d));
+      setSelectedIds([]);
+      showToast(`🔄 선택한 기기가 재고로 정상 복원되었습니다.`, 'success');
+    } catch (err: any) {
+      showToast('❌ Error: ' + err.message, 'error');
+    }
+  };
+
+  // Bulk Permanent Delete from Trash
+  const handleBulkPermanentDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`선택한 ${selectedIds.length}개의 기기를 영구 삭제하시겠습니까?\n이 작업은 복구가 불가능합니다.`)) return;
+    try {
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .delete()
+        .in('id', selectedIds);
+
+      if (error) throw error;
+
+      setDevices(prev => prev.filter(d => !selectedIds.includes(d.id)));
+      setSelectedIds([]);
+      showToast(`🔥 선택한 기기가 영구 삭제되었습니다.`, 'success');
+    } catch (err: any) {
+      showToast('❌ Error: ' + err.message, 'error');
+    }
+  };
+
+  // Tab Change Handler
+  const handleTabChange = (tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin') => {
+    setActiveTab(tab);
+    setSelectedIds([]);
   };
 
   // CSV Reader trigger for file upload selector
@@ -1215,30 +1357,46 @@ export default function StaffDashboard() {
           
           <button 
             className={`sb-link ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => setActiveTab('overview')}
+            onClick={() => handleTabChange('overview')}
           >
             <span className="ico">📊</span> {t('staff_menu_overview') || '경영 개요'}
           </button>
           
           <button 
             className={`sb-link ${activeTab === 'ledger' ? 'active' : ''}`}
-            onClick={() => setActiveTab('ledger')}
+            onClick={() => handleTabChange('ledger')}
           >
-            <span className="ico">📱</span> {t('staff_menu_inventory') || '기기 입고/재고'}
+            <span className="ico">📱</span> {t('staff_menu_inventory') || '사내 재고 관리'}
           </button>
 
           <button 
             className={`sb-link ${activeTab === 'sales' ? 'active' : ''}`}
-            onClick={() => setActiveTab('sales')}
+            onClick={() => handleTabChange('sales')}
           >
-            <span className="ico">💸</span> {t('staff_menu_sales') || '판매 완료 장부'}
+            <span className="ico">💸</span> {t('staff_menu_sales') || '판매 완료 처리'}
           </button>
 
           <button 
             className={`sb-link ${activeTab === 'settings' ? 'active' : ''}`}
-            onClick={() => setActiveTab('settings')}
+            onClick={() => handleTabChange('settings')}
           >
             <span className="ico">⚙️</span> {t('staff_menu_settings') || '기준 정보 관리'}
+          </button>
+
+          {staffProfile?.role === 'admin' && (
+            <button 
+              className={`sb-link ${activeTab === 'margin' ? 'active' : ''}`}
+              onClick={() => handleTabChange('margin')}
+            >
+              <span className="ico">📈</span> 마진 및 정산관리
+            </button>
+          )}
+
+          <button 
+            className={`sb-link ${activeTab === 'trash' ? 'active' : ''}`}
+            onClick={() => handleTabChange('trash')}
+          >
+            <span className="ico">🗑️</span> 휴지통
           </button>
 
           <div className="sb-sec-lbl">Shortcuts</div>
@@ -1276,9 +1434,11 @@ export default function StaffDashboard() {
           <div>
             <h1 style={{ fontSize: '20px', fontWeight: 800 }}>
               {activeTab === 'overview' && `📊 ${t('staff_menu_overview') || '경영 개요'}`}
-              {activeTab === 'ledger' && `📱 ${t('staff_menu_inventory') || '기기 입고 및 재고 관리'}`}
-              {activeTab === 'sales' && `💸 ${t('staff_menu_sales') || '판매 완료 장부'}`}
+              {activeTab === 'ledger' && `📱 ${t('staff_menu_inventory') || '사내 재고 관리'}`}
+              {activeTab === 'sales' && `💸 ${t('staff_menu_sales') || '판매 완료 처리'}`}
               {activeTab === 'settings' && `⚙️ ${t('staff_menu_settings') || '기준 정보 관리'}`}
+              {activeTab === 'margin' && `📈 마진 및 정산관리`}
+              {activeTab === 'trash' && `🗑️ 휴지통`}
             </h1>
             <p style={{ color: 'var(--t2)', fontSize: '12px', marginTop: '4px' }}>
               Company Ledger & Stock Intake Management System.
@@ -1451,6 +1611,15 @@ export default function StaffDashboard() {
               </div>
 
               <div style={{ display: 'flex', gap: '8px' }}>
+                {selectedIds.length > 0 && (
+                  <button 
+                    className="btn-submit btn-red"
+                    style={{ margin: 0 }}
+                    onClick={handleBulkDelete}
+                  >
+                    🗑️ 선택 삭제 ({selectedIds.length}대)
+                  </button>
+                )}
                 <button 
                   className="btn-submit"
                   style={{ margin: 0, background: '#f1f5f9', border: '1px solid var(--border)', color: '#334155' }}
@@ -1473,15 +1642,40 @@ export default function StaffDashboard() {
               <table className="tbl" style={{ tableLayout: 'fixed', width: '100%' }}>
                 <thead>
                   <tr>
-                    <th style={{ width: '10%' }}>스티커 No</th>
-                    <th style={{ width: '10%' }}>입고일</th>
-                    <th style={{ width: '15%' }}>모델명 (Model)</th>
-                    <th style={{ width: '15%' }}>IMEI</th>
+                    <th style={{ width: '40px', textAlign: 'center' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={filteredActiveDevices.length > 0 && filteredActiveDevices.every(d => selectedIds.includes(d.id))}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedIds(prev => Array.from(new Set([...prev, ...filteredActiveDevices.map(d => d.id)])));
+                          } else {
+                            setSelectedIds(prev => prev.filter(id => !filteredActiveDevices.some(d => d.id === id)));
+                          }
+                        }}
+                      />
+                    </th>
+                    <th style={{ width: '12%', cursor: 'pointer' }} onClick={() => toggleSort('sticker')}>
+                      스티커 No {sortField === 'sticker' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th style={{ width: '10%', cursor: 'pointer' }} onClick={() => toggleSort('site_date')}>
+                      입고일 {sortField === 'site_date' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
+                      모델명 (Model) {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th style={{ width: '13%' }}>IMEI</th>
                     <th style={{ width: '8%' }}>Color</th>
                     <th style={{ width: '6%', textAlign: 'center' }}>배터리</th>
-                    <th style={{ width: '10%', textAlign: 'right' }}>매입원가</th>
-                    <th style={{ width: '10%', textAlign: 'right' }}>소매판매가</th>
-                    <th style={{ width: '10%' }}>위치</th>
+                    <th style={{ width: '10%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('purchase_cost_krw')}>
+                      매입원가 {sortField === 'purchase_cost_krw' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th style={{ width: '10%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
+                      소매판매가 {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th style={{ width: '10%', cursor: 'pointer' }} onClick={() => toggleSort('stock_location')}>
+                      위치 {sortField === 'stock_location' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
                     <th style={{ width: '12%' }}>비고 (Notes)</th>
                     <th style={{ width: '15%', textAlign: 'center' }}>조작</th>
                   </tr>
@@ -1489,19 +1683,32 @@ export default function StaffDashboard() {
                 <tbody>
                   {loadingData ? (
                     <tr>
-                      <td colSpan={11} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
+                      <td colSpan={12} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
                         Database fetching active records...
                       </td>
                     </tr>
                   ) : filteredActiveDevices.length === 0 ? (
                     <tr>
-                      <td colSpan={11} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
+                      <td colSpan={12} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
                         재고 목록이 비어 있습니다. 입고를 진행해 주세요.
                       </td>
                     </tr>
                   ) : (
                     filteredActiveDevices.map(item => (
                       <tr key={item.id}>
+                        <td style={{ textAlign: 'center' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedIds.includes(item.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedIds(prev => [...prev, item.id]);
+                              } else {
+                                setSelectedIds(prev => prev.filter(id => id !== item.id));
+                              }
+                            }}
+                          />
+                        </td>
                         <td 
                           style={{ fontWeight: 700, color: 'var(--purple-l)', cursor: 'pointer' }}
                           onClick={() => {
@@ -1643,16 +1850,27 @@ export default function StaffDashboard() {
             
             {/* Sales Search Box */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px' }}>
-              <input
-                type="text"
-                placeholder="모델명, IMEI, 또는 판매 직원 검색..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="form-input"
-                style={{ maxWidth: '280px', margin: 0 }}
-              />
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+                <input
+                  type="text"
+                  placeholder="모델명, IMEI, 또는 판매 직원 검색..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="form-input"
+                  style={{ maxWidth: '280px', margin: 0 }}
+                />
+                {selectedIds.length > 0 && (
+                  <button 
+                    className="btn-submit btn-red"
+                    style={{ margin: 0, padding: '8px 16px', fontSize: '12px' }}
+                    onClick={handleBulkDelete}
+                  >
+                    🗑️ 선택 삭제 ({selectedIds.length}대)
+                  </button>
+                )}
+              </div>
               
-              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--purple-l)' }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--purple-l)', whiteSpace: 'nowrap' }}>
                 총 판매 대수: {filteredSoldDevices.length}대
               </div>
             </div>
@@ -1662,14 +1880,39 @@ export default function StaffDashboard() {
               <table className="tbl" style={{ tableLayout: 'fixed', width: '100%' }}>
                 <thead>
                   <tr>
-                    <th style={{ width: '10%' }}>판매일</th>
-                    <th style={{ width: '10%' }}>스티커 No</th>
-                    <th style={{ width: '15%' }}>모델명</th>
-                    <th style={{ width: '15%' }}>IMEI</th>
+                    <th style={{ width: '40px', textAlign: 'center' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={filteredSoldDevices.length > 0 && filteredSoldDevices.every(d => selectedIds.includes(d.id))}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedIds(prev => Array.from(new Set([...prev, ...filteredSoldDevices.map(d => d.id)])));
+                          } else {
+                            setSelectedIds(prev => prev.filter(id => !filteredSoldDevices.some(d => d.id === id)));
+                          }
+                        }}
+                      />
+                    </th>
+                    <th style={{ width: '11%', cursor: 'pointer' }} onClick={() => toggleSort('sale_date')}>
+                      판매일 {sortField === 'sale_date' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th style={{ width: '11%', cursor: 'pointer' }} onClick={() => toggleSort('sticker')}>
+                      스티커 No {sortField === 'sticker' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
+                      모델명 {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th style={{ width: '13%' }}>IMEI</th>
                     <th style={{ width: '8%' }}>Color</th>
-                    <th style={{ width: '10%', textAlign: 'right' }}>매입원가</th>
-                    <th style={{ width: '10%', textAlign: 'right' }}>판매가격</th>
-                    <th style={{ width: '10%' }}>판매사원</th>
+                    <th style={{ width: '10%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('purchase_cost_krw')}>
+                      매입원가 {sortField === 'purchase_cost_krw' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th style={{ width: '10%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
+                      판매가격 {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th style={{ width: '10%', cursor: 'pointer' }} onClick={() => toggleSort('seller_name')}>
+                      판매사원 {sortField === 'seller_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
                     <th style={{ width: '12%' }}>판매 메모 / 결제정보</th>
                     <th style={{ width: '10%', textAlign: 'center' }}>재고복원</th>
                   </tr>
@@ -1677,19 +1920,32 @@ export default function StaffDashboard() {
                 <tbody>
                   {loadingData ? (
                     <tr>
-                      <td colSpan={10} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
+                      <td colSpan={11} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
                         Loading sold device list...
                       </td>
                     </tr>
                   ) : filteredSoldDevices.length === 0 ? (
                     <tr>
-                      <td colSpan={10} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
+                      <td colSpan={11} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
                         판매 완료된 기기 내역이 없습니다.
                       </td>
                     </tr>
                   ) : (
                     filteredSoldDevices.map(item => (
                       <tr key={item.id} style={{ background: '#fafaf9' }}>
+                        <td style={{ textAlign: 'center' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedIds.includes(item.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedIds(prev => [...prev, item.id]);
+                              } else {
+                                setSelectedIds(prev => prev.filter(id => id !== item.id));
+                              }
+                            }}
+                          />
+                        </td>
                         <td style={{ fontWeight: 700, color: 'var(--green)' }}>{item.sale_date || '-'}</td>
                         <td style={{ color: 'var(--t2)' }}>{item.sticker || '-'}</td>
                         <td style={{ fontWeight: 700, wordBreak: 'break-all' }}>{item.model_name}</td>
@@ -1830,6 +2086,163 @@ export default function StaffDashboard() {
                 </div>
               </div>
 
+            </div>
+
+          </div>
+        )}
+
+        {/* ==================== VIEW 5: MARGIN & SETTLEMENT (ADMIN ONLY) ==================== */}
+        {activeTab === 'margin' && staffProfile?.role === 'admin' && (
+          <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '32px', textAlign: 'center' }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>📈</div>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '8px' }}>마진 및 정산관리</h3>
+              <p style={{ color: 'var(--t2)', fontSize: '13px', lineHeight: 1.6 }}>
+                마진 및 정산관리 기능 준비 중입니다. 차후 업데이트 예정입니다.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ==================== VIEW 6: TRASH BIN ==================== */}
+        {activeTab === 'trash' && (
+          <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            
+            {/* Trash Controls */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+                <input
+                  type="text"
+                  placeholder="모델명, IMEI, 또는 스티커 검색..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="form-input"
+                  style={{ maxWidth: '280px', margin: 0 }}
+                />
+                {selectedIds.length > 0 && (
+                  <>
+                    <button 
+                      className="btn-submit btn-green"
+                      style={{ margin: 0, padding: '8px 16px', fontSize: '12px' }}
+                      onClick={handleBulkRestore}
+                    >
+                      🔄 선택 복원 ({selectedIds.length}대)
+                    </button>
+                    <button 
+                      className="btn-submit btn-red"
+                      style={{ margin: 0, padding: '8px 16px', fontSize: '12px' }}
+                      onClick={handleBulkPermanentDelete}
+                    >
+                      🔥 선택 영구삭제 ({selectedIds.length}대)
+                    </button>
+                  </>
+                )}
+              </div>
+              
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--red)', whiteSpace: 'nowrap' }}>
+                휴지통 기기: {filteredTrashDevices.length}대 (7일 후 영구 자동 삭제)
+              </div>
+            </div>
+
+            {/* Trash Grid Table */}
+            <div className="tbl-wrap" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px' }}>
+              <table className="tbl" style={{ tableLayout: 'fixed', width: '100%' }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: '40px', textAlign: 'center' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={filteredTrashDevices.length > 0 && filteredTrashDevices.every(d => selectedIds.includes(d.id))}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedIds(prev => Array.from(new Set([...prev, ...filteredTrashDevices.map(d => d.id)])));
+                          } else {
+                            setSelectedIds(prev => prev.filter(id => !filteredTrashDevices.some(d => d.id === id)));
+                          }
+                        }}
+                      />
+                    </th>
+                    <th style={{ width: '12%', cursor: 'pointer' }} onClick={() => toggleSort('sticker')}>
+                      스티커 No {sortField === 'sticker' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
+                      모델명 {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th style={{ width: '15%' }}>IMEI</th>
+                    <th style={{ width: '8%' }}>Color</th>
+                    <th style={{ width: '10%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('purchase_cost_krw')}>
+                      매입원가 {sortField === 'purchase_cost_krw' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('deleted_at')}>
+                      삭제 일시 {sortField === 'deleted_at' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th style={{ width: '15%', textAlign: 'center' }}>조작</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingData ? (
+                    <tr>
+                      <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
+                        Loading trash bin...
+                      </td>
+                    </tr>
+                  ) : filteredTrashDevices.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
+                        휴지통이 비어 있습니다.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredTrashDevices.map(item => (
+                      <tr key={item.id} style={{ background: '#fcfcfc' }}>
+                        <td style={{ textAlign: 'center' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedIds.includes(item.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedIds(prev => [...prev, item.id]);
+                              } else {
+                                setSelectedIds(prev => prev.filter(id => id !== item.id));
+                              }
+                            }}
+                          />
+                        </td>
+                        <td style={{ fontWeight: 700, color: 'var(--purple-l)' }}>{item.sticker || '-'}</td>
+                        <td style={{ fontWeight: 700, wordBreak: 'break-all' }}>{item.model_name}</td>
+                        <td className="font-mono" style={{ fontSize: '11px', wordBreak: 'break-all' }}>{item.imei}</td>
+                        <td>{item.color || '-'}</td>
+                        <td style={{ textAlign: 'right', color: '#94a3b8' }}>₩{formatPrice(item.purchase_cost_krw)}</td>
+                        <td style={{ fontSize: '11px', color: 'var(--red)' }}>
+                          {item.deleted_at ? new Date(item.deleted_at).toLocaleString('ko-KR') : '-'}
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                            <button
+                              className="btn-sm btn-green"
+                              onClick={() => {
+                                setSelectedIds([item.id]);
+                                setTimeout(() => handleBulkRestore(), 50);
+                              }}
+                            >
+                              🔄 복원
+                            </button>
+                            <button
+                              className="btn-sm btn-red"
+                              onClick={() => {
+                                setSelectedIds([item.id]);
+                                setTimeout(() => handleBulkPermanentDelete(), 50);
+                              }}
+                            >
+                              🔥 영구삭제
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
 
           </div>

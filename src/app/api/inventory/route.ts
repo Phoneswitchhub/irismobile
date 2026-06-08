@@ -39,13 +39,15 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const all = searchParams.get('all') === 'true';
 
-    const url = 'https://docs.google.com/spreadsheets/d/1NpSAZNB9xb0pYZxs5sKp9hxXQraMPXcpxWyhUO2o4DM/export?format=csv&gid=1052362499';
+    const url = `https://docs.google.com/spreadsheets/d/1NpSAZNB9xb0pYZxs5sKp9hxXQraMPXcpxWyhUO2o4DM/export?format=csv&gid=1052362499&t=${Date.now()}`;
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Accept': 'text/csv; charset=utf-8',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
       },
-      next: { revalidate: 60 } // cache for 1 minute for faster staff synchronizations
+      cache: 'no-store'
     });
 
     if (!response.ok) {
