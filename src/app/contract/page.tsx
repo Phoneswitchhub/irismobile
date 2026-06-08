@@ -1271,51 +1271,56 @@ export default function ContractPage() {
         <div className="preview-container">
           {sidebarTab === 'shipping' ? (
             <div className="shipping-label-document" id="printable-shipping-area">
-              <div className="label-header">
+              <div className="label-top-bar">
                 <h2>PHONE SWITCH HUB CO., LTD.</h2>
-                <div className="label-sub">ใบปะหน้าพัสดุ (Shipping Label)</div>
+                <span className="label-sub-title">ใบปะหน้าพัสดุ (Shipping Label)</span>
               </div>
               
-              <div className="label-body">
-                {/* Sender section */}
-                <div className="label-section sender-box">
-                  <div className="section-hdr">ผู้ส่ง (SENDER)</div>
-                  <div className="section-content">
-                    <div className="name-row"><b>ชื่อ:</b> {senderName || '........................................................'}</div>
-                    <div className="phone-row"><b>โทร:</b> {senderPhone || '........................................................'}</div>
-                    <div className="address-row">
-                      <b>ที่อยู่:</b> {senderAddressDetail ? `${senderAddressDetail} ${senderDistrict ? `${senderDistrict}` : ''} ${senderProvince ? `${senderProvince}` : ''}` : '................................................................................................................................................'}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Receiver section */}
-                <div className="label-section receiver-box">
-                  <div className="section-hdr">ผู้รับ (RECEIVER)</div>
-                  <div className="section-content">
-                    <div className="name-row" style={{ fontSize: '14px' }}><b>ชื่อ:</b> <b>{receiverName || '........................................................'}</b></div>
-                    <div className="phone-row" style={{ fontSize: '14px' }}><b>โทร:</b> <b>{receiverPhone || '........................................................'}</b></div>
-                    <div className="address-row" style={{ fontSize: '13px' }}>
-                      <b>ที่อยู่:</b> {receiverAddressDetail ? `${receiverAddressDetail} ${receiverDistrict ? `${receiverDistrict}` : ''} ${receiverProvince ? `${receiverProvince}` : ''}` : '................................................................................................................................................'}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Shipping info footer */}
-                <div className="label-footer">
-                  {shippingType === 'cod' ? (
-                    <div className="cod-badge-container">
-                      <div className="cod-badge">COD</div>
-                      <div className="cod-amount-box">
-                        <div className="cod-title">ยอดเก็บเงินปลายทาง</div>
-                        <div className="cod-val">฿{codAmount ? Number(codAmount).toLocaleString() : '0'}</div>
+              <div className="label-grid">
+                {/* Left Column (Sender) */}
+                <div className="grid-left">
+                  <div className="label-section sender-box">
+                    <div className="section-hdr">ผู้ส่ง (SENDER)</div>
+                    <div className="section-content">
+                      <div className="name-row"><b>ชื่อ:</b> {senderName || '........................................................'}</div>
+                      <div className="phone-row"><b>โทร:</b> {senderPhone || '........................................................'}</div>
+                      <div className="address-row">
+                        <b>ที่อยู่:</b> {senderAddressDetail ? `${senderAddressDetail} ${senderDistrict ? `${senderDistrict}` : ''} ${senderProvince ? `${senderProvince}` : ''}` : '................................................................................................................................................'}
                       </div>
                     </div>
-                  ) : (
-                    <div className="general-shipping-badge">
-                      การจัดส่งทั่วไป (General Delivery)
+                  </div>
+                </div>
+
+                {/* Right Column (COD + Receiver) */}
+                <div className="grid-right">
+                  {/* COD / General badge (Top Right) */}
+                  <div className="label-badge-area">
+                    {shippingType === 'cod' ? (
+                      <div className="cod-badge-container">
+                        <div className="cod-badge">COD</div>
+                        <div className="cod-amount-box">
+                          <div className="cod-title">ยอดเก็บเงินปลายทาง</div>
+                          <div className="cod-val">฿{codAmount ? Number(codAmount).toLocaleString() : '0'}</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="general-shipping-badge">
+                        การจัดส่งทั่วไป (General Delivery)
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Receiver box (Bottom Right) */}
+                  <div className="label-section receiver-box">
+                    <div className="section-hdr" style={{ backgroundColor: '#10b981' }}>ผู้รับ (RECEIVER)</div>
+                    <div className="section-content">
+                      <div className="name-row" style={{ fontSize: '13px' }}><b>ชื่อ:</b> <b>{receiverName || '........................................................'}</b></div>
+                      <div className="phone-row" style={{ fontSize: '13px' }}><b>โทร:</b> <b>{receiverPhone || '........................................................'}</b></div>
+                      <div className="address-row" style={{ fontSize: '12px' }}>
+                        <b>ที่อยู่:</b> {receiverAddressDetail ? `${receiverAddressDetail} ${receiverDistrict ? `${receiverDistrict}` : ''} ${receiverProvince ? `${receiverProvince}` : ''}` : '................................................................................................................................................'}
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -2516,10 +2521,10 @@ export default function ContractPage() {
           background: #475569;
         }
 
-        /* Shipping Label Styles */
+        /* Shipping Label Styles (A5 Landscape) */
         .shipping-label-document {
-          width: 100mm;
-          min-height: 150mm;
+          width: 210mm;
+          height: 148mm;
           background: #ffffff;
           color: #000000;
           padding: 8mm;
@@ -2527,7 +2532,6 @@ export default function ContractPage() {
           font-family: 'Sarabun', 'Helvetica Neue', Arial, sans-serif;
           font-size: 11.5px;
           line-height: 1.4;
-          position: relative;
           box-sizing: border-box;
           border-radius: 6px;
           display: flex;
@@ -2535,41 +2539,61 @@ export default function ContractPage() {
           border: 1px solid #ddd;
         }
 
-        .label-header {
-          text-align: center;
+        .label-top-bar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
           border-bottom: 2px dashed #000000;
           padding-bottom: 6px;
           margin-bottom: 10px;
         }
 
-        .label-header h2 {
-          font-size: 15px;
+        .label-top-bar h2 {
+          font-size: 14px;
           font-weight: 850;
           margin: 0;
           color: #000000;
         }
 
-        .label-sub {
-          font-size: 10px;
+        .label-sub-title {
+          font-size: 9px;
           font-weight: bold;
           color: #555555;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          display: block;
-          margin-top: 2px;
         }
 
-        .label-body {
+        .label-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 6mm;
+          flex: 1;
+        }
+
+        .grid-left {
           display: flex;
           flex-direction: column;
-          gap: 10px;
-          flex: 1;
+          justify-content: flex-start;
+          height: 100%;
+        }
+
+        .grid-right {
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          height: 100%;
         }
 
         .label-section {
           border: 1px solid #000000;
           border-radius: 4px;
           padding: 8px;
+        }
+
+        .sender-box {
+          height: calc(100% - 4px);
+        }
+
+        .receiver-box {
+          /* bottom right */
         }
 
         .section-hdr {
@@ -2580,7 +2604,7 @@ export default function ContractPage() {
           padding: 2px 6px;
           border-radius: 2px;
           display: inline-block;
-          margin-bottom: 4px;
+          margin-bottom: 6px;
           text-transform: uppercase;
         }
 
@@ -2590,13 +2614,11 @@ export default function ContractPage() {
         }
 
         .name-row, .phone-row, .address-row {
-          margin-bottom: 3px;
+          margin-bottom: 4px;
         }
 
-        .label-footer {
-          margin-top: auto;
-          padding-top: 10px;
-          border-top: 2px dashed #000000;
+        .label-badge-area {
+          margin-bottom: 6px;
         }
 
         .cod-badge-container {
@@ -2612,7 +2634,7 @@ export default function ContractPage() {
           color: #ffffff;
           font-size: 20px;
           font-weight: 900;
-          padding: 8px 12px;
+          padding: 6px 12px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -2620,7 +2642,7 @@ export default function ContractPage() {
 
         .cod-amount-box {
           flex: 1;
-          padding: 4px 8px;
+          padding: 2px 8px;
           display: flex;
           flex-direction: column;
           justify-content: center;
@@ -2628,13 +2650,13 @@ export default function ContractPage() {
         }
 
         .cod-title {
-          font-size: 9px;
+          font-size: 8.5px;
           font-weight: bold;
           color: #ef4444;
         }
 
         .cod-val {
-          font-size: 18px;
+          font-size: 17px;
           font-weight: 900;
           color: #ef4444;
         }
@@ -2643,39 +2665,45 @@ export default function ContractPage() {
           border: 2px solid #10b981;
           background: #ecfdf5;
           color: #10b981;
-          font-size: 13px;
+          font-size: 12px;
           font-weight: 800;
           text-align: center;
-          padding: 8px;
+          padding: 6px;
           border-radius: 6px;
         }
 
-        /* Responsive override for print preview on mobile screens */
+        /* Screen Responsive zoom to fit left-column container preview */
+        @media screen and (max-width: 1200px) {
+          .shipping-label-document {
+            zoom: 0.75;
+            transform-origin: top center;
+            margin: 0 auto;
+          }
+        }
         @media screen and (max-width: 767px) {
           .shipping-label-document {
-            zoom: 0.8;
+            zoom: 0.5;
             transform-origin: top center;
             margin: 0 auto;
           }
         }
         @media screen and (max-width: 479px) {
           .shipping-label-document {
-            zoom: 0.6;
+            zoom: 0.4;
             transform-origin: top center;
             margin: 0 auto;
           }
         }
 
-        /* Print Override for Shipping label sizing */
+        /* Print Override for Shipping label A5 Landscape sizing */
         @media print {
           .print-shipping-only #printable-shipping-area {
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
-            width: 100mm !important;
-            height: 150mm !important;
-            min-height: 150mm !important;
-            padding: 5mm !important;
+            width: 210mm !important;
+            height: 148mm !important;
+            padding: 6mm !important;
             box-shadow: none !important;
             border: none !important;
             margin: 0 !important;
@@ -2686,6 +2714,10 @@ export default function ContractPage() {
             page-break-after: avoid !important;
             page-break-before: avoid !important;
             border-radius: 0 !important;
+          }
+          @page {
+            size: A5 landscape !important;
+            margin: 0 !important;
           }
         }
 
