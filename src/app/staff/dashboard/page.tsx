@@ -226,6 +226,25 @@ export default function StaffDashboard() {
     }
   };
 
+  const handleCancelPayment = async (deviceId: string, saleType?: string) => {
+    if (!confirm('해당 건의 완납 처리를 취소하고 미수/할부 상태로 되돌리시겠습니까?\n(Do you want to cancel the payment completion for this item?)')) return;
+    try {
+      const targetStatus = saleType === 'installment' ? 'collecting' : 'unpaid';
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .update({
+          payment_status: targetStatus
+        })
+        .eq('id', deviceId);
+
+      if (error) throw error;
+      showToast('완납 취소가 완료되었습니다. (Payment cancelled successfully.)', 'success');
+      loadLedgerData();
+    } catch (err: any) {
+      showToast('완납 취소 실패: ' + err.message, 'error');
+    }
+  };
+
   // Edit Modal States
   const [editingDevice, setEditingDevice] = useState<DeviceItem | null>(null);
 
@@ -3678,17 +3697,18 @@ export default function StaffDashboard() {
                     <tr>
                       <th style={{ width: '10%' }}>판매일</th>
                       <th style={{ width: '15%' }}>기기 정보</th>
-                      <th style={{ width: '15%' }}>IMEI</th>
-                      <th style={{ width: '25%' }}>판매 상세 (Payment Details)</th>
-                      <th style={{ width: '15%', textAlign: 'right' }}>미수 금액 (Balance)</th>
-                      <th style={{ width: '10%', textAlign: 'center' }}>상태</th>
-                      <th style={{ width: '10%', textAlign: 'center' }}>입금 확인</th>
+                      <th style={{ width: '12%' }}>IMEI</th>
+                      <th style={{ width: '12%' }}>고객명</th>
+                      <th style={{ width: '23%' }}>판매 상세 (Payment Details)</th>
+                      <th style={{ width: '13%', textAlign: 'right' }}>미수 금액 (Balance)</th>
+                      <th style={{ width: '7%', textAlign: 'center' }}>상태</th>
+                      <th style={{ width: '8%', textAlign: 'center' }}>입금 확인</th>
                     </tr>
                   </thead>
                   <tbody>
                     {marginStats.unpaidList.length === 0 ? (
                       <tr>
-                        <td colSpan={7} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>정산 대기 중인 미수금 내역이 없습니다. (No pending receivables.)</td>
+                        <td colSpan={8} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>정산 대기 중인 미수금 내역이 없습니다. (No pending receivables.)</td>
                       </tr>
                     ) : (
                       marginStats.unpaidList.map(item => (
@@ -3696,6 +3716,34 @@ export default function StaffDashboard() {
                           <td style={{ fontWeight: 700 }}>{item.sale_date || '-'}</td>
                           <td style={{ fontWeight: 700 }}>{item.model_name}</td>
                           <td className="font-mono" style={{ fontSize: '11px' }}>{item.imei}</td>
+                          <td>
+                            {editingCell?.id === item.id && editingCell?.field === 'customer_name' ? (
+                              <input
+                                type="text"
+                                value={editCellValue}
+                                onChange={(e) => setEditCellValue(e.target.value)}
+                                onBlur={() => handleInlineSave(item.id, 'customer_name', editCellValue)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleInlineSave(item.id, 'customer_name', editCellValue);
+                                  if (e.key === 'Escape') setEditingCell(null);
+                                }}
+                                autoFocus
+                                className="form-input"
+                                style={{ margin: 0, padding: '4px 6px', fontSize: '11px', height: '26px', width: '100%', boxSizing: 'border-box' }}
+                              />
+                            ) : (
+                              <div
+                                style={{ cursor: 'pointer', fontWeight: 700, color: item.customer_name ? 'var(--t1)' : 'var(--t3)', fontSize: '12.5px', textDecoration: 'underline dotted var(--border)' }}
+                                onClick={() => {
+                                  setEditingCell({ id: item.id, field: 'customer_name' });
+                                  setEditCellValue(item.customer_name || '');
+                                }}
+                                title="클릭하여 수정"
+                              >
+                                👤 {item.customer_name || '미기입'}
+                              </div>
+                            )}
+                          </td>
                           <td>{getSaleDetailsLabel(item)}</td>
                           <td style={{ textAlign: 'right', fontWeight: 800, color: item.payment_status === 'unpaid' ? 'var(--red)' : '#d97706' }}>
                             ฿{item.payment_status === 'unpaid' ? formatPrice(item.cod_amount || 0) : formatPrice((item.installment_months || 0) * (item.installment_amount || 0))}
@@ -3772,13 +3820,50 @@ export default function StaffDashboard() {
                                   📄 {item.installment_number}
                                 </div>
                               )}
-                              {(item.customer_name || item.customer_phone) && (
-                                <div style={{ marginTop: '2px', fontSize: '10.5px', color: 'var(--t2)', fontWeight: 'normal' }}>
-                                  👤 {item.customer_name || '미기입'} {item.customer_phone ? `(${item.customer_phone})` : ''}
-                                </div>
+                              <div style={{ marginTop: '2px', fontSize: '10.5px', color: 'var(--t2)', fontWeight: 'normal' }}>
+                                👤{' '}
+                                {editingCell?.id === item.id && editingCell?.field === 'customer_name' ? (
+                                  <input
+                                    type="text"
+                                    value={editCellValue}
+                                    onChange={(e) => setEditCellValue(e.target.value)}
+                                    onBlur={() => handleInlineSave(item.id, 'customer_name', editCellValue)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleInlineSave(item.id, 'customer_name', editCellValue);
+                                      if (e.key === 'Escape') setEditingCell(null);
+                                    }}
+                                    autoFocus
+                                    className="form-input"
+                                    style={{ margin: 0, padding: '2px 4px', fontSize: '10.5px', height: '22px', width: '80px', display: 'inline-block' }}
+                                  />
+                                ) : (
+                                  <span
+                                    style={{ cursor: 'pointer', fontWeight: 600, color: 'var(--t1)', textDecoration: 'underline dotted var(--border)' }}
+                                    onClick={() => {
+                                      setEditingCell({ id: item.id, field: 'customer_name' });
+                                      setEditCellValue(item.customer_name || '');
+                                    }}
+                                    title="클릭하여 수정"
+                                  >
+                                    {item.customer_name || '미기입'}
+                                  </span>
+                                )}
+                                {item.customer_phone ? ` (${item.customer_phone})` : ''}
+                              </div>
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <div>{getPaymentStatusBadge(item.payment_status)}</div>
+                              {item.payment_status === 'paid' && (item.sale_type === 'cod' || item.sale_type === 'installment') && (
+                                <button
+                                  type="button"
+                                  className="btn-sm btn-red"
+                                  onClick={() => handleCancelPayment(item.id, item.sale_type)}
+                                  style={{ padding: '2px 6px', fontSize: '9.5px', fontWeight: 800, marginTop: '4px', display: 'inline-block', cursor: 'pointer', margin: 0 }}
+                                >
+                                  완납 취소
+                                </button>
                               )}
                             </td>
-                            <td style={{ textAlign: 'center' }}>{getPaymentStatusBadge(item.payment_status)}</td>
                             <td>{item.seller_name || '-'}</td>
                             <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--green)' }}>
                               ฿{formatPrice(price)}<br/>
