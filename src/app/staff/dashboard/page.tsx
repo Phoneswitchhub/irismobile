@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from '@/lib/i18n';
 import { formatPrice } from '@/lib/utils';
+import { INTEREST_TABLE, getClosestPrice } from '@/lib/interestTable';
 
 interface DeviceItem {
   id: string;
@@ -27,6 +28,12 @@ interface DeviceItem {
   is_reserved?: boolean;
   reserved_by?: string;
   reserved_date?: string;
+  sale_type?: string;
+  deposit_amount?: number;
+  cod_amount?: number;
+  installment_months?: number;
+  installment_amount?: number;
+  payment_status?: string;
 }
 
 export default function StaffDashboard() {
@@ -110,6 +117,104 @@ export default function StaffDashboard() {
   const [sellerName, setSellerName] = useState('');
   const [saleNotes, setSaleNotes] = useState('');
   const [processingSale, setProcessingSale] = useState(false);
+  const [saleType, setSaleType] = useState<'transfer' | 'cod' | 'installment' | 'cash'>('transfer');
+  const [depositAmount, setDepositAmount] = useState<number | string>(0);
+  const [transferAmount, setTransferAmount] = useState<number | string>(0);
+  const [codAmountInput, setCodAmountInput] = useState<number | string>(0);
+  const [instMonths, setInstMonths] = useState<number>(4);
+  const [instMonthlyPayment, setInstMonthlyPayment] = useState<number | string>(0);
+
+  const calculatedFinalPrice = useMemo(() => {
+    const dep = Number(depositAmount) || 0;
+    if (saleType === 'transfer' || saleType === 'cash') {
+      return dep + (Number(transferAmount) || 0);
+    } else if (saleType === 'cod') {
+      return dep + (Number(codAmountInput) || 0);
+    } else if (saleType === 'installment') {
+      return dep + (Number(instMonths) || 4) * (Number(instMonthlyPayment) || 0);
+    }
+    return 0;
+  }, [saleType, depositAmount, transferAmount, codAmountInput, instMonths, instMonthlyPayment]);
+
+  useEffect(() => {
+    if (!sellingDevice || saleType !== 'installment') return;
+    const price = sellingDevice.selling_price || 0;
+    if (price >= 5000 && price <= 40000) {
+      const closest = getClosestPrice(price);
+      const row = INTEREST_TABLE[closest];
+      if (row) {
+        const m = instMonths;
+        if (m === 3 || m === 4 || m === 6 || m === 8 || m === 10) {
+          setInstMonthlyPayment(row[m]);
+          if (Number(depositAmount) === 0) {
+            setDepositAmount(row.down);
+          }
+        }
+      }
+    }
+  }, [instMonths, saleType, sellingDevice]);
+
+  const getSaleDetailsLabel = useCallback((item: DeviceItem) => {
+    const dep = item.deposit_amount || 0;
+    const type = item.sale_type || 'transfer';
+    if (type === 'transfer') {
+      return `송금 완납${dep > 0 ? ` (보증금 ฿${formatPrice(dep)})` : ''}`;
+    } else if (type === 'cash') {
+      return `현금 완납${dep > 0 ? ` (보증금 ฿${formatPrice(dep)})` : ''}`;
+    } else if (type === 'cod') {
+      return `COD (보증금 ฿${formatPrice(dep)} / COD ฿${formatPrice(item.cod_amount || 0)})`;
+    } else if (type === 'installment') {
+      return `할부 (보증금 ฿${formatPrice(dep)} / ${item.installment_months}개월 x ฿${formatPrice(item.installment_amount || 0)})`;
+    }
+    return '-';
+  }, []);
+
+  const getPaymentStatusBadge = useCallback((status?: string) => {
+    if (status === 'paid') {
+      return <span style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'var(--green)', padding: '4px 8px', borderRadius: '6px', fontSize: '10.5px', fontWeight: 800 }}>완납</span>;
+    } else if (status === 'unpaid') {
+      return <span style={{ background: 'rgba(239, 68, 68, 0.12)', color: 'var(--red)', padding: '4px 8px', borderRadius: '6px', fontSize: '10.5px', fontWeight: 800 }}>미수</span>;
+    } else if (status === 'collecting') {
+      return <span style={{ background: 'rgba(217, 119, 6, 0.12)', color: '#d97706', padding: '4px 8px', borderRadius: '6px', fontSize: '10.5px', fontWeight: 800 }}>할부중</span>;
+    }
+    return <span style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'var(--green)', padding: '4px 8px', borderRadius: '6px', fontSize: '10.5px', fontWeight: 800 }}>완납</span>;
+  }, []);
+
+  const marginStats = useMemo(() => {
+    const soldList = devices.filter(d => !d.deleted_at && d.is_sold);
+    const totalPaidTHB = soldList.filter(d => d.payment_status === 'paid' || !d.payment_status).reduce((sum, d) => sum + Number(d.selling_price || 0), 0);
+    const totalPaidCostKRW = soldList.filter(d => d.payment_status === 'paid' || !d.payment_status).reduce((sum, d) => sum + Number(d.purchase_cost_krw || 0), 0);
+    const totalUnpaidCODTHB = soldList.filter(d => d.payment_status === 'unpaid').reduce((sum, d) => sum + Number(d.cod_amount || 0), 0);
+    const activeInstallmentCount = soldList.filter(d => d.payment_status === 'collecting').length;
+    const unpaidList = soldList.filter(d => d.payment_status === 'unpaid' || d.payment_status === 'collecting');
+    
+    return {
+      totalPaidTHB,
+      totalPaidCostKRW,
+      totalUnpaidCODTHB,
+      activeInstallmentCount,
+      unpaidList,
+      soldList
+    };
+  }, [devices]);
+
+  const handleConfirmPayment = async (deviceId: string) => {
+    if (!confirm('해당 건의 입금을 확인하셨습니까?\n(Has the deposit/payment for this item been confirmed?)')) return;
+    try {
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .update({
+          payment_status: 'paid'
+        })
+        .eq('id', deviceId);
+
+      if (error) throw error;
+      showToast('입금 확인이 완료되었습니다. (Payment confirmed successfully.)', 'success');
+      loadLedgerData();
+    } catch (err: any) {
+      showToast('입금 확인 실패: ' + err.message, 'error');
+    }
+  };
 
   // Edit Modal States
   const [editingDevice, setEditingDevice] = useState<DeviceItem | null>(null);
@@ -1365,6 +1470,12 @@ export default function StaffDashboard() {
     setSaleDate(new Date().toLocaleDateString('ko-KR').slice(2));
     setSellerName('');
     setSaleNotes('');
+    setSaleType('transfer');
+    setDepositAmount(0);
+    setTransferAmount(device.selling_price || 0);
+    setCodAmountInput(0);
+    setInstMonths(4);
+    setInstMonthlyPayment(0);
   };
 
   const handleProcessSale = async () => {
@@ -1376,6 +1487,13 @@ export default function StaffDashboard() {
 
     setProcessingSale(true);
     try {
+      let paymentStatus = 'paid';
+      if (saleType === 'cod') {
+        paymentStatus = 'unpaid';
+      } else if (saleType === 'installment') {
+        paymentStatus = 'collecting';
+      }
+
       const { error } = await supabase
         .from('sheets_inventory')
         .update({
@@ -1385,7 +1503,14 @@ export default function StaffDashboard() {
           reserved_date: null,
           sale_date: saleDate,
           seller_name: sellerName.trim(),
-          notes: saleNotes.trim() || null
+          notes: saleNotes.trim() || null,
+          selling_price: calculatedFinalPrice,
+          sale_type: saleType,
+          deposit_amount: Number(depositAmount) || 0,
+          cod_amount: saleType === 'cod' ? (Number(codAmountInput) || 0) : 0,
+          installment_months: saleType === 'installment' ? (Number(instMonths) || 0) : 0,
+          installment_amount: saleType === 'installment' ? (Number(instMonthlyPayment) || 0) : 0,
+          payment_status: paymentStatus
         })
         .eq('id', sellingDevice.id);
 
@@ -2604,40 +2729,43 @@ export default function StaffDashboard() {
                         }}
                       />
                     </th>
-                    <th style={{ width: '11%', cursor: 'pointer' }} onClick={() => toggleSort('sale_date')}>
+                    <th style={{ width: '9%', cursor: 'pointer' }} onClick={() => toggleSort('sale_date')}>
                       {t('staff_th_sale_date')} {sortField === 'sale_date' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th style={{ width: '11%', cursor: 'pointer' }} onClick={() => toggleSort('sticker')}>
+                    <th style={{ width: '9%', cursor: 'pointer' }} onClick={() => toggleSort('sticker')}>
                       {t('staff_th_sticker')} {sortField === 'sticker' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
+                    <th style={{ width: '12%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
                       {t('staff_th_model')} {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th style={{ width: '13%' }}>IMEI</th>
-                    <th style={{ width: '8%' }}>Color</th>
-                    <th style={{ width: '10%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('purchase_cost_krw')}>
+                    <th style={{ width: '11%' }}>IMEI</th>
+                    <th style={{ width: '8%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('purchase_cost_krw')}>
                       {t('staff_th_purchase_cost')} {sortField === 'purchase_cost_krw' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th style={{ width: '10%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
+                    <th style={{ width: '9%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
                       {t('staff_th_selling_price')} {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th style={{ width: '10%', cursor: 'pointer' }} onClick={() => toggleSort('seller_name')}>
+                    <th style={{ width: '16%' }}>판매 상세 (Payment Details)</th>
+                    <th style={{ width: '8%', textAlign: 'center', cursor: 'pointer' }} onClick={() => toggleSort('payment_status')}>
+                      수납 상태 {sortField === 'payment_status' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th style={{ width: '7%', cursor: 'pointer' }} onClick={() => toggleSort('seller_name')}>
                       {t('staff_th_seller_name')} {sortField === 'seller_name' && (sortDirection === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th style={{ width: '12%' }}>{t('staff_th_sale_memo')}</th>
-                    <th style={{ width: '10%', textAlign: 'center' }}>{t('staff_th_restore')}</th>
+                    <th style={{ width: '7%' }}>{t('staff_th_sale_memo')}</th>
+                    <th style={{ width: '4%', textAlign: 'center' }}>{t('staff_th_restore')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loadingData ? (
                     <tr>
-                      <td colSpan={11} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
+                      <td colSpan={12} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
                         Loading sold device list...
                       </td>
                     </tr>
                   ) : filteredSoldDevices.length === 0 ? (
                     <tr>
-                      <td colSpan={11} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
+                      <td colSpan={12} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
                         {t('staff_empty_sold') || '판매 완료된 기기 내역이 없습니다.'}
                       </td>
                     </tr>
@@ -2661,9 +2789,10 @@ export default function StaffDashboard() {
                         <td style={{ color: 'var(--t2)' }}>{item.sticker || '-'}</td>
                         <td style={{ fontWeight: 700, wordBreak: 'break-all' }}>{item.model_name}</td>
                         <td className="font-mono" style={{ fontSize: '11px', wordBreak: 'break-all' }}>{item.imei}</td>
-                        <td>{item.color || '-'}</td>
                         <td style={{ textAlign: 'right', color: '#94a3b8' }}>₩{formatPrice(item.purchase_cost_krw)}</td>
                         <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)' }}>฿{formatPrice(item.selling_price)}</td>
+                        <td style={{ fontSize: '11.5px', color: 'var(--t1)' }}>{getSaleDetailsLabel(item)}</td>
+                        <td style={{ textAlign: 'center' }}>{getPaymentStatusBadge(item.payment_status)}</td>
                         <td style={{ fontWeight: 700 }}>{item.seller_name || '-'}</td>
                         <td style={{ fontSize: '11px', color: 'var(--t2)' }}>{item.notes || '-'}</td>
                         <td style={{ textAlign: 'center' }}>
@@ -2805,14 +2934,155 @@ export default function StaffDashboard() {
 
         {/* ==================== VIEW 5: MARGIN & SETTLEMENT (ADMIN ONLY) ==================== */}
         {activeTab === 'margin' && staffProfile?.role === 'admin' && (
-          <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '32px', textAlign: 'center' }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>📈</div>
-              <h3 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '8px' }}>{t('staff_menu_margin') || '마진 및 정산관리'}</h3>
-              <p style={{ color: 'var(--t2)', fontSize: '13px', lineHeight: 1.6 }}>
-                {t('staff_margin_prep')}
-              </p>
+          <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            
+            {/* Margins Summary Widgets */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+              {/* Paid Margin Card */}
+              <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>💰</div>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>수납 완료 마진 (Paid Margin)</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--green)', marginTop: '4px' }}>฿{marginStats.totalPaidTHB.toLocaleString()}</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>원가: ₩{marginStats.totalPaidCostKRW.toLocaleString()}</div>
+                </div>
+              </div>
+
+              {/* Receivables Card */}
+              <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>⏳</div>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>COD 미수금 잔액 (COD Receivables)</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--red)', marginTop: '4px' }}>฿{marginStats.totalUnpaidCODTHB.toLocaleString()}</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>배송 완료 후 정산 대기</div>
+                </div>
+              </div>
+
+              {/* Installments Card */}
+              <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>📅</div>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>할부 판매 진행 건 (Installments)</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#d97706', marginTop: '4px' }}>{marginStats.activeInstallmentCount}건 (Sales)</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>매월 계약서 기준 분납 수납</div>
+                </div>
+              </div>
             </div>
+
+            {/* Part 1: Receivables & Unpaid Table */}
+            <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: 'var(--red)' }}>🔴</span> 미수금 및 할부 수납 관리 (Receivables & Collections)
+              </h4>
+              <div className="tbl-wrap" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+                <table className="tbl" style={{ margin: 0 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '10%' }}>판매일</th>
+                      <th style={{ width: '15%' }}>기기 정보</th>
+                      <th style={{ width: '15%' }}>IMEI</th>
+                      <th style={{ width: '25%' }}>판매 상세 (Payment Details)</th>
+                      <th style={{ width: '15%', textAlign: 'right' }}>미수 금액 (Balance)</th>
+                      <th style={{ width: '10%', textAlign: 'center' }}>상태</th>
+                      <th style={{ width: '10%', textAlign: 'center' }}>입금 확인</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {marginStats.unpaidList.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>정산 대기 중인 미수금 내역이 없습니다. (No pending receivables.)</td>
+                      </tr>
+                    ) : (
+                      marginStats.unpaidList.map(item => (
+                        <tr key={item.id}>
+                          <td style={{ fontWeight: 700 }}>{item.sale_date || '-'}</td>
+                          <td style={{ fontWeight: 700 }}>{item.model_name}</td>
+                          <td className="font-mono" style={{ fontSize: '11px' }}>{item.imei}</td>
+                          <td>{getSaleDetailsLabel(item)}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 800, color: item.payment_status === 'unpaid' ? 'var(--red)' : '#d97706' }}>
+                            ฿{item.payment_status === 'unpaid' ? formatPrice(item.cod_amount || 0) : formatPrice((item.installment_months || 0) * (item.installment_amount || 0))}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>{getPaymentStatusBadge(item.payment_status)}</td>
+                          <td style={{ textAlign: 'center' }}>
+                            {item.payment_status === 'unpaid' && (
+                              <button
+                                type="button"
+                                className="btn-sm btn-green"
+                                onClick={() => handleConfirmPayment(item.id)}
+                                style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 800, margin: 0 }}
+                              >
+                                입금 완료
+                              </button>
+                            )}
+                            {item.payment_status === 'collecting' && (
+                              <button
+                                type="button"
+                                className="btn-sm btn-blue"
+                                onClick={() => handleConfirmPayment(item.id)}
+                                style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 800, margin: 0 }}
+                              >
+                                완납 처리
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Part 2: Complete Margin Ledger */}
+            <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>📊</span> 전체 판매 마진 대장 (Completed Margin Log)
+              </h4>
+              <div className="tbl-wrap" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+                <table className="tbl" style={{ margin: 0 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '10%' }}>판매일</th>
+                      <th style={{ width: '15%' }}>기기 정보</th>
+                      <th style={{ width: '12%', textAlign: 'right' }}>매입원가</th>
+                      <th style={{ width: '12%', textAlign: 'right' }}>소매판매가</th>
+                      <th style={{ width: '25%' }}>판매 상세 (Payment Details)</th>
+                      <th style={{ width: '10%', textAlign: 'center' }}>수납 상태</th>
+                      <th style={{ width: '8%', textAlign: 'center' }}>담당자</th>
+                      <th style={{ width: '8%', textAlign: 'right' }}>마진(예상)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {marginStats.soldList.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>판매 완료된 기기 내역이 없습니다. (No sales completed.)</td>
+                      </tr>
+                    ) : (
+                      marginStats.soldList.map(item => {
+                        const cost = item.purchase_cost_krw || 0;
+                        const price = item.selling_price || 0;
+                        return (
+                          <tr key={item.id}>
+                            <td>{item.sale_date || '-'}</td>
+                            <td style={{ fontWeight: 700 }}>{item.model_name}</td>
+                            <td style={{ textAlign: 'right', color: '#94a3b8' }}>₩{formatPrice(cost)}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)' }}>฿{formatPrice(price)}</td>
+                            <td style={{ fontSize: '11.5px' }}>{getSaleDetailsLabel(item)}</td>
+                            <td style={{ textAlign: 'center' }}>{getPaymentStatusBadge(item.payment_status)}</td>
+                            <td>{item.seller_name || '-'}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--green)' }}>
+                              ฿{formatPrice(price)}<br/>
+                              <span style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: 'normal' }}>(-₩{formatPrice(cost)})</span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
           </div>
         )}
 
@@ -3356,7 +3626,7 @@ export default function StaffDashboard() {
               </p>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">{t('staff_label_sale_date')}</label>
+                <label className="form-label">{t('staff_label_sale_date')} *</label>
                 <input
                   type="text"
                   placeholder="26. 6. 8."
@@ -3368,7 +3638,7 @@ export default function StaffDashboard() {
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">{t('staff_label_seller')}</label>
+                <label className="form-label">{t('staff_label_seller')} *</label>
                 <select
                   value={sellerName}
                   onChange={(e) => setSellerName(e.target.value)}
@@ -3380,6 +3650,122 @@ export default function StaffDashboard() {
                     <option key={member.id} value={member.name}>{member.name}</option>
                   ))}
                 </select>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '12px' }}>
+                <label className="form-label">판매 방식 (Sale Type) *</label>
+                <select
+                  value={saleType}
+                  onChange={(e) => setSaleType(e.target.value as any)}
+                  className="form-input"
+                  style={{ margin: 0 }}
+                >
+                  <option value="transfer">송금 완납 (Full Transfer)</option>
+                  <option value="cash">현금 완납 (Cash Payment)</option>
+                  <option value="cod">보증금 + COD 발송 (Deposit + COD)</option>
+                  <option value="installment">보증금 + 할부 판매 (Deposit + Installments)</option>
+                </select>
+              </div>
+
+              {/* Conditional rows */}
+              {(saleType === 'transfer' || saleType === 'cash') && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">보증금 (Deposit)</label>
+                    <input
+                      type="number"
+                      value={depositAmount}
+                      onChange={(e) => setDepositAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="form-input"
+                      style={{ margin: 0 }}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">{saleType === 'transfer' ? '송금액 (Transfer Amount)' : '현금액 (Cash Amount)'}</label>
+                    <input
+                      type="number"
+                      value={transferAmount}
+                      onChange={(e) => setTransferAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="form-input"
+                      style={{ margin: 0 }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {saleType === 'cod' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">보증금 (Deposit)</label>
+                    <input
+                      type="number"
+                      value={depositAmount}
+                      onChange={(e) => setDepositAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="form-input"
+                      style={{ margin: 0 }}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">COD 금액 (COD Amount)</label>
+                    <input
+                      type="number"
+                      value={codAmountInput}
+                      onChange={(e) => setCodAmountInput(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="form-input"
+                      style={{ margin: 0 }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {saleType === 'installment' && (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px', marginBottom: '12px' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">보증금 (Deposit)</label>
+                      <input
+                        type="number"
+                        value={depositAmount}
+                        onChange={(e) => setDepositAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                        className="form-input"
+                        style={{ margin: 0 }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">할부 개월 수 (Months)</label>
+                      <select
+                        value={instMonths}
+                        onChange={(e) => setInstMonths(Number(e.target.value))}
+                        className="form-input"
+                        style={{ margin: 0 }}
+                      >
+                        <option value="3">3개월 (3 Months)</option>
+                        <option value="4">4개월 (4 Months)</option>
+                        <option value="6">6개월 (6 Months)</option>
+                        <option value="8">8개월 (8 Months)</option>
+                        <option value="10">10개월 (10 Months)</option>
+                      </select>
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">월 할부금 (Monthly Payment)</label>
+                      <input
+                        type="number"
+                        value={instMonthlyPayment}
+                        onChange={(e) => setInstMonthlyPayment(e.target.value === '' ? '' : Number(e.target.value))}
+                        className="form-input"
+                        style={{ margin: 0 }}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Total final price block */}
+              <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px', textAlign: 'center', marginBottom: '12px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, display: 'block', textTransform: 'uppercase', marginBottom: '4px' }}>최종 판매 금액 (Total Selling Price)</span>
+                <b style={{ fontSize: '20px', color: 'var(--green)' }}>฿{calculatedFinalPrice.toLocaleString()}</b>
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>

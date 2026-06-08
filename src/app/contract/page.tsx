@@ -2888,6 +2888,10 @@ export default function ContractPage() {
             display: flex !important;
             flex-direction: column !important;
             position: relative !important;
+            zoom: 1 !important;
+            transform: none !important;
+            transform-origin: unset !important;
+            margin: 0 !important;
           }
 
           /* Webkit grid print bug workaround: use float layout for printing */
