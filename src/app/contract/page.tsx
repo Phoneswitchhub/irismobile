@@ -148,6 +148,44 @@ export default function ContractPage() {
     }
   }, [senderName, senderPhone, senderProvince, senderDistrict, senderAddressDetail]);
 
+  // Saved shipping label state (for 2-in-1 layout)
+  const [savedLabel, setSavedLabel] = useState<{
+    receiverName: string;
+    receiverPhone: string;
+    receiverProvince: string;
+    receiverDistrict: string;
+    receiverAddressDetail: string;
+    shippingType: 'general' | 'cod';
+    codAmount: number | string;
+  } | null>(null);
+
+  const handleSaveFirstLabel = () => {
+    if (!receiverName.trim()) {
+      alert('กรุณากรอกชื่อผู้รับ (Please enter receiver name)');
+      return;
+    }
+    setSavedLabel({
+      receiverName,
+      receiverPhone,
+      receiverProvince,
+      receiverDistrict,
+      receiverAddressDetail,
+      shippingType,
+      codAmount
+    });
+    // Clear receiver inputs for the second label
+    setReceiverName('');
+    setReceiverPhone('');
+    setReceiverProvince('');
+    setReceiverDistrict('');
+    setReceiverAddressDetail('');
+    setCodAmount('');
+  };
+
+  const handleClearSavedLabel = () => {
+    setSavedLabel(null);
+  };
+
   // Check login and fetch profile details
   useEffect(() => {
     const checkUser = async () => {
@@ -1258,9 +1296,34 @@ export default function ContractPage() {
                 )}
               </div>
 
-              <div style={{ marginTop: '10px' }}>
+              <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button 
+                    className="btn-submit" 
+                    style={{ margin: 0, flex: 1, backgroundColor: '#8b5cf6', color: '#fff' }}
+                    onClick={handleSaveFirstLabel}
+                  >
+                    {savedLabel ? '💾 변경 저장 (Save 1st Label)' : '💾 1번째 송장 저장 (Save 1st)'}
+                  </button>
+                  {savedLabel && (
+                    <button 
+                      className="btn-submit" 
+                      style={{ margin: 0, flex: 0.4, backgroundColor: '#ef4444', color: '#fff' }}
+                      onClick={handleClearSavedLabel}
+                    >
+                      ❌ 비우기
+                    </button>
+                  )}
+                </div>
+
+                {savedLabel && (
+                  <div style={{ fontSize: '11.5px', color: '#10b981', fontWeight: 'bold', textAlign: 'center', background: '#ecfdf5', padding: '6px', borderRadius: '6px', border: '1px solid #a7f3d0' }}>
+                    📌 1번째 저장됨: {savedLabel.receiverName} ({savedLabel.receiverPhone})
+                  </div>
+                )}
+
                 <button className="btn-print" onClick={handlePrint}>
-                  🖨️ พิมพ์ใบปะหน้า (Print Shipping Label)
+                  🖨️ {savedLabel ? '🖨️ 2개 묶어서 인쇄하기 (Print 2 Labels)' : '🖨️ 현재 송장 인쇄하기 (Print Shipping Label)'}
                 </button>
               </div>
             </div>
@@ -1270,54 +1333,111 @@ export default function ContractPage() {
         {/* RIGHT COLUMN: Real A4 Document Preview */}
         <div className="preview-container">
           {sidebarTab === 'shipping' ? (
-            <div className="shipping-label-document" id="printable-shipping-area">
-              <div className="label-top-bar">
-                <h2>PHONE SWITCH HUB CO., LTD.</h2>
-                <span className="label-sub-title">ใบปะหน้าพัสดุ (Shipping Label)</span>
-              </div>
-              
-              <div className="label-grid">
-                {/* Left Column (Sender) */}
-                <div className="grid-left">
-                  <div className="label-section sender-box">
-                    <div className="section-hdr">ผู้ส่ง (SENDER)</div>
-                    <div className="section-content">
-                      <div className="name-row"><b>ชื่อ:</b> {senderName || '........................................................'}</div>
-                      <div className="phone-row"><b>โทร:</b> {senderPhone || '........................................................'}</div>
-                      <div className="address-row">
-                        <b>ที่อยู่:</b> {senderAddressDetail ? `${senderAddressDetail} ${senderDistrict ? `${senderDistrict}` : ''} ${senderProvince ? `${senderProvince}` : ''}` : '................................................................................................................................................'}
+            <div id="printable-shipping-area" className="shipping-print-container">
+              {/* 1st Label (Saved) */}
+              {savedLabel && (
+                <div className="shipping-label-document" style={{ marginBottom: '10mm' }}>
+                  <div className="label-top-bar">
+                    <h2>PHONE SWITCH HUB CO., LTD.</h2>
+                    <span className="label-sub-title">ใบปะหน้าพัสดุ (Shipping Label 1)</span>
+                  </div>
+                  
+                  <div className="label-grid">
+                    {/* Left Column (Sender) */}
+                    <div className="grid-left">
+                      <div className="label-section sender-box">
+                        <div className="section-hdr">ผู้ส่ง (SENDER)</div>
+                        <div className="section-content">
+                          <div className="name-row"><b>ชื่อ:</b> {senderName || '........................................................'}</div>
+                          <div className="phone-row"><b>โทร:</b> {senderPhone || '........................................................'}</div>
+                          <div className="address-row">
+                            <b>ที่อยู่:</b> {senderAddressDetail ? `${senderAddressDetail} ${senderDistrict ? `${senderDistrict}` : ''} ${senderProvince ? `${senderProvince}` : ''}` : '................................................................................................................................................'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column (COD + Receiver) */}
+                    <div className="grid-right">
+                      <div className="label-badge-area">
+                        {savedLabel.shippingType === 'cod' ? (
+                          <div className="cod-badge-container">
+                            <div className="cod-badge">COD</div>
+                            <div className="cod-amount-box">
+                              <div className="cod-title">ยอดเก็บเงินปลายทาง</div>
+                              <div className="cod-val">฿{savedLabel.codAmount ? Number(savedLabel.codAmount).toLocaleString() : '0'}</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="general-shipping-badge">
+                            การจัดส่งทั่วไป (General Delivery)
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="label-section receiver-box">
+                        <div className="section-hdr" style={{ backgroundColor: '#10b981' }}>ผู้รับ (RECEIVER)</div>
+                        <div className="section-content">
+                          <div className="name-row"><b>ชื่อ:</b> <b>{savedLabel.receiverName || '........................................................'}</b></div>
+                          <div className="phone-row"><b>โทร:</b> <b>{savedLabel.receiverPhone || '........................................................'}</b></div>
+                          <div className="address-row">
+                            <b>ที่อยู่:</b> {savedLabel.receiverAddressDetail ? `${savedLabel.receiverAddressDetail} ${savedLabel.receiverDistrict ? `${savedLabel.receiverDistrict}` : ''} ${savedLabel.receiverProvince ? `${savedLabel.receiverProvince}` : ''}` : '................................................................................................................................................'}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
+              )}
 
-                {/* Right Column (COD + Receiver) */}
-                <div className="grid-right">
-                  {/* COD / General badge (Top Right) */}
-                  <div className="label-badge-area">
-                    {shippingType === 'cod' ? (
-                      <div className="cod-badge-container">
-                        <div className="cod-badge">COD</div>
-                        <div className="cod-amount-box">
-                          <div className="cod-title">ยอดเก็บเงินปลายทาง</div>
-                          <div className="cod-val">฿{codAmount ? Number(codAmount).toLocaleString() : '0'}</div>
+              {/* 2nd Label (Active) */}
+              <div className="shipping-label-document">
+                <div className="label-top-bar">
+                  <h2>PHONE SWITCH HUB CO., LTD.</h2>
+                  <span className="label-sub-title">ใบปะหน้าพัสดุ (Shipping Label {savedLabel ? '2' : ''})</span>
+                </div>
+                
+                <div className="label-grid">
+                  {/* Left Column (Sender) */}
+                  <div className="grid-left">
+                    <div className="label-section sender-box">
+                      <div className="section-hdr">ผู้ส่ง (SENDER)</div>
+                      <div className="section-content">
+                        <div className="name-row"><b>ชื่อ:</b> {senderName || '........................................................'}</div>
+                        <div className="phone-row"><b>โทร:</b> {senderPhone || '........................................................'}</div>
+                        <div className="address-row">
+                          <b>ที่อยู่:</b> {senderAddressDetail ? `${senderAddressDetail} ${senderDistrict ? `${senderDistrict}` : ''} ${senderProvince ? `${senderProvince}` : ''}` : '................................................................................................................................................'}
                         </div>
                       </div>
-                    ) : (
-                      <div className="general-shipping-badge">
-                        การจัดส่งทั่วไป (General Delivery)
-                      </div>
-                    )}
+                    </div>
                   </div>
 
-                  {/* Receiver box (Bottom Right) */}
-                  <div className="label-section receiver-box">
-                    <div className="section-hdr" style={{ backgroundColor: '#10b981' }}>ผู้รับ (RECEIVER)</div>
-                    <div className="section-content">
-                      <div className="name-row"><b>ชื่อ:</b> <b>{receiverName || '........................................................'}</b></div>
-                      <div className="phone-row"><b>โทร:</b> <b>{receiverPhone || '........................................................'}</b></div>
-                      <div className="address-row">
-                        <b>ที่อยู่:</b> {receiverAddressDetail ? `${receiverAddressDetail} ${receiverDistrict ? `${receiverDistrict}` : ''} ${receiverProvince ? `${receiverProvince}` : ''}` : '................................................................................................................................................'}
+                  {/* Right Column (COD + Receiver) */}
+                  <div className="grid-right">
+                    <div className="label-badge-area">
+                      {shippingType === 'cod' ? (
+                        <div className="cod-badge-container">
+                          <div className="cod-badge">COD</div>
+                          <div className="cod-amount-box">
+                            <div className="cod-title">ยอดเก็บเงินปลายทาง</div>
+                            <div className="cod-val">฿{codAmount ? Number(codAmount).toLocaleString() : '0'}</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="general-shipping-badge">
+                          การจัดส่งทั่วไป (General Delivery)
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="label-section receiver-box">
+                      <div className="section-hdr" style={{ backgroundColor: '#10b981' }}>ผู้รับ (RECEIVER)</div>
+                      <div className="section-content">
+                        <div className="name-row"><b>ชื่อ:</b> <b>{receiverName || '........................................................'}</b></div>
+                        <div className="phone-row"><b>โทร:</b> <b>{receiverPhone || '........................................................'}</b></div>
+                        <div className="address-row">
+                          <b>ที่อยู่:</b> {receiverAddressDetail ? `${receiverAddressDetail} ${receiverDistrict ? `${receiverDistrict}` : ''} ${receiverProvince ? `${receiverProvince}` : ''}` : '................................................................................................................................................'}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2729,40 +2849,58 @@ export default function ContractPage() {
 
           .print-shipping-only #printable-shipping-area {
             position: absolute !important;
-            left: 10mm !important;
-            top: 10mm !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            padding: 10mm !important;
+            box-shadow: none !important;
+            border: none !important;
+            margin: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: flex-start !important;
+            align-items: center !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            page-break-after: avoid !important;
+            page-break-before: avoid !important;
+            border-radius: 0 !important;
+            box-sizing: border-box !important;
+            zoom: 1 !important;
+            gap: 10mm !important;
+          }
+
+          .print-shipping-only #printable-shipping-area .shipping-label-document {
             width: 190mm !important;
             height: 135mm !important;
             padding: 8mm !important;
             box-shadow: none !important;
             border: 2px solid #000000 !important;
-            margin: 0 !important;
-            display: flex !important;
-            flex-direction: column !important;
-            background: #ffffff !important;
-            color: #000000 !important;
-            page-break-after: avoid !important;
-            page-break-before: avoid !important;
             border-radius: 8px !important;
             box-sizing: border-box !important;
-            zoom: 1 !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            position: relative !important;
           }
 
           /* Webkit grid print bug workaround: use float layout for printing */
-          .print-shipping-only #printable-shipping-area .label-grid {
+          .print-shipping-only #printable-shipping-area .shipping-label-document .label-grid {
             display: block !important;
             width: 100% !important;
             height: calc(100% - 35px) !important;
             box-sizing: border-box !important;
           }
 
-          .print-shipping-only #printable-shipping-area .label-grid::after {
+          .print-shipping-only #printable-shipping-area .shipping-label-document .label-grid::after {
             content: "" !important;
             display: table !important;
             clear: both !important;
           }
 
-          .print-shipping-only #printable-shipping-area .grid-left {
+          .print-shipping-only #printable-shipping-area .shipping-label-document .grid-left {
             float: left !important;
             width: 48% !important;
             height: 100% !important;
@@ -2772,7 +2910,7 @@ export default function ContractPage() {
             box-sizing: border-box !important;
           }
 
-          .print-shipping-only #printable-shipping-area .grid-right {
+          .print-shipping-only #printable-shipping-area .shipping-label-document .grid-right {
             float: right !important;
             width: 48% !important;
             height: 100% !important;
@@ -2783,27 +2921,27 @@ export default function ContractPage() {
             box-sizing: border-box !important;
           }
 
-          .print-shipping-only #printable-shipping-area .label-section {
+          .print-shipping-only #printable-shipping-area .shipping-label-document .label-section {
             width: 100% !important;
             box-sizing: border-box !important;
           }
 
-          .print-shipping-only #printable-shipping-area .sender-box {
+          .print-shipping-only #printable-shipping-area .shipping-label-document .sender-box {
             height: auto !important;
           }
 
-          .print-shipping-only #printable-shipping-area .receiver-box {
+          .print-shipping-only #printable-shipping-area .shipping-label-document .receiver-box {
             width: 100% !important;
             box-sizing: border-box !important;
           }
 
-          .print-shipping-only #printable-shipping-area .label-badge-area {
+          .print-shipping-only #printable-shipping-area .shipping-label-document .label-badge-area {
             width: 100% !important;
             box-sizing: border-box !important;
           }
 
-          .print-shipping-only #printable-shipping-area .cod-badge-container,
-          .print-shipping-only #printable-shipping-area .general-shipping-badge {
+          .print-shipping-only #printable-shipping-area .shipping-label-document .cod-badge-container,
+          .print-shipping-only #printable-shipping-area .shipping-label-document .general-shipping-badge {
             width: 100% !important;
             box-sizing: border-box !important;
           }
