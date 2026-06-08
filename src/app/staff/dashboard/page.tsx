@@ -1176,6 +1176,7 @@ export default function StaffDashboard() {
           selling_price: sellingPriceVal,
           market_price: marketPriceVal,
           purchase_cost_krw: purchaseCostVal,
+          deleted_at: null, // Ensure soft-deleted items are restored on re-import
           created_at: nowString
         });
       }
@@ -1229,7 +1230,8 @@ export default function StaffDashboard() {
         market_price: x.marketPrice || 0,
         purchase_cost_krw: x.purchaseCost || 0,
         site_date: x.siteDate || null,
-        sale_date: x.saleDate || null
+        sale_date: x.saleDate || null,
+        deleted_at: null // Ensure soft-deleted items are restored on sync
       }));
 
       if (records.length === 0) {
@@ -1419,6 +1421,7 @@ export default function StaffDashboard() {
           selling_price: sellingPriceVal,
           market_price: marketPriceVal,
           purchase_cost_krw: purchaseCostVal,
+          deleted_at: null, // Ensure soft-deleted items are restored on paste
           created_at: nowString
         });
       }
