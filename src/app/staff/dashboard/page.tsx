@@ -114,7 +114,7 @@ export default function StaffDashboard() {
   const [editingDevice, setEditingDevice] = useState<DeviceItem | null>(null);
 
   // Inline Edit States
-  const [editingCell, setEditingCell] = useState<{ id: string; field: 'sticker' | 'site_date' | 'model_name' } | null>(null);
+  const [editingCell, setEditingCell] = useState<{ id: string; field: 'sticker' | 'site_date' | 'model_name' | 'imei' | 'color' | 'battery_pct' | 'purchase_cost_krw' | 'selling_price' | 'stock_location' | 'notes' } | null>(null);
   const [editCellValue, setEditCellValue] = useState<string>('');
 
   // Toast Alerts
@@ -1302,17 +1302,26 @@ export default function StaffDashboard() {
   };
 
   // Inline Cell Save Handler
-  const handleInlineSave = async (id: string, field: 'sticker' | 'site_date' | 'model_name', value: string) => {
+  const handleInlineSave = async (
+    id: string, 
+    field: 'sticker' | 'site_date' | 'model_name' | 'imei' | 'color' | 'battery_pct' | 'purchase_cost_krw' | 'selling_price' | 'stock_location' | 'notes', 
+    value: string
+  ) => {
     try {
+      let finalValue: any = value.trim();
+      if (field === 'purchase_cost_krw' || field === 'selling_price') {
+        finalValue = Number(value.replace(/[^\d]/g, '')) || 0;
+      }
+
       const { error } = await supabase
         .from('sheets_inventory')
-        .update({ [field]: value.trim() })
+        .update({ [field]: finalValue })
         .eq('id', id);
 
       if (error) throw error;
 
       // Update local state
-      setDevices(prev => prev.map(d => d.id === id ? { ...d, [field]: value.trim() } : d));
+      setDevices(prev => prev.map(d => d.id === id ? { ...d, [field]: finalValue } : d));
       showToast(t('toast_inline_save_success'), 'success');
     } catch (err: any) {
       showToast(t('toast_inline_save_failed') + err.message, 'error');
@@ -2227,24 +2236,207 @@ export default function StaffDashboard() {
                             </div>
                           )}
                         </td>
-                        <td className="font-mono" style={{ fontSize: '11px', wordBreak: 'break-all' }}>{item.imei}</td>
-                        <td>{item.color || '-'}</td>
-                        <td style={{ textAlign: 'center' }}>
-                          <span style={{ fontSize: '11px', padding: '2px 6px', background: '#f1f5f9', borderRadius: '4px', fontWeight: 600 }}>
-                            {item.battery_pct || '100'}
-                          </span>
+                        <td 
+                          className="font-mono" 
+                          style={{ fontSize: '11px', wordBreak: 'break-all', cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }}
+                          onClick={() => {
+                            if (staffProfile?.role !== 'admin') return;
+                            if (editingCell?.id !== item.id || editingCell?.field !== 'imei') {
+                              setEditingCell({ id: item.id, field: 'imei' });
+                              setEditCellValue(item.imei || '');
+                            }
+                          }}
+                        >
+                          {editingCell?.id === item.id && editingCell?.field === 'imei' ? (
+                            <input
+                              type="text"
+                              value={editCellValue}
+                              onChange={(e) => setEditCellValue(e.target.value)}
+                              onBlur={() => handleInlineSave(item.id, 'imei', editCellValue)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleInlineSave(item.id, 'imei', editCellValue);
+                                if (e.key === 'Escape') setEditingCell(null);
+                              }}
+                              autoFocus
+                              className="form-input font-mono"
+                              style={{ margin: 0, padding: '2px 4px', fontSize: '11px', width: '95%' }}
+                            />
+                          ) : (
+                            item.imei
+                          )}
                         </td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#e11d48' }}>
-                          ₩{formatPrice(item.purchase_cost_krw)}
+                        <td 
+                          style={{ cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }}
+                          onClick={() => {
+                            if (staffProfile?.role !== 'admin') return;
+                            if (editingCell?.id !== item.id || editingCell?.field !== 'color') {
+                              setEditingCell({ id: item.id, field: 'color' });
+                              setEditCellValue(item.color || '');
+                            }
+                          }}
+                        >
+                          {editingCell?.id === item.id && editingCell?.field === 'color' ? (
+                            <input
+                              type="text"
+                              value={editCellValue}
+                              onChange={(e) => setEditCellValue(e.target.value)}
+                              onBlur={() => handleInlineSave(item.id, 'color', editCellValue)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleInlineSave(item.id, 'color', editCellValue);
+                                if (e.key === 'Escape') setEditingCell(null);
+                              }}
+                              autoFocus
+                              className="form-input"
+                              style={{ margin: 0, padding: '2px 4px', fontSize: '12px', width: '95%' }}
+                            />
+                          ) : (
+                            item.color || '-'
+                          )}
                         </td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)' }}>
-                          ฿{formatPrice(item.selling_price)}
+                        <td 
+                          style={{ textAlign: 'center', cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }}
+                          onClick={() => {
+                            if (staffProfile?.role !== 'admin') return;
+                            if (editingCell?.id !== item.id || editingCell?.field !== 'battery_pct') {
+                              setEditingCell({ id: item.id, field: 'battery_pct' });
+                              setEditCellValue(item.battery_pct || '');
+                            }
+                          }}
+                        >
+                          {editingCell?.id === item.id && editingCell?.field === 'battery_pct' ? (
+                            <input
+                              type="text"
+                              value={editCellValue}
+                              onChange={(e) => setEditCellValue(e.target.value)}
+                              onBlur={() => handleInlineSave(item.id, 'battery_pct', editCellValue)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleInlineSave(item.id, 'battery_pct', editCellValue);
+                                if (e.key === 'Escape') setEditingCell(null);
+                              }}
+                              autoFocus
+                              className="form-input"
+                              style={{ margin: 0, padding: '2px 4px', fontSize: '11px', width: '90%', textAlign: 'center' }}
+                            />
+                          ) : (
+                            <span style={{ fontSize: '11px', padding: '2px 6px', background: '#f1f5f9', borderRadius: '4px', fontWeight: 600 }}>
+                              {item.battery_pct || '100'}
+                            </span>
+                          )}
                         </td>
-                        <td>
-                          <span className="badge bg-gray">{item.stock_location || 'Shop'}</span>
+                        <td 
+                          style={{ textAlign: 'right', fontWeight: 700, color: '#e11d48', cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }}
+                          onClick={() => {
+                            if (staffProfile?.role !== 'admin') return;
+                            if (editingCell?.id !== item.id || editingCell?.field !== 'purchase_cost_krw') {
+                              setEditingCell({ id: item.id, field: 'purchase_cost_krw' });
+                              setEditCellValue(item.purchase_cost_krw ? item.purchase_cost_krw.toString() : '0');
+                            }
+                          }}
+                        >
+                          {editingCell?.id === item.id && editingCell?.field === 'purchase_cost_krw' ? (
+                            <input
+                              type="text"
+                              value={editCellValue}
+                              onChange={(e) => setEditCellValue(e.target.value.replace(/[^\d]/g, ''))}
+                              onBlur={() => handleInlineSave(item.id, 'purchase_cost_krw', editCellValue)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleInlineSave(item.id, 'purchase_cost_krw', editCellValue);
+                                if (e.key === 'Escape') setEditingCell(null);
+                              }}
+                              autoFocus
+                              className="form-input"
+                              style={{ margin: 0, padding: '2px 4px', fontSize: '12px', width: '90%', textAlign: 'right' }}
+                            />
+                          ) : (
+                            <>₩{formatPrice(item.purchase_cost_krw)}</>
+                          )}
                         </td>
-                        <td style={{ fontSize: '11px', color: 'var(--t2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.is_reserved ? `${lang === 'ko' ? '예약자' : 'Reserver'}: ${item.reserved_by} | ${item.notes || ''}` : item.notes || ''}>
-                          {item.is_reserved ? (
+                        <td 
+                          style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)', cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }}
+                          onClick={() => {
+                            if (staffProfile?.role !== 'admin') return;
+                            if (editingCell?.id !== item.id || editingCell?.field !== 'selling_price') {
+                              setEditingCell({ id: item.id, field: 'selling_price' });
+                              setEditCellValue(item.selling_price ? item.selling_price.toString() : '0');
+                            }
+                          }}
+                        >
+                          {editingCell?.id === item.id && editingCell?.field === 'selling_price' ? (
+                            <input
+                              type="text"
+                              value={editCellValue}
+                              onChange={(e) => setEditCellValue(e.target.value.replace(/[^\d]/g, ''))}
+                              onBlur={() => handleInlineSave(item.id, 'selling_price', editCellValue)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleInlineSave(item.id, 'selling_price', editCellValue);
+                                if (e.key === 'Escape') setEditingCell(null);
+                              }}
+                              autoFocus
+                              className="form-input"
+                              style={{ margin: 0, padding: '2px 4px', fontSize: '12px', width: '90%', textAlign: 'right' }}
+                            />
+                          ) : (
+                            <>฿{formatPrice(item.selling_price)}</>
+                          )}
+                        </td>
+                        <td
+                          style={{ cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }}
+                          onClick={() => {
+                            if (staffProfile?.role !== 'admin') return;
+                            if (editingCell?.id !== item.id || editingCell?.field !== 'stock_location') {
+                              setEditingCell({ id: item.id, field: 'stock_location' });
+                              setEditCellValue(item.stock_location || '');
+                            }
+                          }}
+                        >
+                          {editingCell?.id === item.id && editingCell?.field === 'stock_location' ? (
+                            <select
+                              value={editCellValue}
+                              onChange={(e) => {
+                                setEditCellValue(e.target.value);
+                                handleInlineSave(item.id, 'stock_location', e.target.value);
+                              }}
+                              onBlur={() => setEditingCell(null)}
+                              autoFocus
+                              className="form-input"
+                              style={{ margin: 0, padding: '2px 4px', fontSize: '12px', width: '95%' }}
+                            >
+                              <option value="">{t('staff_select_location_placeholder') || '-- 위치 선택 --'}</option>
+                              {locations.map(loc => (
+                                <option key={loc.id} value={loc.name}>{loc.name}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="badge bg-gray">{item.stock_location || 'Shop'}</span>
+                          )}
+                        </td>
+                        <td 
+                          style={{ fontSize: '11px', color: 'var(--t2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }} 
+                          title={item.is_reserved ? `${lang === 'ko' ? '예약자' : 'Reserver'}: ${item.reserved_by} | ${item.notes || ''}` : item.notes || ''}
+                          onClick={() => {
+                            if (staffProfile?.role !== 'admin') return;
+                            if (item.is_reserved) return; // Do not edit note inline if reserved (has special display)
+                            if (editingCell?.id !== item.id || editingCell?.field !== 'notes') {
+                              setEditingCell({ id: item.id, field: 'notes' });
+                              setEditCellValue(item.notes || '');
+                            }
+                          }}
+                        >
+                          {editingCell?.id === item.id && editingCell?.field === 'notes' ? (
+                            <input
+                              type="text"
+                              value={editCellValue}
+                              onChange={(e) => setEditCellValue(e.target.value)}
+                              onBlur={() => handleInlineSave(item.id, 'notes', editCellValue)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleInlineSave(item.id, 'notes', editCellValue);
+                                if (e.key === 'Escape') setEditingCell(null);
+                              }}
+                              autoFocus
+                              className="form-input"
+                              style={{ margin: 0, padding: '2px 4px', fontSize: '12px', width: '95%' }}
+                            />
+                          ) : item.is_reserved ? (
                             <span style={{ color: '#d97706', fontWeight: 700 }}>👤 {item.reserved_by} ({item.reserved_date})</span>
                           ) : (
                             item.notes || '-'
