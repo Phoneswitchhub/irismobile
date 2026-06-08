@@ -77,6 +77,7 @@ export default function StaffDashboard() {
   // Settings/Master Data States
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
   const [models, setModels] = useState<{ id: string; name: string }[]>([]);
+  const [staffMembers, setStaffMembers] = useState<{ id: string; name: string }[]>([]);
   const [loadingSettings, setLoadingSettings] = useState(false);
 
   // States for on-the-fly custom additions in Intake Modal
@@ -209,14 +210,22 @@ export default function StaffDashboard() {
     if (!isAuthorized) return;
     setLoadingSettings(true);
     try {
-      const [locsRes, modsRes] = await Promise.all([
+      const [locsRes, modsRes, staffRes] = await Promise.all([
         supabase.from('settings_locations').select('*').order('name', { ascending: true }),
-        supabase.from('settings_models').select('*').order('name', { ascending: true })
+        supabase.from('settings_models').select('*').order('name', { ascending: true }),
+        supabase.from('profiles').select('id, name, store_name').in('role', ['admin', 'staff', 'seller']).order('name', { ascending: true })
       ]);
       if (locsRes.error) throw locsRes.error;
       if (modsRes.error) throw modsRes.error;
+      if (staffRes.error) throw staffRes.error;
       setLocations(locsRes.data || []);
       setModels(modsRes.data || []);
+
+      const members = (staffRes.data || []).map(p => ({
+        id: p.id,
+        name: p.name || p.store_name || 'Unnamed Staff'
+      })).filter(m => m.name);
+      setStaffMembers(members);
     } catch (err) {
       console.error('Error loading settings lookup:', err);
     } finally {
@@ -1620,7 +1629,7 @@ export default function StaffDashboard() {
       <main className="main">
 
         {/* Header Toolbar */}
-        <header className="main-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '24px' }}>
+        <header className="main-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '6px', marginBottom: '10px' }}>
           <div>
             <h1 style={{ fontSize: '20px', fontWeight: 800 }}>
               {activeTab === 'overview' && `📊 ${t('staff_menu_overview') || '경영 개요'}`}
@@ -1826,22 +1835,22 @@ export default function StaffDashboard() {
           <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
             {/* Search & Toolbars */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px' }}>
-              <div style={{ display: 'flex', gap: '10px', flex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '8px 12px' }}>
+              <div style={{ display: 'flex', gap: '8px', flex: 1 }}>
                 <input
                   type="text"
                   placeholder="모델명, IMEI, 또는 스티커 검색..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="form-input"
-                  style={{ maxWidth: '280px', margin: 0 }}
+                  style={{ maxWidth: '220px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                 />
                 
                 <select
                   value={locationFilter}
                   onChange={(e) => setLocationFilter(e.target.value)}
                   className="form-input"
-                  style={{ maxWidth: '160px', margin: 0 }}
+                  style={{ maxWidth: '130px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                 >
                   <option value="all">전체 위치</option>
                   {locations.map(loc => (
@@ -1850,35 +1859,32 @@ export default function StaffDashboard() {
                 </select>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '6px' }}>
                 {selectedIds.length > 0 && (
                   <button 
-                    className="btn-submit btn-red"
-                    style={{ margin: 0 }}
+                    style={{ margin: 0, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: 'var(--red)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                     onClick={handleBulkDelete}
                   >
-                    🗑️ 선택 삭제 ({selectedIds.length}대)
+                    🗑️ 선택 삭제 ({selectedIds.length})
                   </button>
                 )}
                 <button 
-                  className="btn-submit"
-                  style={{ margin: 0, background: '#f1f5f9', border: '1px solid var(--border)', color: '#334155' }}
+                  style={{ margin: 0, background: '#f1f5f9', border: '1px solid var(--border)', color: '#334155', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                   onClick={() => setIsCSVModalOpen(true)}
                 >
-                  📥 대량 기기 입고 (시트/CSV/Ctrl+V)
+                  📥 대량입고
                 </button>
                 <button 
-                  className="btn-submit"
-                  style={{ margin: 0 }}
+                  style={{ margin: 0, background: 'var(--purple-l)', border: 'none', color: '#fff', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                   onClick={handleOpenAddModal}
                 >
-                  ➕ 수동 개별 입고
+                  ➕ 수동입고
                 </button>
               </div>
             </div>
 
             {/* Category Quick Filter Tag Shortcuts */}
-            <div className="category-shortcuts" style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '12px 16px', background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div className="category-shortcuts" style={{ display: 'flex', gap: '6px', overflowX: 'auto', padding: '6px 10px', background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {[
                 { id: 'all', label: '📱 전체 (All)' },
                 { id: 'iphone', label: '🍎 아이폰 전체' },
@@ -1898,13 +1904,13 @@ export default function StaffDashboard() {
                   type="button"
                   onClick={() => setCategoryFilter(cat.id)}
                   style={{
-                    padding: '8px 16px',
+                    padding: '5px 10px',
                     borderRadius: '999px',
                     border: '1px solid',
                     borderColor: categoryFilter === cat.id ? 'var(--purple-l)' : 'var(--border)',
                     background: categoryFilter === cat.id ? 'var(--purple-l)' : '#fff',
                     color: categoryFilter === cat.id ? '#fff' : 'var(--t1)',
-                    fontSize: '12px',
+                    fontSize: '11px',
                     fontWeight: 700,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
@@ -1990,8 +1996,9 @@ export default function StaffDashboard() {
                           />
                         </td>
                         <td 
-                          style={{ fontWeight: 700, color: 'var(--purple-l)', cursor: 'pointer' }}
+                          style={{ fontWeight: 700, color: 'var(--purple-l)', cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }}
                           onClick={() => {
+                            if (staffProfile?.role !== 'admin') return;
                             if (editingCell?.id !== item.id || editingCell?.field !== 'sticker') {
                               setEditingCell({ id: item.id, field: 'sticker' });
                               setEditCellValue(item.sticker || '');
@@ -2017,8 +2024,9 @@ export default function StaffDashboard() {
                           )}
                         </td>
                         <td 
-                          style={{ color: 'var(--t2)', cursor: 'pointer' }}
+                          style={{ color: 'var(--t2)', cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }}
                           onClick={() => {
+                            if (staffProfile?.role !== 'admin') return;
                             if (editingCell?.id !== item.id || editingCell?.field !== 'site_date') {
                               setEditingCell({ id: item.id, field: 'site_date' });
                               setEditCellValue(item.site_date || '');
@@ -2044,8 +2052,9 @@ export default function StaffDashboard() {
                           )}
                         </td>
                         <td 
-                          style={{ fontWeight: 700, wordBreak: 'break-all', cursor: 'pointer' }}
+                          style={{ fontWeight: 700, wordBreak: 'break-all', cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }}
                           onClick={() => {
+                            if (staffProfile?.role !== 'admin') return;
                             if (editingCell?.id !== item.id || editingCell?.field !== 'model_name') {
                               setEditingCell({ id: item.id, field: 'model_name' });
                               setEditCellValue(item.model_name || '');
@@ -2104,39 +2113,45 @@ export default function StaffDashboard() {
                         <td>
                           <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
                             <button
-                              className="btn-sm btn-green"
+                              className="btn-green"
+                              style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
                               onClick={() => handleOpenSellModal(item)}
+                              title="판매완료"
                             >
-                              💸 판매완료
+                              💸
                             </button>
                             {item.is_reserved ? (
                               <button
-                                className="btn-sm"
-                                style={{ background: '#f1f5f9', color: '#475569', border: '1px solid var(--border)', padding: '2px 6px', fontSize: '11px', borderRadius: '4px', cursor: 'pointer' }}
+                                style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', background: '#f1f5f9', color: '#475569', border: '1px solid var(--border)', cursor: 'pointer' }}
                                 onClick={() => handleCancelReservation(item.id)}
+                                title="예약취소"
                               >
-                                🔓 예약취소
+                                🔓
                               </button>
                             ) : (
                               <button
-                                className="btn-sm"
-                                style={{ background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', padding: '2px 6px', fontSize: '11px', borderRadius: '4px', cursor: 'pointer' }}
+                                style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', cursor: 'pointer' }}
                                 onClick={() => handleOpenReserveModal(item)}
+                                title="예약"
                               >
-                                📌 예약
+                                📌
                               </button>
                             )}
                             <button
-                              className="btn-sm btn-blue"
+                              className="btn-blue"
+                              style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
                               onClick={() => handleOpenEdit(item)}
+                              title="수정"
                             >
-                              수정
+                              ✏️
                             </button>
                             <button
-                              className="btn-sm btn-red"
+                              className="btn-red"
+                              style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
                               onClick={() => handleDeleteDevice(item.id)}
+                              title="삭제"
                             >
-                              삭제
+                              🗑️
                             </button>
                           </div>
                         </td>
@@ -2155,43 +2170,41 @@ export default function StaffDashboard() {
           <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
             {/* Sales Search Box */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px' }}>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '8px 12px' }}>
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center', width: '100%' }}>
                 <input
                   type="text"
                   placeholder="모델명, IMEI, 또는 판매 직원 검색..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="form-input"
-                  style={{ maxWidth: '280px', margin: 0 }}
+                  style={{ maxWidth: '220px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                 />
                 {selectedIds.length > 0 && (
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '6px' }}>
                     <button 
-                      className="btn-submit btn-green"
-                      style={{ margin: 0, padding: '8px 16px', fontSize: '12px' }}
+                      style={{ margin: 0, background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.25)', color: 'var(--green)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                       onClick={handleBulkRestoreToStock}
                     >
-                      🔄 선택 재고복원 ({selectedIds.length}대)
+                      🔄 선택 재고복원 ({selectedIds.length})
                     </button>
                     <button 
-                      className="btn-submit btn-red"
-                      style={{ margin: 0, padding: '8px 16px', fontSize: '12px' }}
+                      style={{ margin: 0, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: 'var(--red)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                       onClick={handleBulkDelete}
                     >
-                      🗑️ 선택 삭제 ({selectedIds.length}대)
+                      🗑️ 선택 삭제 ({selectedIds.length})
                     </button>
                   </div>
                 )}
               </div>
               
-              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--purple-l)', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--purple-l)', whiteSpace: 'nowrap' }}>
                 총 판매 대수: {filteredSoldDevices.length}대
               </div>
             </div>
 
             {/* Category Quick Filter Tag Shortcuts */}
-            <div className="category-shortcuts" style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '12px 16px', background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div className="category-shortcuts" style={{ display: 'flex', gap: '6px', overflowX: 'auto', padding: '6px 10px', background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {[
                 { id: 'all', label: '📱 전체 (All)' },
                 { id: 'iphone', label: '🍎 아이폰 전체' },
@@ -2211,13 +2224,13 @@ export default function StaffDashboard() {
                   type="button"
                   onClick={() => setCategoryFilter(cat.id)}
                   style={{
-                    padding: '8px 16px',
+                    padding: '5px 10px',
                     borderRadius: '999px',
                     border: '1px solid',
                     borderColor: categoryFilter === cat.id ? 'var(--purple-l)' : 'var(--border)',
                     background: categoryFilter === cat.id ? 'var(--purple-l)' : '#fff',
                     color: categoryFilter === cat.id ? '#fff' : 'var(--t1)',
-                    fontSize: '12px',
+                    fontSize: '11px',
                     fontWeight: 700,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
@@ -2312,11 +2325,12 @@ export default function StaffDashboard() {
                         <td style={{ fontSize: '11px', color: 'var(--t2)' }}>{item.notes || '-'}</td>
                         <td style={{ textAlign: 'center' }}>
                           <button
-                            className="btn-sm btn-red"
-                            style={{ background: '#fef2f2', color: 'var(--red)', borderColor: '#fee2e2' }}
+                            className="btn-red"
+                            style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', background: '#fef2f2', color: 'var(--red)', borderColor: '#fee2e2', cursor: 'pointer' }}
                             onClick={() => handleRestoreToStock(item.id)}
+                            title="재고복원"
                           >
-                            🔄 재고복원
+                            🔄
                           </button>
                         </td>
                       </tr>
@@ -2464,37 +2478,35 @@ export default function StaffDashboard() {
           <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
             {/* Trash Controls */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px' }}>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '8px 12px' }}>
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center', width: '100%' }}>
                 <input
                   type="text"
                   placeholder="모델명, IMEI, 또는 스티커 검색..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="form-input"
-                  style={{ maxWidth: '280px', margin: 0 }}
+                  style={{ maxWidth: '220px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                 />
                 {selectedIds.length > 0 && (
                   <>
                     <button 
-                      className="btn-submit btn-green"
-                      style={{ margin: 0, padding: '8px 16px', fontSize: '12px' }}
+                      style={{ margin: 0, background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.25)', color: 'var(--green)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                       onClick={handleBulkRestore}
                     >
-                      🔄 선택 복원 ({selectedIds.length}대)
+                      🔄 선택 복원 ({selectedIds.length})
                     </button>
                     <button 
-                      className="btn-submit btn-red"
-                      style={{ margin: 0, padding: '8px 16px', fontSize: '12px' }}
+                      style={{ margin: 0, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: 'var(--red)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                       onClick={handleBulkPermanentDelete}
                     >
-                      🔥 선택 영구삭제 ({selectedIds.length}대)
+                      🔥 선택 영구삭제 ({selectedIds.length})
                     </button>
                   </>
                 )}
               </div>
               
-              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--red)', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--red)', whiteSpace: 'nowrap' }}>
                 휴지통 기기: {filteredTrashDevices.length}대 (7일 후 영구 자동 삭제)
               </div>
             </div>
@@ -2574,22 +2586,26 @@ export default function StaffDashboard() {
                         <td>
                           <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
                             <button
-                              className="btn-sm btn-green"
+                              className="btn-green"
+                              style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
                               onClick={() => {
                                 setSelectedIds([item.id]);
                                 setTimeout(() => handleBulkRestore(), 50);
                               }}
+                              title="복원"
                             >
-                              🔄 복원
+                              🔄
                             </button>
                             <button
-                              className="btn-sm btn-red"
+                              className="btn-red"
+                              style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
                               onClick={() => {
                                 setSelectedIds([item.id]);
                                 setTimeout(() => handleBulkPermanentDelete(), 50);
                               }}
+                              title="영구삭제"
                             >
-                              🔥 영구삭제
+                              🔥
                             </button>
                           </div>
                         </td>
@@ -2796,6 +2812,7 @@ export default function StaffDashboard() {
                   onChange={(e) => setSticker(e.target.value)}
                   className="form-input"
                   style={{ margin: 0 }}
+                  disabled={!!editingDevice && staffProfile?.role !== 'admin'}
                 />
               </div>
 
@@ -2806,6 +2823,7 @@ export default function StaffDashboard() {
                   onChange={(e) => handleModelSelectChange(e.target.value)}
                   className="form-input"
                   style={{ margin: 0 }}
+                  disabled={!!editingDevice && staffProfile?.role !== 'admin'}
                 >
                   <option value="">-- 모델명 선택 --</option>
                   {modelOptions.map((mod) => (
@@ -2823,6 +2841,7 @@ export default function StaffDashboard() {
                       onChange={(e) => setCustomModelName(e.target.value)}
                       className="form-input"
                       style={{ margin: 0, borderColor: 'var(--purple)' }}
+                      disabled={!!editingDevice && staffProfile?.role !== 'admin'}
                     />
                     <small style={{ color: 'var(--purple)', fontSize: '11px', marginTop: '4px', display: 'block' }}>
                       새로 입력하신 모델명은 기준 정보에 자동 추가됩니다.
@@ -2933,6 +2952,7 @@ export default function StaffDashboard() {
                   onChange={(e) => setSiteDate(e.target.value)}
                   className="form-input"
                   style={{ margin: 0 }}
+                  disabled={!!editingDevice && staffProfile?.role !== 'admin'}
                 />
               </div>
 
@@ -3002,14 +3022,17 @@ export default function StaffDashboard() {
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
                 <label className="form-label">판매 사원명 (Seller Name) *</label>
-                <input
-                  type="text"
-                  placeholder="Nam, Beam, Muay 등..."
+                <select
                   value={sellerName}
                   onChange={(e) => setSellerName(e.target.value)}
                   className="form-input"
                   style={{ margin: 0 }}
-                />
+                >
+                  <option value="">-- 판매 사원 선택 --</option>
+                  {staffMembers.map(member => (
+                    <option key={member.id} value={member.name}>{member.name}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
@@ -3062,15 +3085,18 @@ export default function StaffDashboard() {
               </p>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">예약자명 (Reserver Name) *</label>
-                <input
-                  type="text"
-                  placeholder="예: 고객명 또는 담당 사원"
+                <label className="form-label">예약 사원명 (Reserver Name) *</label>
+                <select
                   value={reserverName}
                   onChange={(e) => setReserverName(e.target.value)}
                   className="form-input"
                   style={{ margin: 0 }}
-                />
+                >
+                  <option value="">-- 예약 사원 선택 --</option>
+                  {staffMembers.map(member => (
+                    <option key={member.id} value={member.name}>{member.name}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
