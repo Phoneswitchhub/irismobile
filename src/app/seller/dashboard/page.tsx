@@ -899,6 +899,24 @@ export default function SellerDashboard() {
           </span>
         </div>
         <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {(sellerProfile?.store_type === 'direct' || sellerProfile?.role === 'admin') && (
+            <button 
+              className="btn-nav" 
+              style={{ 
+                padding: '6px 10px', 
+                fontSize: '11px',
+                background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                color: '#fff',
+                border: 'none',
+                cursor: 'pointer',
+                borderRadius: '8px',
+                fontWeight: 'bold'
+              }} 
+              onClick={() => router.push('/staff/dashboard')}
+            >
+              🖥️ {t('staff_menu_inventory') || '사내 재고 관리'}
+            </button>
+          )}
           <button 
             className="btn-nav btn-nav-outline" 
             style={{ padding: '6px 10px', fontSize: '11px' }} 

@@ -904,6 +904,24 @@ export default function AdminDashboard() {
             </div>
           </div>
           <button 
+            className="btn-nav" 
+            style={{ 
+              width: '100%', 
+              marginTop: '12px', 
+              justifyContent: 'center',
+              background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+              color: '#fff',
+              border: 'none',
+              cursor: 'pointer',
+              borderRadius: '8px',
+              fontWeight: 'bold',
+              padding: '8px'
+            }} 
+            onClick={() => router.push('/staff/dashboard')}
+          >
+            🖥️ {t('staff_menu_inventory') || '사내 재고 관리'}
+          </button>
+          <button 
             className="btn-nav btn-nav-outline" 
             style={{ width: '100%', marginTop: '12px', justifyContent: 'center' }} 
             onClick={handleLogout}
