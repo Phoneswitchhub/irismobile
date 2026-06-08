@@ -1412,7 +1412,7 @@ export default function ContractPage() {
                   <div style={{ gridColumn: 'span 2' }}><b>IMEI:</b> <span className="fill-value">{imei || '........................................................'}</span></div>
                   
                   <div><b>ประกันสินค้า:</b> โทรศัพท์มือถือ</div>
-                  <div style={{ color: 'var(--red)' }}><b>ราคาขาย:</b> <span className="fill-value" style={{ fontWeight: 'bold' }}>{sellingPriceDoc ? `${sellingPriceDoc.toLocaleString()} บาท` : '.......................... บาท'}</span></div>
+                  <div style={{ color: 'var(--red)' }}><b>ราคาขาย:</b> <span className="fill-value" style={{ fontWeight: 'bold' }}>{sellingPrice ? `${Number(sellingPrice).toLocaleString()} บาท` : '.......................... บาท'}</span></div>
                 </div>
               </div>
 
@@ -2231,8 +2231,10 @@ export default function ContractPage() {
           }
           
           /* Completely hide non-printable areas to prevent layout space allocation and scale issues on mobile */
-          .no-print,
-          .sidebar,
+          .print-contract-only .no-print,
+          .print-contract-only .sidebar,
+          .print-shipping-only .no-print,
+          .print-shipping-only .sidebar,
           header,
           footer,
           nav {
