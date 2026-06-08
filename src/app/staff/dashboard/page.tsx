@@ -82,6 +82,8 @@ export default function StaffDashboard() {
   const [selectedCustomerMonth, setSelectedCustomerMonth] = useState('');
   const [locationFilter, setLocationFilter] = useState('all');
   const [selectedStatsLocation, setSelectedStatsLocation] = useState('all');
+  const [soldSelectedDays, setSoldSelectedDays] = useState<number[]>([]);
+  const [isDayFilterOpen, setIsDayFilterOpen] = useState(false);
 
   // Intake Modals (Manual & CSV Upload)
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
@@ -126,12 +128,14 @@ export default function StaffDashboard() {
   const [sellerName, setSellerName] = useState('');
   const [saleNotes, setSaleNotes] = useState('');
   const [processingSale, setProcessingSale] = useState(false);
-  const [saleType, setSaleType] = useState<'transfer' | 'cod' | 'installment' | 'cash'>('transfer');
+  const [saleType, setSaleType] = useState<'transfer' | 'cod' | 'installment' | 'cash' | 'exchange'>('transfer');
   const [depositAmount, setDepositAmount] = useState<number | string>(0);
   const [transferAmount, setTransferAmount] = useState<number | string>(0);
   const [codAmountInput, setCodAmountInput] = useState<number | string>(0);
   const [instMonths, setInstMonths] = useState<number>(4);
   const [instMonthlyPayment, setInstMonthlyPayment] = useState<number | string>(0);
+  const [tradeInDeviceName, setTradeInDeviceName] = useState('');
+  const [tradeInValue, setTradeInValue] = useState<number | string>(0);
   const [custName, setCustName] = useState('');
   const [custPhone, setCustPhone] = useState('');
   const [instNumber, setInstNumber] = useState('');
@@ -144,10 +148,12 @@ export default function StaffDashboard() {
     } else if (saleType === 'cod') {
       return dep + (Number(codAmountInput) || 0);
     } else if (saleType === 'installment') {
-      return dep + (Number(instMonths) || 4) * (Number(instMonthlyPayment) || 0);
+      return dep + (Number(instMonths) || 0) * (Number(instMonthlyPayment) || 0);
+    } else if (saleType === 'exchange') {
+      return dep + (Number(tradeInValue) || 0);
     }
     return 0;
-  }, [saleType, depositAmount, transferAmount, codAmountInput, instMonths, instMonthlyPayment]);
+  }, [saleType, depositAmount, transferAmount, codAmountInput, instMonths, instMonthlyPayment, tradeInValue]);
 
   useEffect(() => {
     if (!sellingDevice || saleType !== 'installment') return;
@@ -178,6 +184,8 @@ export default function StaffDashboard() {
       return `COD (보증금 ฿${formatPrice(dep)} / COD ฿${formatPrice(item.cod_amount || 0)})`;
     } else if (type === 'installment') {
       return `할부 (보증금 ฿${formatPrice(dep)} / ${item.installment_months}개월 x ฿${formatPrice(item.installment_amount || 0)})`;
+    } else if (type === 'exchange') {
+      return `기기 맞교환 (추가 수금 ฿${formatPrice(dep)})`;
     }
     return '-';
   }, []);
@@ -951,16 +959,32 @@ export default function StaffDashboard() {
   }, [filteredActiveDevices]);
 
   const filteredSoldDevices = useMemo(() => {
+    const getSaleDay = (saleDateStr?: string): number | null => {
+      if (!saleDateStr) return null;
+      const parts = saleDateStr.split('.').map(p => p.trim()).filter(Boolean);
+      if (parts.length >= 3) {
+        return parseInt(parts[2], 10) || null;
+      }
+      return null;
+    };
+
     const list = devices.filter(d => {
       if (d.deleted_at || !d.is_sold) return false;
       const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(soldSearchQuery)) || 
                           (d.imei && d.imei.includes(soldSearchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(soldSearchQuery.toLowerCase()));
       const matchCat = matchesCategory(d.model_name, categoryFilter);
-      return matchSearch && matchCat;
+
+      let matchDay = true;
+      if (soldSelectedDays.length > 0) {
+        const day = getSaleDay(d.sale_date);
+        matchDay = day !== null && soldSelectedDays.includes(day);
+      }
+
+      return matchSearch && matchCat && matchDay;
     });
     return sortDevices(list);
-  }, [devices, soldSearchQuery, categoryFilter, matchesCategory, sortDevices, normalizeModelName]);
+  }, [devices, soldSearchQuery, categoryFilter, soldSelectedDays, matchesCategory, sortDevices, normalizeModelName]);
 
   const filteredTrashDevices = useMemo(() => {
     const list = devices.filter(d => {
@@ -1658,6 +1682,8 @@ export default function StaffDashboard() {
     setCustName('');
     setCustPhone('');
     setInstNumber('');
+    setTradeInDeviceName('');
+    setTradeInValue(0);
   };
 
   const formatDateToDot = (dateStr: string): string => {
@@ -1704,7 +1730,13 @@ export default function StaffDashboard() {
       } else if (saleType === 'installment') {
         paymentStatus = 'collecting';
       }
-
+ 
+      let finalNotes = saleNotes.trim();
+      if (saleType === 'exchange') {
+        const tradeInPart = `[기기 보상: ${tradeInDeviceName.trim() || '미기입'} (฿${(Number(tradeInValue) || 0).toLocaleString()})]`;
+        finalNotes = finalNotes ? `${finalNotes} ${tradeInPart}` : tradeInPart;
+      }
+ 
       const formattedSaleDate = formatDateToDot(saleDate);
       let instHistory: any[] = [];
       if (saleType === 'installment') {
@@ -1730,7 +1762,7 @@ export default function StaffDashboard() {
           reserved_date: null,
           sale_date: formattedSaleDate,
           seller_name: sellerName.trim(),
-          notes: saleNotes.trim() || null,
+          notes: finalNotes || null,
           selling_price: calculatedFinalPrice,
           sale_type: saleType,
           deposit_amount: Number(depositAmount) || 0,
@@ -3074,6 +3106,149 @@ export default function StaffDashboard() {
                   ))}
                 </select>
 
+                {/* Day Filter */}
+                <div style={{ position: 'relative', display: 'inline-block' }}>
+                  {isDayFilterOpen && (
+                    <div 
+                      onClick={() => setIsDayFilterOpen(false)} 
+                      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999, background: 'transparent' }}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsDayFilterOpen(!isDayFilterOpen)}
+                    className="form-input"
+                    style={{
+                      margin: 0,
+                      padding: '8px 12px',
+                      fontSize: '13px',
+                      background: '#fff',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      minWidth: '150px',
+                      justifyContent: 'space-between',
+                      position: 'relative',
+                      zIndex: 1000
+                    }}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>
+                      📅 {soldSelectedDays.length === 0 
+                        ? (lang === 'ko' ? '모든 일자' : (lang === 'th' ? 'ทุกวันที่' : 'All Days'))
+                        : `${soldSelectedDays.sort((a,b)=>a-b).map(d => `${d}일`).join(', ')}`}
+                    </span>
+                    <span>▼</span>
+                  </button>
+
+                  {isDayFilterOpen && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        zIndex: 1000,
+                        background: '#fff',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        marginTop: '4px',
+                        padding: '12px',
+                        width: '280px',
+                        maxHeight: '350px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setSoldSelectedDays([])}
+                          style={{
+                            flex: 1,
+                            padding: '4px 8px',
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            background: '#f1f5f9',
+                            border: '1px solid var(--border)',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            color: 'var(--t2)'
+                          }}
+                        >
+                          {lang === 'ko' ? '초기화' : (lang === 'th' ? 'ล้างค่า' : 'Reset')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsDayFilterOpen(false)}
+                          style={{
+                            padding: '4px 10px',
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            background: 'var(--purple-l)',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            color: '#fff'
+                          }}
+                        >
+                          {lang === 'ko' ? '확인' : (lang === 'th' ? 'ตกลง' : 'OK')}
+                        </button>
+                      </div>
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(4, 1fr)',
+                          gap: '6px',
+                          overflowY: 'auto',
+                          maxHeight: '220px',
+                          padding: '2px'
+                        }}
+                      >
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map(day => {
+                          const isChecked = soldSelectedDays.includes(day);
+                          return (
+                            <label
+                              key={day}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px',
+                                padding: '6px 4px',
+                                border: isChecked ? '1px solid var(--purple-l)' : '1px solid var(--border)',
+                                borderRadius: '6px',
+                                background: isChecked ? 'rgba(139, 92, 246, 0.08)' : 'transparent',
+                                cursor: 'pointer',
+                                fontSize: '11px',
+                                fontWeight: isChecked ? 800 : 'normal',
+                                color: isChecked ? 'var(--purple-l)' : 'var(--t1)',
+                                userSelect: 'none',
+                                transition: 'all 0.15s'
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => {
+                                  setSoldSelectedDays(prev => 
+                                    prev.includes(day) 
+                                      ? prev.filter(d => d !== day) 
+                                      : [...prev, day]
+                                  );
+                                }}
+                                style={{ display: 'none' }}
+                              />
+                              {day}{lang === 'ko' ? '일' : (lang === 'th' ? '일' : 'd')}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {selectedIds.length > 0 && (
                   <div style={{ display: 'flex', gap: '6px' }}>
                     <button 
@@ -4184,128 +4359,6 @@ export default function StaffDashboard() {
               </div>
             </div>
 
-            {/* Part 3: Monthly Customer Directory */}
-            <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>📞</span> Part 3: 월별 고객 연락처 및 수납 대장 (Monthly Customer & Accounts Directory)
-                </h4>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <select
-                    value={selectedCustomerMonth}
-                    onChange={(e) => setSelectedCustomerMonth(e.target.value)}
-                    className="form-input"
-                    style={{ width: '150px', margin: 0, padding: '6px 12px', fontSize: '13px', height: '34px' }}
-                  >
-                    <option value="">전체 월 (All Months)</option>
-                    {customerMonths.map(month => (
-                      <option key={month} value={month}>{month}</option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={handleCopyCustomerList}
-                    className="btn-purple"
-                    style={{ margin: 0, padding: '8px 12px', fontSize: '12px', borderRadius: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', border: 'none', color: '#fff' }}
-                  >
-                    📋 전체 고객 텍스트 복사
-                  </button>
-                </div>
-              </div>
-
-              <div className="tbl-wrap" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
-                <table className="tbl" style={{ margin: 0 }}>
-                  <thead>
-                    <tr>
-                      <th style={{ width: '12%' }}>판매일</th>
-                      <th style={{ width: '18%' }}>고객명 (Customer)</th>
-                      <th style={{ width: '18%' }}>연락처 (Phone)</th>
-                      <th style={{ width: '20%' }}>기기 모델 (Device)</th>
-                      <th style={{ width: '12%', textAlign: 'center' }}>수납 상태</th>
-                      <th style={{ width: '12%', textAlign: 'right' }}>미수 금액</th>
-                      <th style={{ width: '8%', textAlign: 'center' }}>담당자</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredCustomersForMonth.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>선택한 월에 해당하는 고객 내역이 없습니다. (No customer records for this month.)</td>
-                      </tr>
-                    ) : (
-                      filteredCustomersForMonth.map(item => {
-                        const balance = item.payment_status === 'unpaid' ? (item.cod_amount || 0) : item.payment_status === 'collecting' ? (item.installment_months || 0) * (item.installment_amount || 0) : 0;
-                        return (
-                          <tr key={item.id}>
-                            <td>{item.sale_date || '-'}</td>
-                            <td style={{ fontWeight: 700 }}>
-                              {editingCell?.id === item.id && editingCell?.field === 'customer_name' ? (
-                                <input
-                                  type="text"
-                                  value={editCellValue}
-                                  onChange={(e) => setEditCellValue(e.target.value)}
-                                  onBlur={() => handleInlineSave(item.id, 'customer_name', editCellValue)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleInlineSave(item.id, 'customer_name', editCellValue);
-                                    if (e.key === 'Escape') setEditingCell(null);
-                                  }}
-                                  autoFocus
-                                  className="form-input"
-                                  style={{ margin: 0, padding: '4px 6px', fontSize: '11px', height: '26px', width: '100%', boxSizing: 'border-box' }}
-                                />
-                              ) : (
-                                <div
-                                  style={{ cursor: 'pointer', color: item.customer_name ? 'var(--t1)' : 'var(--t3)', textDecoration: 'underline dotted var(--border)' }}
-                                  onClick={() => {
-                                    setEditingCell({ id: item.id, field: 'customer_name' });
-                                    setEditCellValue(item.customer_name || '');
-                                  }}
-                                  title="클릭하여 성함 수정"
-                                >
-                                  👤 {item.customer_name || '미기입'}
-                                </div>
-                              )}
-                            </td>
-                            <td>
-                              {editingCell?.id === item.id && editingCell?.field === 'customer_phone' ? (
-                                <input
-                                  type="text"
-                                  value={editCellValue}
-                                  onChange={(e) => setEditCellValue(e.target.value)}
-                                  onBlur={() => handleInlineSave(item.id, 'customer_phone', editCellValue)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleInlineSave(item.id, 'customer_phone', editCellValue);
-                                    if (e.key === 'Escape') setEditingCell(null);
-                                  }}
-                                  autoFocus
-                                  className="form-input"
-                                  style={{ margin: 0, padding: '4px 6px', fontSize: '11px', height: '26px', width: '100%', boxSizing: 'border-box' }}
-                                />
-                              ) : (
-                                <div
-                                  style={{ cursor: 'pointer', color: item.customer_phone ? 'var(--t2)' : 'var(--t3)', textDecoration: 'underline dotted var(--border)' }}
-                                  onClick={() => {
-                                    setEditingCell({ id: item.id, field: 'customer_phone' });
-                                    setEditCellValue(item.customer_phone || '');
-                                  }}
-                                  title="클릭하여 연락처 수정"
-                                >
-                                  📞 {item.customer_phone || '미기입'}
-                                </div>
-                              )}
-                            </td>
-                            <td style={{ fontWeight: 600 }}>{item.model_name}</td>
-                            <td style={{ textAlign: 'center' }}>{getPaymentStatusBadge(item.payment_status)}</td>
-                            <td style={{ textAlign: 'right', fontWeight: 700, color: balance > 0 ? 'var(--red)' : 'var(--t3)' }}>
-                              {balance > 0 ? `฿${formatPrice(balance)}` : '-'}
-                            </td>
-                            <td style={{ textAlign: 'center' }}>{item.seller_name || '-'}</td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
 
           </div>
         )}
@@ -4887,6 +4940,7 @@ export default function StaffDashboard() {
                   <option value="cash">현금 완납 (Cash Payment)</option>
                   <option value="cod">보증금 + COD 발송 (Deposit + COD)</option>
                   <option value="installment">보증금 + 할부 판매 (Deposit + Installments)</option>
+                  <option value="exchange">기기 보상/맞교환 (Trade-in / Swap)</option>
                 </select>
               </div>
 
@@ -5041,6 +5095,47 @@ export default function StaffDashboard() {
                         type="number"
                         value={instMonthlyPayment}
                         onChange={(e) => setInstMonthlyPayment(e.target.value === '' ? '' : Number(e.target.value))}
+                        className="form-input"
+                        style={{ margin: 0 }}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {saleType === 'exchange' && (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">보상 기기명 (Trade-in Device)</label>
+                      <input
+                        type="text"
+                        placeholder="예: iPhone 11 64G"
+                        value={tradeInDeviceName}
+                        onChange={(e) => setTradeInDeviceName(e.target.value)}
+                        className="form-input"
+                        style={{ margin: 0 }}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">보상 기기 평가 금액 (Trade-in Value)</label>
+                      <input
+                        type="number"
+                        placeholder="5000"
+                        value={tradeInValue}
+                        onChange={(e) => setTradeInValue(e.target.value === '' ? '' : Number(e.target.value))}
+                        className="form-input"
+                        style={{ margin: 0 }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px', marginBottom: '12px' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">추가 수금액 (Additional Cash/Transfer)</label>
+                      <input
+                        type="number"
+                        value={depositAmount}
+                        onChange={(e) => setDepositAmount(e.target.value === '' ? '' : Number(e.target.value))}
                         className="form-input"
                         style={{ margin: 0 }}
                       />
