@@ -2787,7 +2787,7 @@ export default function ContractPage() {
           }
 
           .print-shipping-only #printable-shipping-area .sender-box {
-            height: 100% !important;
+            height: auto !important;
           }
 
           .print-shipping-only #printable-shipping-area .receiver-box {
