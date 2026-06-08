@@ -90,7 +90,7 @@ export default function StaffDashboard() {
   const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
   const [csvFileText, setCsvFileText] = useState('');
   const [importingCSV, setImportingCSV] = useState(false);
-  const [intakeMethod, setIntakeMethod] = useState<'sync' | 'file' | 'paste'>('sync');
+  const [intakeMethod, setIntakeMethod] = useState<'file' | 'paste'>('file');
   const [pasteText, setPasteText] = useState('');
 
   // Settings/Master Data States
@@ -1141,6 +1141,18 @@ export default function StaffDashboard() {
       if (marketPriceIdx === -1) marketPriceIdx = 16;
       if (purchaseCostIdx === -1) purchaseCostIdx = 18;
 
+      // Fetch existing DB records to prevent overwriting sold status or reviving deleted items
+      const { data: existingDB } = await supabase
+        .from('sheets_inventory')
+        .select('*');
+      
+      const dbMap = new Map<string, any>();
+      if (existingDB) {
+        existingDB.forEach(d => {
+          if (d.imei) dbMap.set(d.imei.trim(), d);
+        });
+      }
+
       const recordsToInsert = [];
       const nowString = new Date().toISOString();
 
@@ -1185,7 +1197,10 @@ export default function StaffDashboard() {
         const saleD = row[saleDateIdx] ? row[saleDateIdx].trim() : '';
         const siteD = row[siteDateIdx] ? row[siteDateIdx].trim() : '';
 
-        recordsToInsert.push({
+        const rawImeiTrimmed = rawImei.trim();
+        const existing = dbMap.get(rawImeiTrimmed);
+
+        const newRecord: any = {
           site_date: siteD,
           sale_date: saleD,
           sticker: stickerNo,
@@ -1200,9 +1215,31 @@ export default function StaffDashboard() {
           selling_price: sellingPriceVal,
           market_price: marketPriceVal,
           purchase_cost_krw: purchaseCostVal,
-          deleted_at: null, // Ensure soft-deleted items are restored on re-import
+          deleted_at: null, // Restored on manual CSV import
           created_at: nowString
-        });
+        };
+
+        if (existing) {
+          if (existing.is_sold) {
+            newRecord.is_sold = true;
+            newRecord.sale_date = existing.sale_date;
+            newRecord.seller_name = existing.seller_name;
+            newRecord.notes = existing.notes;
+            newRecord.selling_price = existing.selling_price;
+            newRecord.sale_type = existing.sale_type;
+            newRecord.deposit_amount = existing.deposit_amount;
+            newRecord.cod_amount = existing.cod_amount;
+            newRecord.installment_months = existing.installment_months;
+            newRecord.installment_amount = existing.installment_amount;
+            newRecord.payment_status = existing.payment_status;
+            newRecord.customer_name = existing.customer_name;
+            newRecord.customer_phone = existing.customer_phone;
+            newRecord.installment_number = existing.installment_number;
+            newRecord.installment_history = existing.installment_history;
+          }
+        }
+
+        recordsToInsert.push(newRecord);
       }
 
       if (recordsToInsert.length === 0) {
@@ -1239,24 +1276,69 @@ export default function StaffDashboard() {
       const items = await res.json();
       if (items.error) throw new Error(items.error);
 
+      // Fetch existing DB records to prevent overwriting sold status or reviving deleted items
+      const { data: existingDB } = await supabase
+        .from('sheets_inventory')
+        .select('*');
+      
+      const dbMap = new Map<string, any>();
+      if (existingDB) {
+        existingDB.forEach(d => {
+          if (d.imei) dbMap.set(d.imei.trim(), d);
+        });
+      }
+
       // Map incoming keys to DB columns
-      const records = items.map((x: any) => ({
-        sticker: x.serialNo || null,
-        model_name: x.model,
-        imei: x.imei,
-        color: x.color || null,
-        is_sold: x.isSold,
-        stock_location: x.location || 'Shop',
-        battery_pct: x.battery || '100',
-        seller_name: x.seller || null,
-        notes: x.notes || null,
-        selling_price: x.price || 0,
-        market_price: x.marketPrice || 0,
-        purchase_cost_krw: x.purchaseCost || 0,
-        site_date: x.siteDate || null,
-        sale_date: x.saleDate || null,
-        deleted_at: null // Ensure soft-deleted items are restored on sync
-      }));
+      const records = items.map((x: any) => {
+        const rawImei = x.imei ? String(x.imei).trim() : '';
+        const existing = dbMap.get(rawImei);
+
+        const baseRecord: any = {
+          sticker: x.serialNo || null,
+          model_name: x.model,
+          imei: rawImei,
+          color: x.color || null,
+          is_sold: x.isSold,
+          stock_location: x.location || 'Shop',
+          battery_pct: x.battery || '100',
+          seller_name: x.seller || null,
+          notes: x.notes || null,
+          selling_price: x.price || 0,
+          market_price: x.marketPrice || 0,
+          purchase_cost_krw: x.purchaseCost || 0,
+          site_date: x.siteDate || null,
+          sale_date: x.saleDate || null,
+          deleted_at: null
+        };
+
+        if (existing) {
+          // If already sold in DB, preserve all sale related details to prevent rollback
+          if (existing.is_sold) {
+            baseRecord.is_sold = true;
+            baseRecord.sale_date = existing.sale_date;
+            baseRecord.seller_name = existing.seller_name;
+            baseRecord.notes = existing.notes;
+            baseRecord.selling_price = existing.selling_price;
+            baseRecord.sale_type = existing.sale_type;
+            baseRecord.deposit_amount = existing.deposit_amount;
+            baseRecord.cod_amount = existing.cod_amount;
+            baseRecord.installment_months = existing.installment_months;
+            baseRecord.installment_amount = existing.installment_amount;
+            baseRecord.payment_status = existing.payment_status;
+            baseRecord.customer_name = existing.customer_name;
+            baseRecord.customer_phone = existing.customer_phone;
+            baseRecord.installment_number = existing.installment_number;
+            baseRecord.installment_history = existing.installment_history;
+          }
+
+          // If soft-deleted, preserve the deleted status on Sheet Sync (prevent reviving deleted rows)
+          if (existing.deleted_at) {
+            baseRecord.deleted_at = existing.deleted_at;
+          }
+        }
+
+        return baseRecord;
+      });
 
       if (records.length === 0) {
         showToast('❌ No records retrieved from spreadsheet.', 'error');
@@ -1391,6 +1473,18 @@ export default function StaffDashboard() {
       if (marketPriceIdx === -1) marketPriceIdx = 16;
       if (purchaseCostIdx === -1) purchaseCostIdx = 18;
 
+      // Fetch existing DB records to prevent overwriting sold status or reviving deleted items
+      const { data: existingDB } = await supabase
+        .from('sheets_inventory')
+        .select('*');
+      
+      const dbMap = new Map<string, any>();
+      if (existingDB) {
+        existingDB.forEach(d => {
+          if (d.imei) dbMap.set(d.imei.trim(), d);
+        });
+      }
+
       const records = [];
       const nowString = new Date().toISOString();
       const startIdx = headerDetected ? headerRowIdx + 1 : 0;
@@ -1430,7 +1524,10 @@ export default function StaffDashboard() {
         const marketPriceVal = parseInt(row[marketPriceIdx]?.replace(/[^\d]/g, '')) || 0;
         const purchaseCostVal = parseInt(row[purchaseCostIdx]?.replace(/[^\d]/g, '')) || 0;
 
-        records.push({
+        const rawImeiTrimmed = rawImei.trim();
+        const existing = dbMap.get(rawImeiTrimmed);
+
+        const newRecord: any = {
           site_date: siteD,
           sale_date: saleD,
           sticker: stickerNo,
@@ -1445,9 +1542,31 @@ export default function StaffDashboard() {
           selling_price: sellingPriceVal,
           market_price: marketPriceVal,
           purchase_cost_krw: purchaseCostVal,
-          deleted_at: null, // Ensure soft-deleted items are restored on paste
+          deleted_at: null, // Restored on manual clipboard paste
           created_at: nowString
-        });
+        };
+
+        if (existing) {
+          if (existing.is_sold) {
+            newRecord.is_sold = true;
+            newRecord.sale_date = existing.sale_date;
+            newRecord.seller_name = existing.seller_name;
+            newRecord.notes = existing.notes;
+            newRecord.selling_price = existing.selling_price;
+            newRecord.sale_type = existing.sale_type;
+            newRecord.deposit_amount = existing.deposit_amount;
+            newRecord.cod_amount = existing.cod_amount;
+            newRecord.installment_months = existing.installment_months;
+            newRecord.installment_amount = existing.installment_amount;
+            newRecord.payment_status = existing.payment_status;
+            newRecord.customer_name = existing.customer_name;
+            newRecord.customer_phone = existing.customer_phone;
+            newRecord.installment_number = existing.installment_number;
+            newRecord.installment_history = existing.installment_history;
+          }
+        }
+
+        records.push(newRecord);
       }
 
       if (records.length === 0) {
@@ -4525,14 +4644,6 @@ export default function StaffDashboard() {
               <div className="auth-tabs" style={{ display: 'flex', background: 'rgba(0, 0, 0, .03)', borderRadius: '10px', padding: '4px', marginBottom: '20px' }}>
                 <button 
                   type="button"
-                  className={`tab-btn ${intakeMethod === 'sync' ? 'active' : ''}`}
-                  onClick={() => setIntakeMethod('sync')}
-                  style={{ flex: 1, padding: '10px', border: 'none', background: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, transition: 'all 0.2s' }}
-                >
-                  {t('staff_tab_gsheet') || '🌐 구글 시트 실시간 연동'}
-                </button>
-                <button 
-                  type="button"
                   className={`tab-btn ${intakeMethod === 'file' ? 'active' : ''}`}
                   onClick={() => setIntakeMethod('file')}
                   style={{ flex: 1, padding: '10px', border: 'none', background: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, transition: 'all 0.2s' }}
@@ -4548,40 +4659,6 @@ export default function StaffDashboard() {
                   {t('staff_tab_paste') || '📋 복사 붙여넣기 (Ctrl+C/V)'}
                 </button>
               </div>
-
-              {/* METHOD 1: Google Sheets Live Sync */}
-              {intakeMethod === 'sync' && (
-                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div style={{ background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', fontSize: '12px', lineHeight: 1.6, color: 'var(--t2)' }}>
-                    <h4 style={{ fontWeight: 800, color: 'var(--t1)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span>💡</span> {t('staff_gsheet_info_title') || '실시간 구글 스프레드시트 동기화 안내'}
-                    </h4>
-                    <p>
-                      {lang === 'ko' ? (
-                        <>Phoneswitchhub 공식 구글 시트(<a href="https://docs.google.com/spreadsheets/d/1NpSAZNB9xb0pYZxs5sKp9hxXQraMPXcpxWyhUO2o4DM/edit" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--purple)', textDecoration: 'underline', fontWeight: 600 }}>장부 링크</a>)에서 실시간으로 전체 기기 내역을 조회해 데이터베이스에 동기화합니다.</>
-                      ) : (
-                        <>ซิงค์ข้อมูลกับฐานข้อมูลแบบเรียลไทม์โดยการดึงข้อมูลอุปกรณ์ทั้งหมดจาก Google Spreadsheet ทางการของ Phoneswitchhub (<a href="https://docs.google.com/spreadsheets/d/1NpSAZNB9xb0pYZxs5sKp9hxXQraMPXcpxWyhUO2o4DM/edit" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--purple)', textDecoration: 'underline', fontWeight: 600 }}>ลิงก์บัญชีคลัง</a>)</>
-                      )}
-                    </p>
-                    <p style={{ marginTop: '6px' }}>
-                      • {t('staff_gsheet_info_2') || 'IMEI를 고유 키로 하여 이미 등록된 기기는 정보를 덮어쓰고(Update), 새로운 기기는 자동으로 추가(Insert)합니다.'}
-                    </p>
-                    <p style={{ marginTop: '6px' }}>
-                      • {t('staff_gsheet_info_3') || '연동 시 데이터 용량에 따라 완료까지 수 초 정도 소요될 수 있으니 완료 토스트창이 뜰 때까지 기다려 주세요.'}
-                    </p>
-                  </div>
-                  
-                  <button 
-                    type="button"
-                    className="btn-submit"
-                    onClick={handleLiveSync}
-                    disabled={importingCSV}
-                    style={{ margin: '8px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                  >
-                    {importingCSV ? (t('staff_btn_gsheet_loading') || '🔄 구글 시트 데이터 로딩 및 동기화 중...') : (t('staff_btn_gsheet_start') || '🌐 구글 시트에서 실시간 불러오기 시작')}
-                  </button>
-                </div>
-              )}
 
               {/* METHOD 2: CSV File Upload */}
               {intakeMethod === 'file' && (
