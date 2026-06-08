@@ -374,7 +374,18 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     recent_contracts_sent: "📋 최근 보낸 계약서 목록",
     status_waiting: "대기중",
     loading_data: "데이터 로딩 중...",
-    contract_login_required_desc: "로그인하시면 고객에게 전송하는 서명 링크를 만들고 관리할 수 있습니다."
+    contract_login_required_desc: "로그인하시면 고객에게 전송하는 서명 링크를 만들고 관리할 수 있습니다.",
+    staff_dashboard_title: "사내 재고 및 판매 관리 시스템",
+    staff_portal: "INTERNAL STAFF PORTAL",
+    staff_menu_overview: "경영 개요",
+    staff_menu_inventory: "사내 재고 관리",
+    staff_menu_sales: "판매 및 주문 처리",
+    staff_total_stock_value: "총 재고 가치",
+    staff_active_sku: "취급 상품 수 (SKU)",
+    staff_monthly_sales: "이번 달 누적 판매",
+    staff_payout_waiting: "정산 대기액",
+    staff_download_csv: "CSV 내보내기",
+    staff_no_access: "접근 권한이 없거나 직원 전용 계정이 아닙니다."
   },
   th: {
     app_title: "PHONE SWITCH HUB",
@@ -749,7 +760,18 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     recent_contracts_sent: "📋 รายการสัญญาที่ส่งล่าสุด",
     status_waiting: "รอดำเนินการ",
     loading_data: "กำลังโหลดข้อมูล...",
-    contract_login_required_desc: "เข้าสู่ระบบเพื่อสร้างและจัดการลิงก์ลงลายมือชื่อสำหรับลูกค้า"
+    contract_login_required_desc: "เข้าสู่ระบบเพื่อสร้างและจัดการลิงก์ลงลายมือชื่อสำหรับลูกค้า",
+    staff_dashboard_title: "ระบบจัดการสต็อกและยอดขายภายใน",
+    staff_portal: "INTERNAL STAFF PORTAL",
+    staff_menu_overview: "ภาพรวมธุรกิจ",
+    staff_menu_inventory: "จัดการสต็อกสินค้าภายใน",
+    staff_menu_sales: "จัดการคำสั่งซื้อและยอดขาย",
+    staff_total_stock_value: "มูลค่าสต็อกรวม",
+    staff_active_sku: "จำนวนรายการสินค้า (SKU)",
+    staff_monthly_sales: "ยอดขายสะสมเดือนนี้",
+    staff_payout_waiting: "ยอดเงินรอชำระ",
+    staff_download_csv: "ส่งออก CSV",
+    staff_no_access: "ไม่มีสิทธิ์เข้าถึง หรือไม่ใช่บัญชีเจ้าหน้าที่"
   },
   mm: {
     app_title: "PHONE SWITCH HUB",
@@ -1124,7 +1146,18 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     recent_contracts_sent: "📋 လတ်တလောပေးပို့ထားသောစာချုပ်များ",
     status_waiting: "စောင့်ဆိုင်းဆဲ",
     loading_data: "ဒေတာယူနေသည်...",
-    contract_login_required_desc: "ဝယ်ယူသူများထံပေးပို့ရန် လက်မှတ်လင့်ခ်များပြုလုပ်ပြီး စီမံခန့်ခွဲရန် လော့ဂ်အင်ဝင်ပါ"
+    contract_login_required_desc: "ဝယ်ယူသူများထံပေးပို့ရန် လက်မှတ်လင့်ခ်များပြုလုပ်ပြီး စီမံခန့်ခွဲရန် လော့ဂ်အင်ဝင်ပါ",
+    staff_dashboard_title: "ပြည်တွင်း ကုန်ပစ္စည်းနှင့် အရောင်းစီမံခန့်ခွဲမှုစနစ်",
+    staff_portal: "INTERNAL STAFF PORTAL",
+    staff_menu_overview: "လုပ်ငန်းအကျဉ်းချုပ်",
+    staff_menu_inventory: "ပြည်တွင်း ကုန်ပစ္စည်းစီမံခန့်ခွဲမှု",
+    staff_menu_sales: "အရောင်းနှင့် အော်ဒါစီမံခန့်ခွဲမှု",
+    staff_total_stock_value: "စုစုပေါင်း ကုန်ပစ္စည်းတန်ဖိုး",
+    staff_active_sku: "ကုန်ပစ္စည်းအမျိုးအစား (SKU)",
+    staff_monthly_sales: "ယခုလအတွင်း စုစုပေါင်းအရောင်း",
+    staff_payout_waiting: "ငွေရှင်းရန်စောင့်ဆိုင်းဆဲ",
+    staff_download_csv: "CSV ထုတ်ယူရန်",
+    staff_no_access: "ဝင်ရောက်ခွင့်မရှိပါ သို့မဟုတ် ဝန်ထမ်းအကောင့်မဟုတ်ပါ"
   },
   en: {
     app_title: "Phone Switch Hub",
@@ -1483,6 +1516,17 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     recent_contracts_sent: "📋 Recently Sent Contracts",
     status_waiting: "Pending",
     loading_data: "Loading data...",
-    contract_login_required_desc: "Log in to create and manage signature links sent to customers."
+    contract_login_required_desc: "Log in to create and manage signature links sent to customers.",
+    staff_dashboard_title: "Internal Inventory & Sales System",
+    staff_portal: "INTERNAL STAFF PORTAL",
+    staff_menu_overview: "Business Overview",
+    staff_menu_inventory: "Internal Inventory",
+    staff_menu_sales: "Sales & Orders Processing",
+    staff_total_stock_value: "Total Stock Value",
+    staff_active_sku: "Active SKUs",
+    staff_monthly_sales: "Monthly Sales",
+    staff_payout_waiting: "Payouts Waiting",
+    staff_download_csv: "Export CSV",
+    staff_no_access: "Access denied. Internal staff account required."
   }
 };
