@@ -1795,6 +1795,7 @@ export default function ContractPage() {
         }
 
         .sidebar {
+          position: relative;
           width: 400px;
           min-width: 400px;
           border-right: 1px solid #1e293b;
@@ -2428,11 +2429,14 @@ export default function ContractPage() {
             flex-direction: column;
           }
           .sidebar {
+            position: relative !important;
+            height: auto !important;
+            max-height: none !important;
             width: 100%;
             min-width: 100%;
-            max-height: none;
             border-right: none;
             border-bottom: 1px solid #1e293b;
+            padding: 16px 16px 40px 16px !important;
           }
           .preview-container {
             padding: 16px;
