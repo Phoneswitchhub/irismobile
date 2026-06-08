@@ -899,7 +899,7 @@ export default function SellerDashboard() {
           </span>
         </div>
         <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {(sellerProfile?.store_type === 'direct' || sellerProfile?.role === 'admin') && (
+          {(sellerProfile?.role === 'admin' || sellerProfile?.role === 'manager' || sellerProfile?.role === 'staff') && (
             <button 
               className="btn-nav" 
               style={{ 

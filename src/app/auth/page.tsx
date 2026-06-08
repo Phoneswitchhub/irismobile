@@ -84,6 +84,7 @@ export default function AuthPage() {
       }
       if (p.role === 'admin') router.push('/admin/dashboard');
       else if (p.role === 'seller') router.push('/seller/dashboard');
+      else if (p.role === 'staff' || p.role === 'manager') router.push('/staff/dashboard');
       else router.push('/');
     } catch (err) {
       console.error('Redirect failed:', err);

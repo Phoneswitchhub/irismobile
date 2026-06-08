@@ -280,12 +280,11 @@ export default function StaffDashboard() {
           return;
         }
 
-        // Allow Admin, Manager, Staff, or Direct Store Sellers
+        // Allow Admin, Manager, or Staff (Direct Store Sellers are blocked from this dashboard)
         const hasAccess = 
           p.role === 'admin' || 
           p.role === 'manager' || 
-          p.role === 'staff' || 
-          (p.role === 'seller' && p.store_type === 'direct');
+          p.role === 'staff';
 
         if (!hasAccess) {
           setIsAuthorized(false);
@@ -3064,6 +3063,7 @@ export default function StaffDashboard() {
 
           let expectedThisMonth = 0;
           let collectedThisMonth = 0;
+          let totalUnpaidBalance = 0;
           
           installmentDevices.forEach(d => {
             const history = d.installment_history || [];
@@ -3073,6 +3073,9 @@ export default function StaffDashboard() {
                 if (h.status === 'paid') {
                   collectedThisMonth += Number(h.amount) || 0;
                 }
+              }
+              if (h.status === 'unpaid') {
+                totalUnpaidBalance += Number(h.amount) || 0;
               }
             });
           });
@@ -3115,9 +3118,9 @@ export default function StaffDashboard() {
                 <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
                   <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>🔴</div>
                   <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600 }}>이번 달 미수 금액</div>
-                    <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--red)', marginTop: '4px' }}>฿{remainingThisMonth.toLocaleString()}</div>
-                    <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>미납 회차 잔액</div>
+                    <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600 }}>총 미수금 잔액</div>
+                    <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--red)', marginTop: '4px' }}>฿{totalUnpaidBalance.toLocaleString()}</div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>미납 회차 전체 잔액</div>
                   </div>
                 </div>
               </div>
@@ -3391,6 +3394,110 @@ export default function StaffDashboard() {
                 </div>
               </div>
             </div>
+
+            {/* Seller Monthly Performance Aggregation */}
+            {(() => {
+              const getYearMonth = (dateStr?: string) => {
+                if (!dateStr) return 'Unknown';
+                const parts = dateStr.split('.').map(p => p.trim()).filter(Boolean);
+                if (parts.length >= 2) {
+                  const year = parts[0].length === 2 ? `20${parts[0]}` : parts[0];
+                  const month = parts[1].padStart(2, '0');
+                  return `${year}-${month}`;
+                }
+                try {
+                  const d = new Date(dateStr);
+                  if (!isNaN(d.getTime())) {
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                  }
+                } catch (e) {}
+                return 'Unknown';
+              };
+
+              const sellerStatsMap: Record<string, {
+                yearMonth: string;
+                sellerName: string;
+                qty: number;
+                totalSalesTHB: number;
+                totalCostKRW: number;
+                estimatedMarginKRW: number;
+              }> = {};
+
+              marginStats.soldList.forEach(item => {
+                const ym = getYearMonth(item.sale_date);
+                const seller = item.seller_name || '미지정 (Unassigned)';
+                const key = `${ym}_${seller}`;
+                
+                const sales = Number(item.selling_price) || 0;
+                const cost = Number(item.purchase_cost_krw) || 0;
+                const marginKRW = Math.round(sales * exchangeRate) - cost;
+                
+                if (!sellerStatsMap[key]) {
+                  sellerStatsMap[key] = {
+                    yearMonth: ym,
+                    sellerName: seller,
+                    qty: 0,
+                    totalSalesTHB: 0,
+                    totalCostKRW: 0,
+                    estimatedMarginKRW: marginKRW
+                  };
+                } else {
+                  sellerStatsMap[key].qty += 1;
+                  sellerStatsMap[key].totalSalesTHB += sales;
+                  sellerStatsMap[key].totalCostKRW += cost;
+                  sellerStatsMap[key].estimatedMarginKRW += marginKRW;
+                }
+              });
+
+              const sellerStatsList = Object.values(sellerStatsMap).sort((a, b) => {
+                if (a.yearMonth !== b.yearMonth) {
+                  return b.yearMonth.localeCompare(a.yearMonth);
+                }
+                return b.estimatedMarginKRW - a.estimatedMarginKRW;
+              });
+
+              return (
+                <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>👥</span> 담당자별 월간 판매 실적 및 마진 요약 (Seller Monthly Performance Summary)
+                  </h4>
+                  <div className="tbl-wrap" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+                    <table className="tbl" style={{ margin: 0 }}>
+                      <thead>
+                        <tr>
+                          <th style={{ width: '15%' }}>정산 월</th>
+                          <th style={{ width: '25%' }}>담당자 (판매원)</th>
+                          <th style={{ width: '15%', textAlign: 'center' }}>판매 대수</th>
+                          <th style={{ width: '15%', textAlign: 'right' }}>총 소매 판매가</th>
+                          <th style={{ width: '15%', textAlign: 'right' }}>총 매입 원가</th>
+                          <th style={{ width: '15%', textAlign: 'right' }}>총 정산 마진 (예상)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sellerStatsList.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>정산 요약 데이터가 없습니다. (No summary data available.)</td>
+                          </tr>
+                        ) : (
+                          sellerStatsList.map(row => (
+                            <tr key={`${row.yearMonth}_${row.sellerName}`}>
+                              <td style={{ fontWeight: 700, color: 'var(--purple-l)' }}>{row.yearMonth}</td>
+                              <td style={{ fontWeight: 700 }}>{row.sellerName}</td>
+                              <td style={{ textAlign: 'center', fontWeight: 800 }}>{row.qty}대</td>
+                              <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)' }}>฿{row.totalSalesTHB.toLocaleString()}</td>
+                              <td style={{ textAlign: 'right', color: '#94a3b8' }}>₩{row.totalCostKRW.toLocaleString()}</td>
+                              <td style={{ textAlign: 'right', fontWeight: 900, color: row.estimatedMarginKRW >= 0 ? 'var(--green)' : '#e11d48' }}>
+                                ₩{row.estimatedMarginKRW.toLocaleString()}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Part 1: Receivables & Unpaid Table */}
             <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>

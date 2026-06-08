@@ -214,8 +214,10 @@ export default function ContractPage() {
   const isAuthorized = useMemo(() => {
     if (!user) return false;
     return (
-      sellerProfile?.store_type === 'direct' ||
-      sellerProfile?.role === 'admin'
+      sellerProfile?.role === 'admin' ||
+      sellerProfile?.role === 'manager' ||
+      sellerProfile?.role === 'staff' ||
+      (sellerProfile?.role === 'seller' && sellerProfile?.store_type === 'direct')
     );
   }, [user, sellerProfile]);
 

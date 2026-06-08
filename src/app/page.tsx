@@ -1270,7 +1270,10 @@ function HomeContent() {
                     <h3 style={{ fontSize: '18px', fontWeight: 700 }}>{userProfile?.name || '—'}</h3>
                     <p style={{ fontSize: '13px', color: 'var(--t2)', marginTop: '2px' }}>📞 {userProfile?.phone || '—'}</p>
                     <span className="badge bg-purple" style={{ marginTop: '6px' }}>
-                      {userProfile?.role === 'admin' ? 'Admin' : userProfile?.role === 'seller' ? t('role_seller') : t('role_buyer')}
+                      {userProfile?.role === 'admin' ? 'Admin' : 
+                       userProfile?.role === 'manager' ? 'Manager' :
+                       userProfile?.role === 'staff' ? 'Staff' :
+                       userProfile?.role === 'seller' ? t('role_seller') : t('role_buyer')}
                     </span>
                   </div>
                 </div>
@@ -1283,6 +1286,7 @@ function HomeContent() {
                       onClick={() => {
                         if (userProfile?.role === 'admin') router.push('/admin/dashboard');
                         else if (userProfile?.role === 'seller') router.push('/seller/dashboard');
+                        else if (userProfile?.role === 'staff' || userProfile?.role === 'manager') router.push('/staff/dashboard');
                       }}
                     >
                       📊 {t('dashboard')}

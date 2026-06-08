@@ -59,6 +59,8 @@ export default function AdminDashboard() {
   const [confDistrict, setConfDistrict] = useState('');
   const [confAddress, setConfAddress] = useState('');
   const [confCoords, setConfCoords] = useState('');
+  const [confRole, setConfRole] = useState('seller');
+  const [confStoreType, setConfStoreType] = useState('franchise');
   const [districtsList, setDistrictsList] = useState<District[]>([]);
 
   // Buyer Orders View Modal States
@@ -116,7 +118,7 @@ export default function AdminDashboard() {
     try {
       const [users, sellers, prods, orders, revenue, pending] = await Promise.all([
         supabase.from('profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'seller').eq('is_approved', true),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).in('role', ['seller', 'staff', 'manager', 'admin']).eq('is_approved', true),
         supabase.from('products').select('*', { count: 'exact', head: true }),
         supabase.from('orders').select('*', { count: 'exact', head: true }),
         supabase.from('orders').select('total_price').eq('status', 'completed'),
@@ -163,7 +165,7 @@ export default function AdminDashboard() {
       const { data: approved } = await supabase
         .from('profiles')
         .select('*')
-        .eq('role', 'seller')
+        .in('role', ['seller', 'staff', 'manager', 'admin'])
         .eq('is_approved', true)
         .order('created_at', { ascending: false });
 
@@ -444,6 +446,8 @@ export default function AdminDashboard() {
     setConfCommRate(seller.commission_rate || 10.0);
     setConfPayoutMethod(seller.payout_method || 'parent_payment');
     setConfProvince(seller.location_province || '');
+    setConfRole(seller.role || 'seller');
+    setConfStoreType(seller.store_type || 'franchise');
     // Wait for cascading state
     setTimeout(() => {
       setConfDistrict(seller.location_district || '');
@@ -468,7 +472,9 @@ export default function AdminDashboard() {
         location_province: confProvince,
         location_district: confDistrict,
         location_address: confAddress.trim(),
-        location_coords: confCoords.trim() || null
+        location_coords: confCoords.trim() || null,
+        role: confRole,
+        store_type: confStoreType
       })
       .eq('id', selectedSellerForConfig.id);
 
@@ -1146,6 +1152,11 @@ export default function AdminDashboard() {
                                 ) : (
                                   <span className="badge bg-gray" style={{ background: '#6b7280', color: '#fff', fontSize: '9px', padding: '2px 4px' }}>🏪 {t('franchise_store_label')}</span>
                                 )}
+                              </div>
+                              <div style={{ marginTop: '4px' }}>
+                                <span className="badge bg-purple" style={{ fontSize: '9px', padding: '2px 4px', background: s.role === 'admin' ? 'linear-gradient(135deg, #7c3aed, #4f46e5)' : (s.role === 'manager' ? '#d97706' : (s.role === 'staff' ? '#10b981' : '#6b7280')), color: '#fff' }}>
+                                  {s.role === 'admin' ? '👑 Admin' : s.role === 'manager' ? '💼 Manager' : s.role === 'staff' ? '⚙️ Staff' : '👤 Seller'}
+                                </span>
                               </div>
                             </td>
                             <td style={{ fontSize: '11px', color: 'var(--t2)' }}>
@@ -1829,6 +1840,32 @@ export default function AdminDashboard() {
                   <option value="subsidiary">{t('partner_subsidiary_long')}</option>
                   <option value="partner">{t('partner_merchant_long')}</option>
                 </select>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div className="form-group">
+                  <label className="form-label">사용자 권한 (User Role)</label>
+                  <select 
+                    className="form-input" 
+                    value={confRole}
+                    onChange={(e) => setConfRole(e.target.value)}
+                  >
+                    <option value="seller">일반 판매자 (Seller)</option>
+                    <option value="staff">사내 스탭 (Staff)</option>
+                    <option value="manager">사내 매니저 (Manager)</option>
+                    <option value="admin">최고 관리자 (Admin)</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">매장 운영 형태 (Store Type)</label>
+                  <select 
+                    className="form-input" 
+                    value={confStoreType}
+                    onChange={(e) => setConfStoreType(e.target.value)}
+                  >
+                    <option value="franchise">공식 대리점 (Franchise)</option>
+                    <option value="direct">본사 직영점 (Direct)</option>
+                  </select>
+                </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 <div className="form-group">
