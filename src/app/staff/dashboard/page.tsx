@@ -567,25 +567,37 @@ export default function StaffDashboard() {
     };
   }, [devices]);
 
+  // Extract unique models present in current tab's scope (active vs sold)
+  const uniqueModels = useMemo(() => {
+    const activeStock = devices.filter(d => !d.deleted_at && !d.is_sold);
+    const soldList = devices.filter(d => !d.deleted_at && d.is_sold);
+
+    const activeModelMap: Record<string, number> = {};
+    activeStock.forEach(d => {
+      if (d.model_name) {
+        activeModelMap[d.model_name] = (activeModelMap[d.model_name] || 0) + 1;
+      }
+    });
+
+    const soldModelMap: Record<string, number> = {};
+    soldList.forEach(d => {
+      if (d.model_name) {
+        soldModelMap[d.model_name] = (soldModelMap[d.model_name] || 0) + 1;
+      }
+    });
+
+    const sortFn = (a: [string, number], b: [string, number]) => a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: 'base' });
+
+    return {
+      active: Object.entries(activeModelMap).sort(sortFn),
+      sold: Object.entries(soldModelMap).sort(sortFn)
+    };
+  }, [devices]);
+
   // Helper to check category
   const matchesCategory = useCallback((modelName: string, filter: string) => {
     if (filter === 'all') return true;
-    const name = modelName.toLowerCase();
-    const isIphone = name.includes('iphone') || name.includes('aip') || name.includes('ip') || name.includes('아이폰');
-    const isGalaxy = name.includes('galaxy') || name.includes('sec') || name.includes('갤') || name.includes('s2') || name.includes('s3') || name.includes('s4') || name.includes('fold') || name.includes('flip');
-
-    if (filter === 'iphone') return isIphone;
-    if (filter === 'iphone16') return isIphone && name.includes('16');
-    if (filter === 'iphone15') return isIphone && name.includes('15');
-    if (filter === 'iphone14') return isIphone && name.includes('14');
-    if (filter === 'iphone13') return isIphone && name.includes('13');
-    if (filter === 'galaxy') return isGalaxy;
-    if (filter === 's24') return name.includes('s24');
-    if (filter === 's23') return name.includes('s23');
-    if (filter === 's22') return name.includes('s22');
-    if (filter === 'fold_flip') return name.includes('fold') || name.includes('flip');
-    if (filter === 'other_brand') return name.includes('vivo') || name.includes('oppo') || name.includes('huawei');
-    return true;
+    return modelName === filter;
   }, []);
 
   // Filtered lists
@@ -1499,6 +1511,7 @@ export default function StaffDashboard() {
   const handleTabChange = (tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin') => {
     setActiveTab(tab);
     setSelectedIds([]);
+    setCategoryFilter('all');
   };
 
   // CSV Reader trigger for file upload selector
@@ -1836,7 +1849,7 @@ export default function StaffDashboard() {
             
             {/* Search & Toolbars */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '8px 12px' }}>
-              <div style={{ display: 'flex', gap: '8px', flex: 1 }}>
+              <div style={{ display: 'flex', gap: '8px', flex: 1, alignItems: 'center' }}>
                 <input
                   type="text"
                   placeholder="모델명, IMEI, 또는 스티커 검색..."
@@ -1857,6 +1870,10 @@ export default function StaffDashboard() {
                     <option key={loc.id} value={loc.name}>{loc.name}</option>
                   ))}
                 </select>
+
+                <div style={{ display: 'flex', alignItems: 'center', fontSize: '13px', fontWeight: 700, color: 'var(--purple-l)', marginLeft: '12px', whiteSpace: 'nowrap' }}>
+                  조회된 재고: {filteredActiveDevices.length}대
+                </div>
               </div>
 
               <div style={{ display: 'flex', gap: '6px' }}>
@@ -1885,42 +1902,56 @@ export default function StaffDashboard() {
 
             {/* Category Quick Filter Tag Shortcuts */}
             <div className="category-shortcuts" style={{ display: 'flex', gap: '6px', overflowX: 'auto', padding: '6px 10px', background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              {[
-                { id: 'all', label: '📱 전체 (All)' },
-                { id: 'iphone', label: '🍎 아이폰 전체' },
-                { id: 'iphone16', label: 'iPhone 16' },
-                { id: 'iphone15', label: 'iPhone 15' },
-                { id: 'iphone14', label: 'iPhone 14' },
-                { id: 'iphone13', label: 'iPhone 13' },
-                { id: 'galaxy', label: '🪐 갤럭시 전체' },
-                { id: 's24', label: 'S24 울트라/기타' },
-                { id: 's23', label: 'S23 울트라/기타' },
-                { id: 's22', label: 'S22 울트라/기타' },
-                { id: 'fold_flip', label: '📂 폴드/플립' },
-                { id: 'other_brand', label: '🏷️ Vivo/Oppo/Huawei' }
-              ].map(cat => (
+              {/* All Option */}
+              <button
+                type="button"
+                onClick={() => setCategoryFilter('all')}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: '999px',
+                  border: '1px solid',
+                  borderColor: categoryFilter === 'all' ? 'var(--purple-l)' : 'var(--border)',
+                  background: categoryFilter === 'all' ? 'var(--purple-l)' : '#fff',
+                  color: categoryFilter === 'all' ? '#fff' : 'var(--t1)',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.2s',
+                  boxShadow: categoryFilter === 'all' ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none'
+                }}
+              >
+                📱 {t('all') || '전체'} ({devices.filter(d => !d.deleted_at && !d.is_sold).length})
+              </button>
+
+              {/* Dynamic Model Options */}
+              {uniqueModels.active.map(([model, count]) => (
                 <button
-                  key={cat.id}
+                  key={model}
                   type="button"
-                  onClick={() => setCategoryFilter(cat.id)}
+                  onClick={() => setCategoryFilter(model)}
                   style={{
                     padding: '5px 10px',
                     borderRadius: '999px',
                     border: '1px solid',
-                    borderColor: categoryFilter === cat.id ? 'var(--purple-l)' : 'var(--border)',
-                    background: categoryFilter === cat.id ? 'var(--purple-l)' : '#fff',
-                    color: categoryFilter === cat.id ? '#fff' : 'var(--t1)',
+                    borderColor: categoryFilter === model ? 'var(--purple-l)' : 'var(--border)',
+                    background: categoryFilter === model ? 'var(--purple-l)' : '#fff',
+                    color: categoryFilter === model ? '#fff' : 'var(--t1)',
                     fontSize: '11px',
                     fontWeight: 700,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     transition: 'all 0.2s',
-                    boxShadow: categoryFilter === cat.id ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none'
+                    boxShadow: categoryFilter === model ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none'
                   }}
                 >
-                  {cat.label}
+                  {model} ({count})
                 </button>
               ))}
+
+              {uniqueModels.active.length === 0 && (
+                <span style={{ fontSize: '11px', color: 'var(--t3)', padding: '5px 8px' }}>보유 재고 없음</span>
+              )}
             </div>
 
             {/* Devices Stock Grid Table */}
@@ -2205,42 +2236,56 @@ export default function StaffDashboard() {
 
             {/* Category Quick Filter Tag Shortcuts */}
             <div className="category-shortcuts" style={{ display: 'flex', gap: '6px', overflowX: 'auto', padding: '6px 10px', background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              {[
-                { id: 'all', label: '📱 전체 (All)' },
-                { id: 'iphone', label: '🍎 아이폰 전체' },
-                { id: 'iphone16', label: 'iPhone 16' },
-                { id: 'iphone15', label: 'iPhone 15' },
-                { id: 'iphone14', label: 'iPhone 14' },
-                { id: 'iphone13', label: 'iPhone 13' },
-                { id: 'galaxy', label: '🪐 갤럭시 전체' },
-                { id: 's24', label: 'S24 울트라/기타' },
-                { id: 's23', label: 'S23 울트라/기타' },
-                { id: 's22', label: 'S22 울트라/기타' },
-                { id: 'fold_flip', label: '📂 폴드/플립' },
-                { id: 'other_brand', label: '🏷️ Vivo/Oppo/Huawei' }
-              ].map(cat => (
+              {/* All Option */}
+              <button
+                type="button"
+                onClick={() => setCategoryFilter('all')}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: '999px',
+                  border: '1px solid',
+                  borderColor: categoryFilter === 'all' ? 'var(--purple-l)' : 'var(--border)',
+                  background: categoryFilter === 'all' ? 'var(--purple-l)' : '#fff',
+                  color: categoryFilter === 'all' ? '#fff' : 'var(--t1)',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.2s',
+                  boxShadow: categoryFilter === 'all' ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none'
+                }}
+              >
+                📱 {t('all') || '전체'} ({devices.filter(d => !d.deleted_at && d.is_sold).length})
+              </button>
+
+              {/* Dynamic Model Options */}
+              {uniqueModels.sold.map(([model, count]) => (
                 <button
-                  key={cat.id}
+                  key={model}
                   type="button"
-                  onClick={() => setCategoryFilter(cat.id)}
+                  onClick={() => setCategoryFilter(model)}
                   style={{
                     padding: '5px 10px',
                     borderRadius: '999px',
                     border: '1px solid',
-                    borderColor: categoryFilter === cat.id ? 'var(--purple-l)' : 'var(--border)',
-                    background: categoryFilter === cat.id ? 'var(--purple-l)' : '#fff',
-                    color: categoryFilter === cat.id ? '#fff' : 'var(--t1)',
+                    borderColor: categoryFilter === model ? 'var(--purple-l)' : 'var(--border)',
+                    background: categoryFilter === model ? 'var(--purple-l)' : '#fff',
+                    color: categoryFilter === model ? '#fff' : 'var(--t1)',
                     fontSize: '11px',
                     fontWeight: 700,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     transition: 'all 0.2s',
-                    boxShadow: categoryFilter === cat.id ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none'
+                    boxShadow: categoryFilter === model ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none'
                   }}
                 >
-                  {cat.label}
+                  {model} ({count})
                 </button>
               ))}
+
+              {uniqueModels.sold.length === 0 && (
+                <span style={{ fontSize: '11px', color: 'var(--t3)', padding: '5px 8px' }}>판매 데이터 없음</span>
+              )}
             </div>
 
             {/* Sales Grid Table */}
