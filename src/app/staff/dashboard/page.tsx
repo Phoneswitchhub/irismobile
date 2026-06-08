@@ -1823,6 +1823,8 @@ export default function StaffDashboard() {
                     style={{ display: 'flex', flexDirection: 'column', gap: '4px', cursor: 'pointer' }}
                     onClick={() => {
                       handleTabChange('ledger');
+                      setLocationFilter('all');
+                      setCategoryFilter('all');
                       setSearchQuery('iPhone');
                     }}
                     title={t('staff_iphone_only') || "재고 관리에서 아이폰만 보기"}
@@ -1841,6 +1843,8 @@ export default function StaffDashboard() {
                     style={{ display: 'flex', flexDirection: 'column', gap: '4px', cursor: 'pointer' }}
                     onClick={() => {
                       handleTabChange('ledger');
+                      setLocationFilter('all');
+                      setCategoryFilter('all');
                       setSearchQuery('Galaxy');
                     }}
                     title={t('staff_galaxy_only') || "재고 관리에서 갤럭시만 보기"}
@@ -1859,6 +1863,8 @@ export default function StaffDashboard() {
                     style={{ display: 'flex', flexDirection: 'column', gap: '4px', cursor: 'pointer' }}
                     onClick={() => {
                       handleTabChange('ledger');
+                      setLocationFilter('all');
+                      setCategoryFilter('all');
                       setSearchQuery('Other');
                     }}
                     title={t('staff_other_only') || "재고 관리에서 기타 브랜드만 보기"}
@@ -1889,6 +1895,8 @@ export default function StaffDashboard() {
                             style={{ display: 'flex', flexDirection: 'column', gap: '3px', cursor: 'pointer' }}
                             onClick={() => {
                               handleTabChange('ledger');
+                              setLocationFilter('all');
+                              setCategoryFilter('all');
                               setSearchQuery(series.replace(' 기타', '').replace(' 브랜드', '').replace('기타 ', ''));
                             }}
                             title={t('search_placeholder')}
@@ -1921,6 +1929,8 @@ export default function StaffDashboard() {
                         style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', padding: '6px 10px', background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '8px', alignItems: 'center', cursor: 'pointer' }}
                         onClick={() => {
                           handleTabChange('ledger');
+                          setLocationFilter('all');
+                          setSearchQuery('');
                           setCategoryFilter(model);
                         }}
                         title={t('search_placeholder')}
