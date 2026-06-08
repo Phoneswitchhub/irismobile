@@ -35,8 +35,8 @@ export default function StaffDashboard() {
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [redirectCountdown, setRedirectCountdown] = useState(3);
 
-  // Active Tab: 'overview' | 'ledger' | 'sales'
-  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'sales'>('overview');
+  // Active Tab: 'overview' | 'ledger' | 'sales' | 'settings'
+  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'sales' | 'settings'>('overview');
 
   // Ledger Data States
   const [devices, setDevices] = useState<DeviceItem[]>([]);
@@ -54,13 +54,28 @@ export default function StaffDashboard() {
   const [intakeMethod, setIntakeMethod] = useState<'sync' | 'file' | 'paste'>('sync');
   const [pasteText, setPasteText] = useState('');
 
+  // Settings/Master Data States
+  const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
+  const [models, setModels] = useState<{ id: string; name: string }[]>([]);
+  const [loadingSettings, setLoadingSettings] = useState(false);
+
+  // States for on-the-fly custom additions in Intake Modal
+  const [isCustomModel, setIsCustomModel] = useState(false);
+  const [customModelName, setCustomModelName] = useState('');
+  const [isCustomLocation, setIsCustomLocation] = useState(false);
+  const [customLocationName, setCustomLocationName] = useState('');
+
+  // Settings tab inputs
+  const [newLocInput, setNewLocInput] = useState('');
+  const [newModInput, setNewModInput] = useState('');
+
   // Manual Input Form State
   const [sticker, setSticker] = useState('');
   const [modelName, setModelName] = useState('');
   const [imei, setImei] = useState('');
   const [color, setColor] = useState('');
   const [batteryPct, setBatteryPct] = useState('100');
-  const [location, setLocation] = useState('Shop');
+  const [location, setLocation] = useState('');
   const [purchaseCost, setPurchaseCost] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
   const [siteDate, setSiteDate] = useState('');
@@ -166,11 +181,200 @@ export default function StaffDashboard() {
     }
   }, [isAuthorized, showToast, t]);
 
+  const loadSettingsData = useCallback(async () => {
+    if (!isAuthorized) return;
+    setLoadingSettings(true);
+    try {
+      const [locsRes, modsRes] = await Promise.all([
+        supabase.from('settings_locations').select('*').order('name', { ascending: true }),
+        supabase.from('settings_models').select('*').order('name', { ascending: true })
+      ]);
+      if (locsRes.error) throw locsRes.error;
+      if (modsRes.error) throw modsRes.error;
+      setLocations(locsRes.data || []);
+      setModels(modsRes.data || []);
+    } catch (err) {
+      console.error('Error loading settings lookup:', err);
+    } finally {
+      setLoadingSettings(false);
+    }
+  }, [isAuthorized]);
+
   useEffect(() => {
     if (isAuthorized) {
       loadLedgerData();
+      loadSettingsData();
     }
-  }, [isAuthorized, loadLedgerData]);
+  }, [isAuthorized, loadLedgerData, loadSettingsData]);
+
+  // Model & Location options helper with dynamic temp additions for selected device edits
+  const modelOptions = useMemo(() => {
+    const opts = [...models];
+    if (editingDevice && editingDevice.model_name) {
+      const exists = models.some(m => m.name === editingDevice.model_name);
+      if (!exists) {
+        opts.push({ id: 'temp-mod', name: editingDevice.model_name });
+      }
+    }
+    return opts;
+  }, [models, editingDevice]);
+
+  const locationOptions = useMemo(() => {
+    const opts = [...locations];
+    if (editingDevice && editingDevice.stock_location) {
+      const exists = locations.some(l => l.name === editingDevice.stock_location);
+      if (!exists) {
+        opts.push({ id: 'temp-loc', name: editingDevice.stock_location });
+      }
+    }
+    return opts;
+  }, [locations, editingDevice]);
+
+  // Dropdown helper functions
+  const handleModelSelectChange = (val: string) => {
+    if (val === '___new___') {
+      setIsCustomModel(true);
+      setModelName('');
+    } else {
+      setIsCustomModel(false);
+      setModelName(val);
+    }
+  };
+
+  const handleLocationSelectChange = (val: string) => {
+    if (val === '___new___') {
+      setIsCustomLocation(true);
+      setLocation('');
+    } else {
+      setIsCustomLocation(false);
+      setLocation(val);
+    }
+  };
+
+  // Rename & Delete Settings Handlers
+  const handleRenameLocation = async (oldName: string) => {
+    const newName = prompt(`위치명 수정: [${oldName}] ➔ 새 이름을 입력하세요:`, oldName);
+    if (!newName || newName.trim() === '' || newName.trim() === oldName) return;
+    
+    setLoadingSettings(true);
+    try {
+      const { error: updateErr } = await supabase
+        .from('settings_locations')
+        .update({ name: newName.trim() })
+        .eq('name', oldName);
+      if (updateErr) throw updateErr;
+
+      const { error: cascadeErr } = await supabase
+        .from('sheets_inventory')
+        .update({ stock_location: newName.trim() })
+        .eq('stock_location', oldName);
+      if (cascadeErr) throw cascadeErr;
+
+      showToast(`✅ 보관 위치가 [${oldName}] ➔ [${newName.trim()}]으로 변경되었으며 기존 재고 장부도 업데이트되었습니다.`, 'success');
+      await Promise.all([loadSettingsData(), loadLedgerData()]);
+    } catch (err: any) {
+      showToast('❌ 위치 수정 실패: ' + err.message, 'error');
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
+  const handleDeleteLocation = async (name: string) => {
+    if (!confirm(`보관 위치 [${name}] 기준 정보를 삭제하시겠습니까? (기존 재고 물건들은 삭제되지 않고 위치 정보만 유지됩니다)`)) return;
+    
+    setLoadingSettings(true);
+    try {
+      const { error } = await supabase
+        .from('settings_locations')
+        .delete()
+        .eq('name', name);
+      if (error) throw error;
+      showToast(`🗑️ 위치 [${name}]가 삭제되었습니다.`, 'success');
+      await loadSettingsData();
+    } catch (err: any) {
+      showToast('❌ 위치 삭제 실패: ' + err.message, 'error');
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
+  const handleRenameModel = async (oldName: string) => {
+    const newName = prompt(`모델명 수정: [${oldName}] ➔ 새 이름을 입력하세요:`, oldName);
+    if (!newName || newName.trim() === '' || newName.trim() === oldName) return;
+    
+    setLoadingSettings(true);
+    try {
+      const { error: updateErr } = await supabase
+        .from('settings_models')
+        .update({ name: newName.trim() })
+        .eq('name', oldName);
+      if (updateErr) throw updateErr;
+
+      const { error: cascadeErr } = await supabase
+        .from('sheets_inventory')
+        .update({ model_name: newName.trim() })
+        .eq('model_name', oldName);
+      if (cascadeErr) throw cascadeErr;
+
+      showToast(`✅ 모델명이 [${oldName}] ➔ [${newName.trim()}]으로 변경되었으며 기존 재고 장부도 업데이트되었습니다.`, 'success');
+      await Promise.all([loadSettingsData(), loadLedgerData()]);
+    } catch (err: any) {
+      showToast('❌ 모델명 수정 실패: ' + err.message, 'error');
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
+  const handleDeleteModel = async (name: string) => {
+    if (!confirm(`모델명 [${name}] 기준 정보를 삭제하시겠습니까?`)) return;
+    
+    setLoadingSettings(true);
+    try {
+      const { error } = await supabase
+        .from('settings_models')
+        .delete()
+        .eq('name', name);
+      if (error) throw error;
+      showToast(`🗑️ 모델명 [${name}]이 삭제되었습니다.`, 'success');
+      await loadSettingsData();
+    } catch (err: any) {
+      showToast('❌ 모델명 삭제 실패: ' + err.message, 'error');
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
+  const handleAddLocationFromSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newLocInput.trim()) return;
+    try {
+      const { error } = await supabase
+        .from('settings_locations')
+        .insert({ name: newLocInput.trim() });
+      if (error) throw error;
+      showToast('✅ 새 위치가 추가되었습니다.', 'success');
+      setNewLocInput('');
+      await loadSettingsData();
+    } catch (err: any) {
+      showToast('❌ 위치 추가 실패: ' + err.message, 'error');
+    }
+  };
+
+  const handleAddModelFromSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newModInput.trim()) return;
+    try {
+      const { error } = await supabase
+        .from('settings_models')
+        .insert({ name: newModInput.trim() });
+      if (error) throw error;
+      showToast('✅ 새 모델명이 추가되었습니다.', 'success');
+      setNewModInput('');
+      await loadSettingsData();
+    } catch (err: any) {
+      showToast('❌ 모델 추가 실패: ' + err.message, 'error');
+    }
+  };
 
   // 3. Stats Calculations
   const stats = useMemo(() => {
@@ -191,13 +395,32 @@ export default function StaffDashboard() {
       locationCounts[loc] = (locationCounts[loc] || 0) + 1;
     });
 
+    // Model group distribution (iPhone vs Galaxy vs Other)
+    let iphoneCount = 0;
+    let galaxyCount = 0;
+    let otherCount = 0;
+
+    activeStock.forEach(d => {
+      const name = d.model_name.toLowerCase();
+      if (name.includes('iphone') || name.includes('aip') || name.includes('ip') || name.includes('아이폰')) {
+        iphoneCount++;
+      } else if (name.includes('galaxy') || name.includes('sec') || name.includes('갤') || name.includes('s2') || name.includes('s3') || name.includes('s4')) {
+        galaxyCount++;
+      } else {
+        otherCount++;
+      }
+    });
+
     return {
       totalStockCount,
       totalPurchaseCostKRW,
       totalSellingValueTHB,
       totalSoldCount,
       totalSoldRevenueTHB,
-      locationCounts
+      locationCounts,
+      iphoneCount,
+      galaxyCount,
+      otherCount
     };
   }, [devices]);
 
@@ -694,10 +917,14 @@ export default function StaffDashboard() {
     setEditingDevice(null);
     setSticker('');
     setModelName('');
+    setIsCustomModel(false);
+    setCustomModelName('');
     setImei('');
     setColor('');
     setBatteryPct('100');
-    setLocation('Shop');
+    setLocation('');
+    setIsCustomLocation(false);
+    setCustomLocationName('');
     setPurchaseCost('');
     setSellingPrice('');
     setSiteDate(new Date().toLocaleDateString('ko-KR').slice(2));
@@ -707,20 +934,45 @@ export default function StaffDashboard() {
 
   // 6. Manual Intake Single Addition Handler
   const handleSaveManualIntake = async () => {
-    if (!modelName.trim() || !imei.trim()) {
+    const activeModel = isCustomModel ? customModelName.trim() : modelName.trim();
+    const activeLocation = isCustomLocation ? customLocationName.trim() : location.trim();
+
+    if (!activeModel || !imei.trim()) {
       showToast('❌ Model Name and IMEI are required.', 'error');
       return;
     }
     
     setSavingDevice(true);
     try {
+      let finalModelName = activeModel;
+      if (isCustomModel && customModelName.trim()) {
+        const { error: modErr } = await supabase
+          .from('settings_models')
+          .insert({ name: customModelName.trim() });
+        if (modErr && modErr.code !== '23505') {
+          throw modErr;
+        }
+        finalModelName = customModelName.trim();
+      }
+
+      let finalLocation = activeLocation;
+      if (isCustomLocation && customLocationName.trim()) {
+        const { error: locErr } = await supabase
+          .from('settings_locations')
+          .insert({ name: customLocationName.trim() });
+        if (locErr && locErr.code !== '23505') {
+          throw locErr;
+        }
+        finalLocation = customLocationName.trim();
+      }
+
       const payload = {
         sticker: sticker.trim() || null,
-        model_name: modelName.trim(),
+        model_name: finalModelName,
         imei: imei.trim().replace(/\s+/g, ''),
         color: color.trim() || null,
         battery_pct: batteryPct.trim() || '100',
-        stock_location: location,
+        stock_location: finalLocation,
         purchase_cost_krw: Number(purchaseCost) || 0,
         selling_price: Number(sellingPrice) || 0,
         site_date: siteDate || new Date().toLocaleDateString('ko-KR').slice(2),
@@ -749,15 +1001,23 @@ export default function StaffDashboard() {
       // Reset Form fields
       setSticker('');
       setModelName('');
+      setIsCustomModel(false);
+      setCustomModelName('');
       setImei('');
       setColor('');
       setBatteryPct('100');
+      setLocation('');
+      setIsCustomLocation(false);
+      setCustomLocationName('');
       setPurchaseCost('');
       setSellingPrice('');
       setSiteDate('');
       setNotes('');
 
-      loadLedgerData();
+      await Promise.all([
+        loadSettingsData(),
+        loadLedgerData()
+      ]);
     } catch (err: any) {
       showToast('❌ Error: ' + err.message, 'error');
     } finally {
@@ -769,11 +1029,15 @@ export default function StaffDashboard() {
   const handleOpenEdit = (device: DeviceItem) => {
     setEditingDevice(device);
     setSticker(device.sticker || '');
-    setModelName(device.model_name);
+    setIsCustomModel(false);
+    setCustomModelName('');
+    setModelName(device.model_name || '');
     setImei(device.imei);
     setColor(device.color || '');
     setBatteryPct(device.battery_pct || '100');
-    setLocation(device.stock_location || 'Shop');
+    setIsCustomLocation(false);
+    setCustomLocationName('');
+    setLocation(device.stock_location || '');
     setPurchaseCost(device.purchase_cost_krw ? device.purchase_cost_krw.toString() : '');
     setSellingPrice(device.selling_price ? device.selling_price.toString() : '');
     setSiteDate(device.site_date || '');
@@ -934,6 +1198,13 @@ export default function StaffDashboard() {
             <span className="ico">💸</span> {t('staff_menu_sales') || '판매 완료 장부'}
           </button>
 
+          <button 
+            className={`sb-link ${activeTab === 'settings' ? 'active' : ''}`}
+            onClick={() => setActiveTab('settings')}
+          >
+            <span className="ico">⚙️</span> {t('staff_menu_settings') || '기준 정보 관리'}
+          </button>
+
           <div className="sb-sec-lbl">Shortcuts</div>
           <button className="sb-link" onClick={() => router.push('/')}>
             <span className="ico">🏠</span> {t('admin_menu_home')}
@@ -971,6 +1242,7 @@ export default function StaffDashboard() {
               {activeTab === 'overview' && `📊 ${t('staff_menu_overview') || '경영 개요'}`}
               {activeTab === 'ledger' && `📱 ${t('staff_menu_inventory') || '기기 입고 및 재고 관리'}`}
               {activeTab === 'sales' && `💸 ${t('staff_menu_sales') || '판매 완료 장부'}`}
+              {activeTab === 'settings' && `⚙️ ${t('staff_menu_settings') || '기준 정보 관리'}`}
             </h1>
             <p style={{ color: 'var(--t2)', fontSize: '12px', marginTop: '4px' }}>
               Company Ledger & Stock Intake Management System.
@@ -1006,10 +1278,17 @@ export default function StaffDashboard() {
 
               <div className="stat-card" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <div className="sc-icon" style={{ background: 'rgba(16,185,129,.15)', width: '38px', height: '38px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>📦</div>
-                <div className="sc-num" style={{ fontSize: '22px', fontWeight: 900, color: 'var(--green)', margin: '8px 0 2px' }}>
-                  {stats.totalStockCount} 대
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <div className="sc-num" style={{ fontSize: '22px', fontWeight: 900, color: 'var(--green)', margin: '8px 0 2px' }}>
+                    {stats.totalStockCount} 대
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--t2)', display: 'flex', gap: '6px', fontWeight: 700 }}>
+                    <span>🍎 {stats.iphoneCount}</span>
+                    <span>🪐 {stats.galaxyCount}</span>
+                    <span>기타 {stats.otherCount}</span>
+                  </div>
                 </div>
-                <div className="sc-lbl" style={{ color: 'var(--t2)', fontSize: '11px', fontWeight: 600 }}>현재고 수량</div>
+                <div className="sc-lbl" style={{ color: 'var(--t2)', fontSize: '11px', fontWeight: 600 }}>현재고 수량 (아이폰 / 갤럭시 / 기타)</div>
               </div>
 
               <div className="stat-card" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1023,7 +1302,7 @@ export default function StaffDashboard() {
             </div>
 
             {/* Layout Panels */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.2fr 1fr', gap: '20px' }}>
               
               {/* Location distribution */}
               <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px' }}>
@@ -1035,19 +1314,60 @@ export default function StaffDashboard() {
                     {Object.entries(stats.locationCounts).map(([loc, count]) => {
                       const pct = stats.totalStockCount > 0 ? (count / stats.totalStockCount) * 100 : 0;
                       return (
-                        <div key={loc} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
-                            <span>{loc}</span>
-                            <span style={{ color: 'var(--t2)' }}>{count}대 ({pct.toFixed(1)}%)</span>
-                          </div>
-                          <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
-                            <div style={{ width: `${pct}%`, height: '100%', background: 'var(--purple-l)', borderRadius: '999px' }}></div>
-                          </div>
-                        </div>
+                         <div key={loc} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
+                             <span>{loc}</span>
+                             <span style={{ color: 'var(--t2)' }}>{count}대 ({pct.toFixed(1)}%)</span>
+                           </div>
+                           <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
+                             <div style={{ width: `${pct}%`, height: '100%', background: 'var(--purple-l)', borderRadius: '999px' }}></div>
+                           </div>
+                         </div>
                       );
                     })}
                   </div>
                 )}
+              </div>
+
+              {/* Model distribution */}
+              <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: 800, marginBottom: '16px' }}>📱 기종별 재고 현황</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  
+                  {/* iPhone */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
+                      <span>아이폰 (iPhone)</span>
+                      <span style={{ color: 'var(--t2)' }}>{stats.iphoneCount}대 ({stats.totalStockCount > 0 ? ((stats.iphoneCount / stats.totalStockCount) * 100).toFixed(1) : 0}%)</span>
+                    </div>
+                    <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
+                      <div style={{ width: `${stats.totalStockCount > 0 ? (stats.iphoneCount / stats.totalStockCount) * 100 : 0}%`, height: '100%', background: 'var(--purple)', borderRadius: '999px' }}></div>
+                    </div>
+                  </div>
+
+                  {/* Galaxy */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
+                      <span>갤럭시 (Galaxy)</span>
+                      <span style={{ color: 'var(--t2)' }}>{stats.galaxyCount}대 ({stats.totalStockCount > 0 ? ((stats.galaxyCount / stats.totalStockCount) * 100).toFixed(1) : 0}%)</span>
+                    </div>
+                    <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
+                      <div style={{ width: `${stats.totalStockCount > 0 ? (stats.galaxyCount / stats.totalStockCount) * 100 : 0}%`, height: '100%', background: 'var(--cyan)', borderRadius: '999px' }}></div>
+                    </div>
+                  </div>
+
+                  {/* Other */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
+                      <span>기타 (Other)</span>
+                      <span style={{ color: 'var(--t2)' }}>{stats.otherCount}대 ({stats.totalStockCount > 0 ? ((stats.otherCount / stats.totalStockCount) * 100).toFixed(1) : 0}%)</span>
+                    </div>
+                    <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
+                      <div style={{ width: `${stats.totalStockCount > 0 ? (stats.otherCount / stats.totalStockCount) * 100 : 0}%`, height: '100%', background: 'var(--t3)', borderRadius: '999px' }}></div>
+                    </div>
+                  </div>
+
+                </div>
               </div>
 
               {/* Quick info panel */}
@@ -1088,11 +1408,9 @@ export default function StaffDashboard() {
                   style={{ maxWidth: '160px', margin: 0 }}
                 >
                   <option value="all">전체 위치</option>
-                  <option value="Shop">Shop</option>
-                  <option value="TUKCOM">TUKCOM</option>
-                  <option value="Mr.han">Mr.han</option>
-                  <option value="DHL">DHL (오는중)</option>
-                  <option value="OTHER">기타 (OTHER)</option>
+                  {locations.map(loc => (
+                    <option key={loc.id} value={loc.name}>{loc.name}</option>
+                  ))}
                 </select>
               </div>
 
@@ -1116,20 +1434,20 @@ export default function StaffDashboard() {
 
             {/* Devices Stock Grid Table */}
             <div className="tbl-wrap" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px' }}>
-              <table className="tbl">
+              <table className="tbl" style={{ tableLayout: 'fixed', width: '100%' }}>
                 <thead>
                   <tr>
-                    <th>스티커 No</th>
-                    <th>입고일</th>
-                    <th>모델명 (Model)</th>
-                    <th>IMEI</th>
-                    <th>Color</th>
-                    <th style={{ textAlign: 'center' }}>배터리</th>
-                    <th style={{ textAlign: 'right' }}>매입원가</th>
-                    <th style={{ textAlign: 'right' }}>소매판매가</th>
-                    <th>위치 (Location)</th>
-                    <th>비고 (Notes)</th>
-                    <th style={{ textAlign: 'center' }}>조작</th>
+                    <th style={{ width: '10%' }}>스티커 No</th>
+                    <th style={{ width: '10%' }}>입고일</th>
+                    <th style={{ width: '15%' }}>모델명 (Model)</th>
+                    <th style={{ width: '15%' }}>IMEI</th>
+                    <th style={{ width: '8%' }}>Color</th>
+                    <th style={{ width: '6%', textAlign: 'center' }}>배터리</th>
+                    <th style={{ width: '10%', textAlign: 'right' }}>매입원가</th>
+                    <th style={{ width: '10%', textAlign: 'right' }}>소매판매가</th>
+                    <th style={{ width: '10%' }}>위치</th>
+                    <th style={{ width: '12%' }}>비고 (Notes)</th>
+                    <th style={{ width: '15%', textAlign: 'center' }}>조작</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1150,8 +1468,8 @@ export default function StaffDashboard() {
                       <tr key={item.id}>
                         <td style={{ fontWeight: 700, color: 'var(--purple-l)' }}>{item.sticker || '-'}</td>
                         <td style={{ color: 'var(--t2)' }}>{item.site_date || '-'}</td>
-                        <td style={{ fontWeight: 700 }}>{item.model_name}</td>
-                        <td className="font-mono" style={{ fontSize: '11px' }}>{item.imei}</td>
+                        <td style={{ fontWeight: 700, wordBreak: 'break-all' }}>{item.model_name}</td>
+                        <td className="font-mono" style={{ fontSize: '11px', wordBreak: 'break-all' }}>{item.imei}</td>
                         <td>{item.color || '-'}</td>
                         <td style={{ textAlign: 'center' }}>
                           <span style={{ fontSize: '11px', padding: '2px 6px', background: '#f1f5f9', borderRadius: '4px', fontWeight: 600 }}>
@@ -1167,7 +1485,7 @@ export default function StaffDashboard() {
                         <td>
                           <span className="badge bg-gray">{item.stock_location || 'Shop'}</span>
                         </td>
-                        <td style={{ fontSize: '11px', color: 'var(--t2)', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <td style={{ fontSize: '11px', color: 'var(--t2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {item.notes || '-'}
                         </td>
                         <td>
@@ -1224,19 +1542,19 @@ export default function StaffDashboard() {
 
             {/* Sales Grid Table */}
             <div className="tbl-wrap" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px' }}>
-              <table className="tbl">
+              <table className="tbl" style={{ tableLayout: 'fixed', width: '100%' }}>
                 <thead>
                   <tr>
-                    <th>판매일</th>
-                    <th>스티커 No</th>
-                    <th>모델명</th>
-                    <th>IMEI</th>
-                    <th>Color</th>
-                    <th style={{ textAlign: 'right' }}>매입원가</th>
-                    <th style={{ textAlign: 'right' }}>판매가격</th>
-                    <th>판매사원</th>
-                    <th>판매 메모 / 결제정보</th>
-                    <th style={{ textAlign: 'center' }}>재고복원</th>
+                    <th style={{ width: '10%' }}>판매일</th>
+                    <th style={{ width: '10%' }}>스티커 No</th>
+                    <th style={{ width: '15%' }}>모델명</th>
+                    <th style={{ width: '15%' }}>IMEI</th>
+                    <th style={{ width: '8%' }}>Color</th>
+                    <th style={{ width: '10%', textAlign: 'right' }}>매입원가</th>
+                    <th style={{ width: '10%', textAlign: 'right' }}>판매가격</th>
+                    <th style={{ width: '10%' }}>판매사원</th>
+                    <th style={{ width: '12%' }}>판매 메모 / 결제정보</th>
+                    <th style={{ width: '10%', textAlign: 'center' }}>재고복원</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1257,8 +1575,8 @@ export default function StaffDashboard() {
                       <tr key={item.id} style={{ background: '#fafaf9' }}>
                         <td style={{ fontWeight: 700, color: 'var(--green)' }}>{item.sale_date || '-'}</td>
                         <td style={{ color: 'var(--t2)' }}>{item.sticker || '-'}</td>
-                        <td style={{ fontWeight: 700 }}>{item.model_name}</td>
-                        <td className="font-mono" style={{ fontSize: '11px' }}>{item.imei}</td>
+                        <td style={{ fontWeight: 700, wordBreak: 'break-all' }}>{item.model_name}</td>
+                        <td className="font-mono" style={{ fontSize: '11px', wordBreak: 'break-all' }}>{item.imei}</td>
                         <td>{item.color || '-'}</td>
                         <td style={{ textAlign: 'right', color: '#94a3b8' }}>₩{formatPrice(item.purchase_cost_krw)}</td>
                         <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)' }}>฿{formatPrice(item.selling_price)}</td>
@@ -1278,6 +1596,123 @@ export default function StaffDashboard() {
                   )}
                 </tbody>
               </table>
+            </div>
+
+          </div>
+        )}
+
+        {/* ==================== VIEW 4: SETTINGS (MASTER DATA) ==================== */}
+        {activeTab === 'settings' && (
+          <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+              
+              {/* Location Management Card */}
+              <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: 800, borderBottom: '1px solid var(--border)', paddingBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>📍</span> 보관 위치 기준 정보 관리
+                </h3>
+                
+                {/* Add Location Form */}
+                <form onSubmit={handleAddLocationFromSettings} style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="새 보관 위치 입력 (예: Mr.han 3층)"
+                    value={newLocInput}
+                    onChange={(e) => setNewLocInput(e.target.value)}
+                    className="form-input"
+                    style={{ margin: 0 }}
+                  />
+                  <button type="submit" className="btn-submit" style={{ margin: 0, width: 'auto', padding: '0 20px', whiteSpace: 'nowrap' }}>
+                    추가
+                  </button>
+                </form>
+
+                {/* Locations list */}
+                <div style={{ maxHeight: '450px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                  <table className="tbl" style={{ margin: 0 }}>
+                    <thead>
+                      <tr>
+                        <th>위치명</th>
+                        <th style={{ width: '120px', textAlign: 'center' }}>조작</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {locations.length === 0 ? (
+                        <tr>
+                          <td colSpan={2} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>등록된 위치가 없습니다.</td>
+                        </tr>
+                      ) : (
+                        locations.map((loc) => (
+                          <tr key={loc.id}>
+                            <td style={{ fontWeight: 700 }}>{loc.name}</td>
+                            <td>
+                              <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                                <button type="button" className="btn-sm btn-blue" onClick={() => handleRenameLocation(loc.name)}>수정</button>
+                                <button type="button" className="btn-sm btn-red" onClick={() => handleDeleteLocation(loc.name)}>삭제</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Model Management Card */}
+              <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: 800, borderBottom: '1px solid var(--border)', paddingBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>📱</span> 모델명 기준 정보 관리
+                </h3>
+                
+                {/* Add Model Form */}
+                <form onSubmit={handleAddModelFromSettings} style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="새 모델명 입력 (예: iPhone 16 Pro Max)"
+                    value={newModInput}
+                    onChange={(e) => setNewModInput(e.target.value)}
+                    className="form-input"
+                    style={{ margin: 0 }}
+                  />
+                  <button type="submit" className="btn-submit" style={{ margin: 0, width: 'auto', padding: '0 20px', whiteSpace: 'nowrap' }}>
+                    추가
+                  </button>
+                </form>
+
+                {/* Models list */}
+                <div style={{ maxHeight: '450px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                  <table className="tbl" style={{ margin: 0 }}>
+                    <thead>
+                      <tr>
+                        <th>모델명</th>
+                        <th style={{ width: '120px', textAlign: 'center' }}>조작</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {models.length === 0 ? (
+                        <tr>
+                          <td colSpan={2} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>등록된 모델명이 없습니다.</td>
+                        </tr>
+                      ) : (
+                        models.map((mod) => (
+                          <tr key={mod.id}>
+                            <td style={{ fontWeight: 700 }}>{mod.name}</td>
+                            <td>
+                              <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                                <button type="button" className="btn-sm btn-blue" onClick={() => handleRenameModel(mod.name)}>수정</button>
+                                <button type="button" className="btn-sm btn-red" onClick={() => handleDeleteModel(mod.name)}>삭제</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
             </div>
 
           </div>
@@ -1481,14 +1916,34 @@ export default function StaffDashboard() {
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
                 <label className="form-label">모델명 (Model Name) *</label>
-                <input
-                  type="text"
-                  placeholder="AIP15 Pro-256G"
-                  value={modelName}
-                  onChange={(e) => setModelName(e.target.value)}
+                <select
+                  value={isCustomModel ? '___new___' : modelName}
+                  onChange={(e) => handleModelSelectChange(e.target.value)}
                   className="form-input"
                   style={{ margin: 0 }}
-                />
+                >
+                  <option value="">-- 모델명 선택 --</option>
+                  {modelOptions.map((mod) => (
+                    <option key={mod.id} value={mod.name}>{mod.name}</option>
+                  ))}
+                  <option value="___new___" style={{ color: 'var(--purple)', fontWeight: 700 }}>+ ➕ 새 모델명 직접 등록</option>
+                </select>
+                
+                {isCustomModel && (
+                  <div className="animate-slide-up" style={{ marginTop: '8px' }}>
+                    <input
+                      type="text"
+                      placeholder="예: iPhone 15 Pro 128GB"
+                      value={customModelName}
+                      onChange={(e) => setCustomModelName(e.target.value)}
+                      className="form-input"
+                      style={{ margin: 0, borderColor: 'var(--purple)' }}
+                    />
+                    <small style={{ color: 'var(--purple)', fontSize: '11px', marginTop: '4px', display: 'block' }}>
+                      새로 입력하신 모델명은 기준 정보에 자동 추가됩니다.
+                    </small>
+                  </div>
+                )}
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
@@ -1531,17 +1986,33 @@ export default function StaffDashboard() {
               <div className="form-group" style={{ marginBottom: '12px' }}>
                 <label className="form-label">보관 위치 (Location)</label>
                 <select
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
+                  value={isCustomLocation ? '___new___' : location}
+                  onChange={(e) => handleLocationSelectChange(e.target.value)}
                   className="form-input"
                   style={{ margin: 0 }}
                 >
-                  <option value="Shop">Shop</option>
-                  <option value="TUKCOM">TUKCOM</option>
-                  <option value="Mr.han">Mr.han</option>
-                  <option value="DHL">DHL (오는중)</option>
-                  <option value="OTHER">기타 (OTHER)</option>
+                  <option value="">-- 위치 선택 --</option>
+                  {locationOptions.map((loc) => (
+                    <option key={loc.id} value={loc.name}>{loc.name}</option>
+                  ))}
+                  <option value="___new___" style={{ color: 'var(--purple)', fontWeight: 700 }}>+ ➕ 새 위치 직접 등록</option>
                 </select>
+
+                {isCustomLocation && (
+                  <div className="animate-slide-up" style={{ marginTop: '8px' }}>
+                    <input
+                      type="text"
+                      placeholder="예: Mr.han 2층"
+                      value={customLocationName}
+                      onChange={(e) => setCustomLocationName(e.target.value)}
+                      className="form-input"
+                      style={{ margin: 0, borderColor: 'var(--purple)' }}
+                    />
+                    <small style={{ color: 'var(--purple)', fontSize: '11px', marginTop: '4px', display: 'block' }}>
+                      새로 입력하신 위치는 기준 정보에 자동 추가됩니다.
+                    </small>
+                  </div>
+                )}
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
