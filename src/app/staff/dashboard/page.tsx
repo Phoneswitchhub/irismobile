@@ -589,11 +589,21 @@ export default function StaffDashboard() {
     }).length;
   }, [devices, searchQuery]);
 
+  // Model Name Normalization helper to support searching 'AIP' models with 'iPhone' queries.
+  const normalizeModelName = useCallback((str: string) => {
+    if (!str) return '';
+    let res = str.toLowerCase();
+    res = res.replace(/aip|ip|아이폰/g, 'iphone');
+    res = res.replace(/sec|갤/g, 'galaxy');
+    res = res.replace(/\s+/g, '');
+    return res;
+  }, []);
+
   // Extract unique models present in current tab's scope (active vs sold) based on active search/location filters
   const uniqueModels = useMemo(() => {
     const activeStock = devices.filter(d => {
       if (d.deleted_at || d.is_sold) return false;
-      const matchSearch = d.model_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchLoc = locationFilter === 'all' || d.stock_location === locationFilter;
@@ -602,7 +612,7 @@ export default function StaffDashboard() {
 
     const soldList = devices.filter(d => {
       if (d.deleted_at || !d.is_sold) return false;
-      const matchSearch = d.model_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
       return matchSearch;
@@ -628,7 +638,7 @@ export default function StaffDashboard() {
       active: Object.entries(activeModelMap).sort(sortFn),
       sold: Object.entries(soldModelMap).sort(sortFn)
     };
-  }, [devices, searchQuery, locationFilter]);
+  }, [devices, searchQuery, locationFilter, normalizeModelName]);
 
   // Helper to check category
   const matchesCategory = useCallback((modelName: string, filter: string) => {
@@ -640,7 +650,7 @@ export default function StaffDashboard() {
   const filteredActiveDevices = useMemo(() => {
     const list = devices.filter(d => {
       if (d.deleted_at || d.is_sold) return false;
-      const matchSearch = d.model_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchLoc = locationFilter === 'all' || d.stock_location === locationFilter;
@@ -653,30 +663,30 @@ export default function StaffDashboard() {
     const normal = list.filter(d => !d.is_reserved);
 
     return [...sortDevices(reserved), ...sortDevices(normal)];
-  }, [devices, searchQuery, locationFilter, categoryFilter, matchesCategory, sortDevices]);
+  }, [devices, searchQuery, locationFilter, categoryFilter, matchesCategory, sortDevices, normalizeModelName]);
 
   const filteredSoldDevices = useMemo(() => {
     const list = devices.filter(d => {
       if (d.deleted_at || !d.is_sold) return false;
-      const matchSearch = d.model_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchCat = matchesCategory(d.model_name, categoryFilter);
       return matchSearch && matchCat;
     });
     return sortDevices(list);
-  }, [devices, searchQuery, categoryFilter, matchesCategory, sortDevices]);
+  }, [devices, searchQuery, categoryFilter, matchesCategory, sortDevices, normalizeModelName]);
 
   const filteredTrashDevices = useMemo(() => {
     const list = devices.filter(d => {
       if (!d.deleted_at) return false;
-      const matchSearch = d.model_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
       return matchSearch;
     });
     return sortDevices(list);
-  }, [devices, searchQuery, sortDevices]);
+  }, [devices, searchQuery, sortDevices, normalizeModelName]);
 
   // 4. CSV File Parsing Helper
   function parseCSV(text: string): string[][] {
