@@ -76,6 +76,10 @@ export default function StaffDashboard() {
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
+  const [soldSearchQuery, setSoldSearchQuery] = useState('');
+  const [installmentSearchQuery, setInstallmentSearchQuery] = useState('');
+  const [trashSearchQuery, setTrashSearchQuery] = useState('');
+  const [selectedCustomerMonth, setSelectedCustomerMonth] = useState('');
   const [locationFilter, setLocationFilter] = useState('all');
   const [selectedStatsLocation, setSelectedStatsLocation] = useState('all');
 
@@ -189,6 +193,23 @@ export default function StaffDashboard() {
     return <span style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'var(--green)', padding: '4px 8px', borderRadius: '6px', fontSize: '10.5px', fontWeight: 800 }}>완납</span>;
   }, []);
 
+  const getYearMonth = useCallback((dateStr?: string) => {
+    if (!dateStr) return 'Unknown';
+    const parts = dateStr.split('.').map(p => p.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      const year = parts[0].length === 2 ? `20${parts[0]}` : parts[0];
+      const month = parts[1].padStart(2, '0');
+      return `${year}-${month}`;
+    }
+    try {
+      const d = new Date(dateStr);
+      if (!isNaN(d.getTime())) {
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      }
+    } catch (e) {}
+    return 'Unknown';
+  }, []);
+
   const marginStats = useMemo(() => {
     // Only approved sold items are counted in margins!
     const soldList = devices.filter(d => !d.deleted_at && d.is_sold && d.is_approved);
@@ -207,6 +228,49 @@ export default function StaffDashboard() {
       soldList
     };
   }, [devices]);
+
+  const customerMonths = useMemo(() => {
+    const months = new Set<string>();
+    marginStats.soldList.forEach(item => {
+      const ym = getYearMonth(item.sale_date);
+      if (ym && ym !== 'Unknown') {
+        months.add(ym);
+      }
+    });
+    return Array.from(months).sort((a, b) => b.localeCompare(a));
+  }, [marginStats.soldList, getYearMonth]);
+
+  useEffect(() => {
+    if (customerMonths.length > 0 && !selectedCustomerMonth) {
+      setSelectedCustomerMonth(customerMonths[0]);
+    }
+  }, [customerMonths, selectedCustomerMonth]);
+
+  const filteredCustomersForMonth = useMemo(() => {
+    if (!selectedCustomerMonth) return [];
+    return marginStats.soldList.filter(item => getYearMonth(item.sale_date) === selectedCustomerMonth);
+  }, [marginStats.soldList, selectedCustomerMonth, getYearMonth]);
+
+  const handleCopyCustomerList = () => {
+    if (filteredCustomersForMonth.length === 0) {
+      showToast('복사할 고객 내역이 없습니다. (No customer records to copy.)', 'info');
+      return;
+    }
+    const textLines = [
+      `[${selectedCustomerMonth || '전체'}] 고객 연락처 및 수납 대장`,
+      `==========================================`
+    ];
+    filteredCustomersForMonth.forEach((item, idx) => {
+      const name = item.customer_name || '미기입';
+      const phone = item.customer_phone || '미기입';
+      const model = item.model_name || '미기입';
+      const status = item.payment_status === 'paid' ? '완납' : item.payment_status === 'collecting' ? '할부중' : '미수';
+      const balance = item.payment_status === 'unpaid' ? `฿${formatPrice(item.cod_amount || 0)}` : item.payment_status === 'collecting' ? `฿${formatPrice((item.installment_months || 0) * (item.installment_amount || 0))}` : '฿0';
+      textLines.push(`${idx + 1}. ${name} (${phone}) - ${model} - 상태: ${status} - 미수: ${balance} - 담당: ${item.seller_name || '미지정'}`);
+    });
+    navigator.clipboard.writeText(textLines.join('\n'));
+    showToast('고객 연락처 리스트가 클립보드에 복사되었습니다. (Customer directory copied to clipboard.)', 'success');
+  };
 
   const handleConfirmPayment = async (deviceId: string) => {
     if (!confirm('해당 건의 입금을 확인하셨습니까?\n(Has the deposit/payment for this item been confirmed?)')) return;
@@ -829,9 +893,9 @@ export default function StaffDashboard() {
 
     const soldList = devices.filter(d => {
       if (d.deleted_at || !d.is_sold) return false;
-      const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
-                          (d.imei && d.imei.includes(searchQuery)) ||
-                          (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(soldSearchQuery)) || 
+                          (d.imei && d.imei.includes(soldSearchQuery)) ||
+                          (d.sticker && d.sticker.toLowerCase().includes(soldSearchQuery.toLowerCase()));
       return matchSearch;
     });
 
@@ -855,7 +919,7 @@ export default function StaffDashboard() {
       active: Object.entries(activeModelMap).sort(sortFn),
       sold: Object.entries(soldModelMap).sort(sortFn)
     };
-  }, [devices, searchQuery, locationFilter, normalizeModelName]);
+  }, [devices, searchQuery, soldSearchQuery, locationFilter, normalizeModelName]);
 
   // Helper to check category
   const matchesCategory = useCallback((modelName: string, filter: string) => {
@@ -889,25 +953,25 @@ export default function StaffDashboard() {
   const filteredSoldDevices = useMemo(() => {
     const list = devices.filter(d => {
       if (d.deleted_at || !d.is_sold) return false;
-      const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
-                          (d.imei && d.imei.includes(searchQuery)) ||
-                          (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(soldSearchQuery)) || 
+                          (d.imei && d.imei.includes(soldSearchQuery)) ||
+                          (d.sticker && d.sticker.toLowerCase().includes(soldSearchQuery.toLowerCase()));
       const matchCat = matchesCategory(d.model_name, categoryFilter);
       return matchSearch && matchCat;
     });
     return sortDevices(list);
-  }, [devices, searchQuery, categoryFilter, matchesCategory, sortDevices, normalizeModelName]);
+  }, [devices, soldSearchQuery, categoryFilter, matchesCategory, sortDevices, normalizeModelName]);
 
   const filteredTrashDevices = useMemo(() => {
     const list = devices.filter(d => {
       if (!d.deleted_at) return false;
-      const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
-                          (d.imei && d.imei.includes(searchQuery)) ||
-                          (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(trashSearchQuery)) || 
+                          (d.imei && d.imei.includes(trashSearchQuery)) ||
+                          (d.sticker && d.sticker.toLowerCase().includes(trashSearchQuery.toLowerCase()));
       return matchSearch;
     });
     return sortDevices(list);
-  }, [devices, searchQuery, sortDevices, normalizeModelName]);
+  }, [devices, trashSearchQuery, sortDevices, normalizeModelName]);
 
   // 4. CSV File Parsing Helper
   function parseCSV(text: string): string[][] {
@@ -1664,6 +1728,7 @@ export default function StaffDashboard() {
 
       showToast(t('toast_sale_recorded_success'), 'success');
       setSellingDevice(null);
+      setSearchQuery('');
       loadLedgerData();
     } catch (err: any) {
       showToast(t('toast_sale_recorded_failed') + err.message, 'error');
@@ -1869,6 +1934,28 @@ export default function StaffDashboard() {
     }
   };
 
+  // Bulk Approve Sales
+  const handleBulkApprove = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`선택한 ${selectedIds.length}개의 판매 건을 일괄 승인하시겠습니까?\n승인 시 최종 마진 장부에 반영됩니다.\n(Do you want to approve the selected ${selectedIds.length} sales?)`)) return;
+    try {
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .update({
+          is_approved: true
+        })
+        .in('id', selectedIds);
+
+      if (error) throw error;
+
+      showToast(`선택한 ${selectedIds.length}개의 판매 승인이 완료되었습니다. (Sales approved successfully.)`, 'success');
+      setSelectedIds([]);
+      loadLedgerData();
+    } catch (err: any) {
+      showToast('일괄 승인 실패: ' + err.message, 'error');
+    }
+  };
+
   // Delete Device Handler (Soft Delete to Trash Bin)
   const handleDeleteDevice = async (deviceId: string) => {
     if (!confirm(t('toast_confirm_delete_selected_trash'))) return;
@@ -1954,6 +2041,10 @@ export default function StaffDashboard() {
     setActiveTab(tab);
     setSelectedIds([]);
     setCategoryFilter('all');
+    setSearchQuery('');
+    setSoldSearchQuery('');
+    setInstallmentSearchQuery('');
+    setTrashSearchQuery('');
   };
 
   // CSV Reader trigger for file upload selector
@@ -2943,8 +3034,8 @@ export default function StaffDashboard() {
                 <input
                   type="text"
                   placeholder={t('staff_search_sold_placeholder')}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={soldSearchQuery}
+                  onChange={(e) => setSoldSearchQuery(e.target.value)}
                   className="form-input"
                   style={{ maxWidth: '220px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                 />
@@ -2968,6 +3059,12 @@ export default function StaffDashboard() {
                       onClick={handleBulkRestoreToStock}
                     >
                       🔄 {t('staff_btn_restore_selected')} ({selectedIds.length})
+                    </button>
+                    <button 
+                      style={{ margin: 0, background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.25)', color: 'var(--blue)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      onClick={handleBulkApprove}
+                    >
+                      ✅ 일괄 승인 ({selectedIds.length})
                     </button>
                     <button 
                       style={{ margin: 0, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: 'var(--red)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
@@ -3161,12 +3258,12 @@ export default function StaffDashboard() {
 
           // Filter installments based on search query
           const filteredInstallments = installmentDevices.filter(d => {
-            const custNameMatch = d.customer_name?.toLowerCase().includes(searchQuery.toLowerCase());
-            const custPhoneMatch = d.customer_phone?.includes(searchQuery);
-            const stickerMatch = d.sticker?.toLowerCase().includes(searchQuery.toLowerCase());
-            const imeiMatch = d.imei?.includes(searchQuery);
-            const modelMatch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery));
-            return !searchQuery || custNameMatch || custPhoneMatch || stickerMatch || imeiMatch || modelMatch;
+            const custNameMatch = d.customer_name?.toLowerCase().includes(installmentSearchQuery.toLowerCase());
+            const custPhoneMatch = d.customer_phone?.includes(installmentSearchQuery);
+            const stickerMatch = d.sticker?.toLowerCase().includes(installmentSearchQuery.toLowerCase());
+            const imeiMatch = d.imei?.includes(installmentSearchQuery);
+            const modelMatch = normalizeModelName(d.model_name).includes(normalizeModelName(installmentSearchQuery));
+            return !installmentSearchQuery || custNameMatch || custPhoneMatch || stickerMatch || imeiMatch || modelMatch;
           });
 
           return (
@@ -3207,8 +3304,8 @@ export default function StaffDashboard() {
                 <input
                   type="text"
                   placeholder="고객명, 연락처, 기기 검색..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={installmentSearchQuery}
+                  onChange={(e) => setInstallmentSearchQuery(e.target.value)}
                   className="form-input"
                   style={{ maxWidth: '240px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                 />
@@ -3584,23 +3681,6 @@ export default function StaffDashboard() {
 
             {/* Seller Monthly Performance Aggregation */}
             {(() => {
-              const getYearMonth = (dateStr?: string) => {
-                if (!dateStr) return 'Unknown';
-                const parts = dateStr.split('.').map(p => p.trim()).filter(Boolean);
-                if (parts.length >= 2) {
-                  const year = parts[0].length === 2 ? `20${parts[0]}` : parts[0];
-                  const month = parts[1].padStart(2, '0');
-                  return `${year}-${month}`;
-                }
-                try {
-                  const d = new Date(dateStr);
-                  if (!isNaN(d.getTime())) {
-                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                  }
-                } catch (e) {}
-                return 'Unknown';
-              };
-
               const sellerStatsMap: Record<string, {
                 yearMonth: string;
                 sellerName: string;
@@ -3623,9 +3703,9 @@ export default function StaffDashboard() {
                   sellerStatsMap[key] = {
                     yearMonth: ym,
                     sellerName: seller,
-                    qty: 0,
-                    totalSalesTHB: 0,
-                    totalCostKRW: 0,
+                    qty: 1,
+                    totalSalesTHB: sales,
+                    totalCostKRW: cost,
                     estimatedMarginKRW: marginKRW
                   };
                 } else {
@@ -3697,9 +3777,9 @@ export default function StaffDashboard() {
                     <tr>
                       <th style={{ width: '10%' }}>판매일</th>
                       <th style={{ width: '15%' }}>기기 정보</th>
-                      <th style={{ width: '12%' }}>IMEI</th>
-                      <th style={{ width: '12%' }}>고객명</th>
-                      <th style={{ width: '23%' }}>판매 상세 (Payment Details)</th>
+                      <th style={{ width: '11%' }}>IMEI</th>
+                      <th style={{ width: '14%' }}>고객 정보 (Customer Info)</th>
+                      <th style={{ width: '22%' }}>판매 상세 (Payment Details)</th>
                       <th style={{ width: '13%', textAlign: 'right' }}>미수 금액 (Balance)</th>
                       <th style={{ width: '7%', textAlign: 'center' }}>상태</th>
                       <th style={{ width: '8%', textAlign: 'center' }}>입금 확인</th>
@@ -3717,32 +3797,65 @@ export default function StaffDashboard() {
                           <td style={{ fontWeight: 700 }}>{item.model_name}</td>
                           <td className="font-mono" style={{ fontSize: '11px' }}>{item.imei}</td>
                           <td>
-                            {editingCell?.id === item.id && editingCell?.field === 'customer_name' ? (
-                              <input
-                                type="text"
-                                value={editCellValue}
-                                onChange={(e) => setEditCellValue(e.target.value)}
-                                onBlur={() => handleInlineSave(item.id, 'customer_name', editCellValue)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') handleInlineSave(item.id, 'customer_name', editCellValue);
-                                  if (e.key === 'Escape') setEditingCell(null);
-                                }}
-                                autoFocus
-                                className="form-input"
-                                style={{ margin: 0, padding: '4px 6px', fontSize: '11px', height: '26px', width: '100%', boxSizing: 'border-box' }}
-                              />
-                            ) : (
-                              <div
-                                style={{ cursor: 'pointer', fontWeight: 700, color: item.customer_name ? 'var(--t1)' : 'var(--t3)', fontSize: '12.5px', textDecoration: 'underline dotted var(--border)' }}
-                                onClick={() => {
-                                  setEditingCell({ id: item.id, field: 'customer_name' });
-                                  setEditCellValue(item.customer_name || '');
-                                }}
-                                title="클릭하여 수정"
-                              >
-                                👤 {item.customer_name || '미기입'}
-                              </div>
-                            )}
+                            {/* Customer Name */}
+                            <div style={{ marginBottom: '6px' }}>
+                              {editingCell?.id === item.id && editingCell?.field === 'customer_name' ? (
+                                <input
+                                  type="text"
+                                  value={editCellValue}
+                                  onChange={(e) => setEditCellValue(e.target.value)}
+                                  onBlur={() => handleInlineSave(item.id, 'customer_name', editCellValue)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleInlineSave(item.id, 'customer_name', editCellValue);
+                                    if (e.key === 'Escape') setEditingCell(null);
+                                  }}
+                                  autoFocus
+                                  className="form-input"
+                                  style={{ margin: 0, padding: '4px 6px', fontSize: '11px', height: '26px', width: '100%', boxSizing: 'border-box' }}
+                                />
+                              ) : (
+                                <div
+                                  style={{ cursor: 'pointer', fontWeight: 700, color: item.customer_name ? 'var(--t1)' : 'var(--t3)', fontSize: '12.5px', textDecoration: 'underline dotted var(--border)' }}
+                                  onClick={() => {
+                                    setEditingCell({ id: item.id, field: 'customer_name' });
+                                    setEditCellValue(item.customer_name || '');
+                                  }}
+                                  title="클릭하여 성함 수정"
+                                >
+                                  👤 {item.customer_name || '미기입'}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Customer Phone */}
+                            <div>
+                              {editingCell?.id === item.id && editingCell?.field === 'customer_phone' ? (
+                                <input
+                                  type="text"
+                                  value={editCellValue}
+                                  onChange={(e) => setEditCellValue(e.target.value)}
+                                  onBlur={() => handleInlineSave(item.id, 'customer_phone', editCellValue)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleInlineSave(item.id, 'customer_phone', editCellValue);
+                                    if (e.key === 'Escape') setEditingCell(null);
+                                  }}
+                                  autoFocus
+                                  className="form-input"
+                                  style={{ margin: 0, padding: '4px 6px', fontSize: '11px', height: '26px', width: '100%', boxSizing: 'border-box' }}
+                                />
+                              ) : (
+                                <div
+                                  style={{ cursor: 'pointer', fontWeight: 500, color: item.customer_phone ? 'var(--t2)' : 'var(--t3)', fontSize: '11px', textDecoration: 'underline dotted var(--border)' }}
+                                  onClick={() => {
+                                    setEditingCell({ id: item.id, field: 'customer_phone' });
+                                    setEditCellValue(item.customer_phone || '');
+                                  }}
+                                  title="클릭하여 연락처 수정"
+                                >
+                                  📞 {item.customer_phone || '미기입'}
+                                </div>
+                              )}
+                            </div>
                           </td>
                           <td>{getSaleDetailsLabel(item)}</td>
                           <td style={{ textAlign: 'right', fontWeight: 800, color: item.payment_status === 'unpaid' ? 'var(--red)' : '#d97706' }}>
@@ -3878,6 +3991,252 @@ export default function StaffDashboard() {
               </div>
             </div>
 
+            {/* Part 3: Monthly Customer Directory */}
+            <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>📞</span> Part 3: 월별 고객 연락처 및 수납 대장 (Monthly Customer & Accounts Directory)
+                </h4>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <select
+                    value={selectedCustomerMonth}
+                    onChange={(e) => setSelectedCustomerMonth(e.target.value)}
+                    className="form-input"
+                    style={{ width: '150px', margin: 0, padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                  >
+                    <option value="">전체 월 (All Months)</option>
+                    {customerMonths.map(month => (
+                      <option key={month} value={month}>{month}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleCopyCustomerList}
+                    className="btn-purple"
+                    style={{ margin: 0, padding: '8px 12px', fontSize: '12px', borderRadius: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', border: 'none', color: '#fff' }}
+                  >
+                    📋 전체 고객 텍스트 복사
+                  </button>
+                </div>
+              </div>
+
+              <div className="tbl-wrap" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+                <table className="tbl" style={{ margin: 0 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '12%' }}>판매일</th>
+                      <th style={{ width: '18%' }}>고객명 (Customer)</th>
+                      <th style={{ width: '18%' }}>연락처 (Phone)</th>
+                      <th style={{ width: '20%' }}>기기 모델 (Device)</th>
+                      <th style={{ width: '12%', textAlign: 'center' }}>수납 상태</th>
+                      <th style={{ width: '12%', textAlign: 'right' }}>미수 금액</th>
+                      <th style={{ width: '8%', textAlign: 'center' }}>담당자</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCustomersForMonth.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>선택한 월에 해당하는 고객 내역이 없습니다. (No customer records for this month.)</td>
+                      </tr>
+                    ) : (
+                      filteredCustomersForMonth.map(item => {
+                        const balance = item.payment_status === 'unpaid' ? (item.cod_amount || 0) : item.payment_status === 'collecting' ? (item.installment_months || 0) * (item.installment_amount || 0) : 0;
+                        return (
+                          <tr key={item.id}>
+                            <td>{item.sale_date || '-'}</td>
+                            <td style={{ fontWeight: 700 }}>
+                              {editingCell?.id === item.id && editingCell?.field === 'customer_name' ? (
+                                <input
+                                  type="text"
+                                  value={editCellValue}
+                                  onChange={(e) => setEditCellValue(e.target.value)}
+                                  onBlur={() => handleInlineSave(item.id, 'customer_name', editCellValue)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleInlineSave(item.id, 'customer_name', editCellValue);
+                                    if (e.key === 'Escape') setEditingCell(null);
+                                  }}
+                                  autoFocus
+                                  className="form-input"
+                                  style={{ margin: 0, padding: '4px 6px', fontSize: '11px', height: '26px', width: '100%', boxSizing: 'border-box' }}
+                                />
+                              ) : (
+                                <div
+                                  style={{ cursor: 'pointer', color: item.customer_name ? 'var(--t1)' : 'var(--t3)', textDecoration: 'underline dotted var(--border)' }}
+                                  onClick={() => {
+                                    setEditingCell({ id: item.id, field: 'customer_name' });
+                                    setEditCellValue(item.customer_name || '');
+                                  }}
+                                  title="클릭하여 성함 수정"
+                                >
+                                  👤 {item.customer_name || '미기입'}
+                                </div>
+                              )}
+                            </td>
+                            <td>
+                              {editingCell?.id === item.id && editingCell?.field === 'customer_phone' ? (
+                                <input
+                                  type="text"
+                                  value={editCellValue}
+                                  onChange={(e) => setEditCellValue(e.target.value)}
+                                  onBlur={() => handleInlineSave(item.id, 'customer_phone', editCellValue)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleInlineSave(item.id, 'customer_phone', editCellValue);
+                                    if (e.key === 'Escape') setEditingCell(null);
+                                  }}
+                                  autoFocus
+                                  className="form-input"
+                                  style={{ margin: 0, padding: '4px 6px', fontSize: '11px', height: '26px', width: '100%', boxSizing: 'border-box' }}
+                                />
+                              ) : (
+                                <div
+                                  style={{ cursor: 'pointer', color: item.customer_phone ? 'var(--t2)' : 'var(--t3)', textDecoration: 'underline dotted var(--border)' }}
+                                  onClick={() => {
+                                    setEditingCell({ id: item.id, field: 'customer_phone' });
+                                    setEditCellValue(item.customer_phone || '');
+                                  }}
+                                  title="클릭하여 연락처 수정"
+                                >
+                                  📞 {item.customer_phone || '미기입'}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ fontWeight: 600 }}>{item.model_name}</td>
+                            <td style={{ textAlign: 'center' }}>{getPaymentStatusBadge(item.payment_status)}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: balance > 0 ? 'var(--red)' : 'var(--t3)' }}>
+                              {balance > 0 ? `฿${formatPrice(balance)}` : '-'}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>{item.seller_name || '-'}</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Part 3: Monthly Customer Directory */}
+            <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>📞</span> Part 3: 월별 고객 연락처 및 수납 대장 (Monthly Customer & Accounts Directory)
+                </h4>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <select
+                    value={selectedCustomerMonth}
+                    onChange={(e) => setSelectedCustomerMonth(e.target.value)}
+                    className="form-input"
+                    style={{ width: '150px', margin: 0, padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                  >
+                    <option value="">전체 월 (All Months)</option>
+                    {customerMonths.map(month => (
+                      <option key={month} value={month}>{month}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleCopyCustomerList}
+                    className="btn-purple"
+                    style={{ margin: 0, padding: '8px 12px', fontSize: '12px', borderRadius: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', border: 'none', color: '#fff' }}
+                  >
+                    📋 전체 고객 텍스트 복사
+                  </button>
+                </div>
+              </div>
+
+              <div className="tbl-wrap" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+                <table className="tbl" style={{ margin: 0 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '12%' }}>판매일</th>
+                      <th style={{ width: '18%' }}>고객명 (Customer)</th>
+                      <th style={{ width: '18%' }}>연락처 (Phone)</th>
+                      <th style={{ width: '20%' }}>기기 모델 (Device)</th>
+                      <th style={{ width: '12%', textAlign: 'center' }}>수납 상태</th>
+                      <th style={{ width: '12%', textAlign: 'right' }}>미수 금액</th>
+                      <th style={{ width: '8%', textAlign: 'center' }}>담당자</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCustomersForMonth.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>선택한 월에 해당하는 고객 내역이 없습니다. (No customer records for this month.)</td>
+                      </tr>
+                    ) : (
+                      filteredCustomersForMonth.map(item => {
+                        const balance = item.payment_status === 'unpaid' ? (item.cod_amount || 0) : item.payment_status === 'collecting' ? (item.installment_months || 0) * (item.installment_amount || 0) : 0;
+                        return (
+                          <tr key={item.id}>
+                            <td>{item.sale_date || '-'}</td>
+                            <td style={{ fontWeight: 700 }}>
+                              {editingCell?.id === item.id && editingCell?.field === 'customer_name' ? (
+                                <input
+                                  type="text"
+                                  value={editCellValue}
+                                  onChange={(e) => setEditCellValue(e.target.value)}
+                                  onBlur={() => handleInlineSave(item.id, 'customer_name', editCellValue)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleInlineSave(item.id, 'customer_name', editCellValue);
+                                    if (e.key === 'Escape') setEditingCell(null);
+                                  }}
+                                  autoFocus
+                                  className="form-input"
+                                  style={{ margin: 0, padding: '4px 6px', fontSize: '11px', height: '26px', width: '100%', boxSizing: 'border-box' }}
+                                />
+                              ) : (
+                                <div
+                                  style={{ cursor: 'pointer', color: item.customer_name ? 'var(--t1)' : 'var(--t3)', textDecoration: 'underline dotted var(--border)' }}
+                                  onClick={() => {
+                                    setEditingCell({ id: item.id, field: 'customer_name' });
+                                    setEditCellValue(item.customer_name || '');
+                                  }}
+                                  title="클릭하여 성함 수정"
+                                >
+                                  👤 {item.customer_name || '미기입'}
+                                </div>
+                              )}
+                            </td>
+                            <td>
+                              {editingCell?.id === item.id && editingCell?.field === 'customer_phone' ? (
+                                <input
+                                  type="text"
+                                  value={editCellValue}
+                                  onChange={(e) => setEditCellValue(e.target.value)}
+                                  onBlur={() => handleInlineSave(item.id, 'customer_phone', editCellValue)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleInlineSave(item.id, 'customer_phone', editCellValue);
+                                    if (e.key === 'Escape') setEditingCell(null);
+                                  }}
+                                  autoFocus
+                                  className="form-input"
+                                  style={{ margin: 0, padding: '4px 6px', fontSize: '11px', height: '26px', width: '100%', boxSizing: 'border-box' }}
+                                />
+                              ) : (
+                                <div
+                                  style={{ cursor: 'pointer', color: item.customer_phone ? 'var(--t2)' : 'var(--t3)', textDecoration: 'underline dotted var(--border)' }}
+                                  onClick={() => {
+                                    setEditingCell({ id: item.id, field: 'customer_phone' });
+                                    setEditCellValue(item.customer_phone || '');
+                                  }}
+                                  title="클릭하여 연락처 수정"
+                                >
+                                  📞 {item.customer_phone || '미기입'}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ fontWeight: 600 }}>{item.model_name}</td>
+                            <td style={{ textAlign: 'center' }}>{getPaymentStatusBadge(item.payment_status)}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: balance > 0 ? 'var(--red)' : 'var(--t3)' }}>
+                              {balance > 0 ? `฿${formatPrice(balance)}` : '-'}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>{item.seller_name || '-'}</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
           </div>
         )}
 
@@ -3891,8 +4250,8 @@ export default function StaffDashboard() {
                 <input
                   type="text"
                   placeholder={t('staff_trash_search_placeholder') || t('staff_search_placeholder')}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={trashSearchQuery}
+                  onChange={(e) => setTrashSearchQuery(e.target.value)}
                   className="form-input"
                   style={{ maxWidth: '220px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                 />
