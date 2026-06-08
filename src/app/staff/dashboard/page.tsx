@@ -51,8 +51,8 @@ export default function StaffDashboard() {
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [redirectCountdown, setRedirectCountdown] = useState(3);
 
-  // Active Tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment'
-  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment'>('overview');
+  // Active Tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake'
+  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake'>('overview');
 
   // Sorting States
   const [sortField, setSortField] = useState<string>('created_at');
@@ -727,10 +727,13 @@ export default function StaffDashboard() {
 
   // 3. Stats Calculations
   const stats = useMemo(() => {
-    const activeStock = devices.filter(d => !d.deleted_at && !d.is_sold);
+    const activeStock = devices.filter(d => !d.deleted_at && !d.is_sold && d.stock_location !== 'DHL');
+    const pendingIntake = devices.filter(d => !d.deleted_at && !d.is_sold && d.stock_location === 'DHL');
     const soldList = devices.filter(d => !d.deleted_at && d.is_sold);
 
     const totalStockCount = activeStock.length;
+    const pendingIntakeCount = pendingIntake.length;
+    const pendingIntakeCostKRW = pendingIntake.reduce((sum, d) => sum + Number(d.purchase_cost_krw || 0), 0);
     const reservedCount = activeStock.filter(d => d.is_reserved).length;
     const totalPurchaseCostKRW = activeStock.reduce((sum, d) => sum + Number(d.purchase_cost_krw || 0), 0);
     const totalSellingValueTHB = activeStock.reduce((sum, d) => sum + Number(d.selling_price || 0), 0);
@@ -824,6 +827,8 @@ export default function StaffDashboard() {
     return {
       totalStockCount,
       totalStockCountForModels,
+      pendingIntakeCount,
+      pendingIntakeCostKRW,
       reservedCount,
       totalPurchaseCostKRW,
       totalSellingValueTHB,
@@ -841,7 +846,7 @@ export default function StaffDashboard() {
   // categoryFilter를 제외한 검색/위치 필터만 적용된 기기 목록의 길이 (Ledger & Sales)
   const baseActiveDevicesCount = useMemo(() => {
     return devices.filter(d => {
-      if (d.deleted_at || d.is_sold) return false;
+      if (d.deleted_at || d.is_sold || d.stock_location === 'DHL') return false;
       const matchSearch = d.model_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -849,6 +854,16 @@ export default function StaffDashboard() {
       return matchSearch && matchLoc;
     }).length;
   }, [devices, searchQuery, locationFilter]);
+
+  const basePendingDevicesCount = useMemo(() => {
+    return devices.filter(d => {
+      if (d.deleted_at || d.is_sold || d.stock_location !== 'DHL') return false;
+      const matchSearch = d.model_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (d.imei && d.imei.includes(searchQuery)) ||
+                          (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchSearch;
+    }).length;
+  }, [devices, searchQuery]);
 
   const baseSoldDevicesCount = useMemo(() => {
     return devices.filter(d => {
@@ -888,15 +903,23 @@ export default function StaffDashboard() {
     return res;
   }, []);
 
-  // Extract unique models present in current tab's scope (active vs sold) based on active search/location filters
+  // Extract unique models present in current tab's scope (active vs sold vs pending) based on active search/location filters
   const uniqueModels = useMemo(() => {
     const activeStock = devices.filter(d => {
-      if (d.deleted_at || d.is_sold) return false;
+      if (d.deleted_at || d.is_sold || d.stock_location === 'DHL') return false;
       const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchLoc = locationFilter === 'all' || d.stock_location === locationFilter;
       return matchSearch && matchLoc;
+    });
+
+    const pendingStock = devices.filter(d => {
+      if (d.deleted_at || d.is_sold || d.stock_location !== 'DHL') return false;
+      const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
+                          (d.imei && d.imei.includes(searchQuery)) ||
+                          (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchSearch;
     });
 
     const soldList = devices.filter(d => {
@@ -914,6 +937,13 @@ export default function StaffDashboard() {
       }
     });
 
+    const pendingModelMap: Record<string, number> = {};
+    pendingStock.forEach(d => {
+      if (d.model_name) {
+        pendingModelMap[d.model_name] = (pendingModelMap[d.model_name] || 0) + 1;
+      }
+    });
+
     const soldModelMap: Record<string, number> = {};
     soldList.forEach(d => {
       if (d.model_name) {
@@ -925,6 +955,7 @@ export default function StaffDashboard() {
 
     return {
       active: Object.entries(activeModelMap).sort(sortFn),
+      pending: Object.entries(pendingModelMap).sort(sortFn),
       sold: Object.entries(soldModelMap).sort(sortFn)
     };
   }, [devices, searchQuery, soldSearchQuery, locationFilter, normalizeModelName]);
@@ -938,7 +969,7 @@ export default function StaffDashboard() {
   // Filtered lists
   const filteredActiveDevices = useMemo(() => {
     const list = devices.filter(d => {
-      if (d.deleted_at || d.is_sold) return false;
+      if (d.deleted_at || d.is_sold || d.stock_location === 'DHL') return false;
       const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -957,6 +988,23 @@ export default function StaffDashboard() {
   const filteredActiveDevicesPurchaseCost = useMemo(() => {
     return filteredActiveDevices.reduce((sum, d) => sum + Number(d.purchase_cost_krw || 0), 0);
   }, [filteredActiveDevices]);
+
+  // Filtered list for Pending Intake
+  const filteredPendingDevices = useMemo(() => {
+    const list = devices.filter(d => {
+      if (d.deleted_at || d.is_sold || d.stock_location !== 'DHL') return false;
+      const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
+                          (d.imei && d.imei.includes(searchQuery)) ||
+                          (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchCat = matchesCategory(d.model_name, categoryFilter);
+      return matchSearch && matchCat;
+    });
+    return sortDevices(list);
+  }, [devices, searchQuery, categoryFilter, matchesCategory, sortDevices, normalizeModelName]);
+
+  const filteredPendingDevicesPurchaseCost = useMemo(() => {
+    return filteredPendingDevices.reduce((sum, d) => sum + Number(d.purchase_cost_krw || 0), 0);
+  }, [filteredPendingDevices]);
 
   const filteredSoldDevices = useMemo(() => {
     const getSaleDay = (saleDateStr?: string): number | null => {
@@ -2129,6 +2177,43 @@ export default function StaffDashboard() {
     }
   };
 
+  const handleApproveIntake = async (id: string) => {
+    if (!confirm('해당 기기의 입고를 승인하고 실재고(Shop)로 등록하시겠습니까?')) return;
+    try {
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .update({ stock_location: 'Shop' })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setDevices(prev => prev.map(d => d.id === id ? { ...d, stock_location: 'Shop' } : d));
+      showToast('입고 승인 완료! 실재고로 등록되었습니다.', 'success');
+    } catch (err: any) {
+      showToast(t('error_occurred') + err.message, 'error');
+    }
+  };
+
+  const handleBulkApproveIntake = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`선택한 ${selectedIds.length}대 기기의 입고를 일괄 승인하고 실재고(Shop)로 등록하시겠습니까?`)) return;
+    try {
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .update({ stock_location: 'Shop' })
+        .in('id', selectedIds);
+
+      if (error) throw error;
+
+      setDevices(prev => prev.map(d => selectedIds.includes(d.id) ? { ...d, stock_location: 'Shop' } : d));
+      const approvedCount = selectedIds.length;
+      setSelectedIds([]);
+      showToast(`일괄 입고 승인 완료! ${approvedCount}대가 실재고로 등록되었습니다.`, 'success');
+    } catch (err: any) {
+      showToast(t('error_occurred') + err.message, 'error');
+    }
+  };
+
   // Delete Device Handler (Soft Delete to Trash Bin)
   const handleDeleteDevice = async (deviceId: string) => {
     if (!confirm(t('toast_confirm_delete_selected_trash'))) return;
@@ -2210,7 +2295,7 @@ export default function StaffDashboard() {
   };
 
   // Tab Change Handler
-  const handleTabChange = (tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment') => {
+  const handleTabChange = (tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake') => {
     setActiveTab(tab);
     setSelectedIds([]);
     setCategoryFilter('all');
@@ -2285,6 +2370,13 @@ export default function StaffDashboard() {
             onClick={() => handleTabChange('ledger')}
           >
             <span className="ico">📱</span> {t('staff_menu_inventory') || '사내 재고 관리'}
+          </button>
+
+          <button 
+            className={`sb-link ${activeTab === 'pending_intake' ? 'active' : ''}`}
+            onClick={() => handleTabChange('pending_intake')}
+          >
+            <span className="ico">📥</span> 입고 대기 목록 {stats.pendingIntakeCount > 0 && <span style={{ background: '#f59e0b', color: '#fff', fontSize: '9.5px', fontWeight: 800, padding: '2px 6px', borderRadius: '10px', marginLeft: '6px' }}>{stats.pendingIntakeCount}</span>}
           </button>
 
           <button 
@@ -2689,6 +2781,185 @@ export default function StaffDashboard() {
                 </div>
               </div>
 
+            </div>
+
+          </div>
+        )}
+
+        {/* ==================== VIEW 2-B: PENDING INTAKE (DHL) ==================== */}
+        {activeTab === 'pending_intake' && (
+          <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            
+            {/* Search & Toolbars */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '8px 12px' }}>
+              <div style={{ display: 'flex', gap: '8px', flex: 1, alignItems: 'center' }}>
+                <input
+                  type="text"
+                  placeholder="모델명, IMEI 검색..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="form-input"
+                  style={{ maxWidth: '220px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
+                />
+
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="form-input"
+                  style={{ maxWidth: '180px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
+                >
+                  <option value="all">전체 기종 ({basePendingDevicesCount}대)</option>
+                  {uniqueModels.pending.map(([model, count]) => (
+                    <option key={model} value={model}>{model} ({count}대)</option>
+                  ))}
+                </select>
+
+                <div style={{ display: 'flex', alignItems: 'center', fontSize: '13px', fontWeight: 700, color: '#d97706', marginLeft: '12px', whiteSpace: 'nowrap' }}>
+                  입고 대기: {filteredPendingDevices.length}대 (총 매입가: ₩{formatPrice(filteredPendingDevicesPurchaseCost)})
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {selectedIds.length > 0 && (
+                  <>
+                    <button 
+                      style={{ margin: 0, background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.25)', color: 'var(--green)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      onClick={handleBulkApproveIntake}
+                    >
+                      ✅ 일괄 입고 승인 ({selectedIds.length})
+                    </button>
+                    <button 
+                      style={{ margin: 0, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: 'var(--red)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      onClick={handleBulkDelete}
+                    >
+                      🗑️ {t('staff_btn_delete_selected')} ({selectedIds.length})
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Devices Stock Grid Table */}
+            <div className="tbl-wrap" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px' }}>
+              <table className="tbl" style={{ tableLayout: 'fixed', width: '100%' }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: '40px', textAlign: 'center' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={filteredPendingDevices.length > 0 && filteredPendingDevices.every(d => selectedIds.includes(d.id))}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedIds(prev => Array.from(new Set([...prev, ...filteredPendingDevices.map(d => d.id)])));
+                          } else {
+                            setSelectedIds(prev => prev.filter(id => !filteredPendingDevices.some(d => d.id === id)));
+                          }
+                        }}
+                      />
+                    </th>
+                    <th style={{ width: '12%', cursor: 'pointer' }} onClick={() => toggleSort('sticker')}>
+                      {t('staff_th_sticker')} {sortField === 'sticker' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th style={{ width: '10%', cursor: 'pointer' }} onClick={() => toggleSort('site_date')}>
+                      {t('staff_th_intake_date')} {sortField === 'site_date' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
+                      {t('staff_th_model')} {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th style={{ width: '13%' }}>IMEI</th>
+                    <th style={{ width: '8%' }}>Color</th>
+                    <th style={{ width: '6%', textAlign: 'center' }}>배터리</th>
+                    <th style={{ width: '10%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('purchase_cost_krw')}>
+                      {t('staff_th_purchase_cost')} {sortField === 'purchase_cost_krw' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th style={{ width: '10%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
+                      {t('staff_th_selling_price')} {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th style={{ width: '10%' }}>위치</th>
+                    <th style={{ width: '12%' }}>비고 (NOTES)</th>
+                    <th style={{ width: '15%', textAlign: 'center' }}>조작</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingData ? (
+                    <tr>
+                      <td colSpan={12} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
+                        데이터 로딩 중...
+                      </td>
+                    </tr>
+                  ) : filteredPendingDevices.length === 0 ? (
+                    <tr>
+                      <td colSpan={12} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
+                        입고 대기 중인 기기가 없습니다. (DHL 보관 기기 없음)
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredPendingDevices.map(item => (
+                      <tr key={item.id}>
+                        <td style={{ textAlign: 'center' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedIds.includes(item.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedIds(prev => [...prev, item.id]);
+                              } else {
+                                setSelectedIds(prev => prev.filter(id => id !== item.id));
+                              }
+                            }}
+                          />
+                        </td>
+                        <td style={{ fontWeight: 700, color: 'var(--purple-l)' }}>{item.sticker || '-'}</td>
+                        <td style={{ color: 'var(--t2)' }}>{item.site_date || '-'}</td>
+                        <td style={{ fontWeight: 700 }}>{item.model_name}</td>
+                        <td className="font-mono" style={{ fontSize: '11px' }}>{item.imei}</td>
+                        <td>{item.color || '-'}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span style={{ fontSize: '11px', padding: '2px 6px', background: '#f1f5f9', borderRadius: '4px', fontWeight: 600 }}>
+                            {item.battery_pct || '100'}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#e11d48' }}>₩{formatPrice(item.purchase_cost_krw)}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)' }}>฿{formatPrice(item.selling_price)}</td>
+                        <td>
+                          <span className="badge bg-yellow" style={{ background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 700 }}>{item.stock_location}</span>
+                        </td>
+                        <td style={{ fontSize: '11px', color: 'var(--t2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.notes || ''}>
+                          {item.notes || '-'}
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                            <button
+                              className="btn-green"
+                              style={{ height: '28px', padding: '0 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '11.5px', fontWeight: 800, cursor: 'pointer', gap: '2px' }}
+                              onClick={() => handleApproveIntake(item.id)}
+                              title="실재고로 승인 등록"
+                            >
+                              ✅ 승인
+                            </button>
+                            <button
+                              className="btn-blue"
+                              style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
+                              onClick={() => handleOpenEdit(item)}
+                              title={t('staff_tooltip_edit') || "수정"}
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              className="btn-red"
+                              style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
+                              onClick={() => handleDeleteDevice(item.id)}
+                              title={t('staff_tooltip_delete') || "삭제"}
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
 
           </div>
