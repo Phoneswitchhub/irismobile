@@ -1871,6 +1871,18 @@ export default function StaffDashboard() {
                   ))}
                 </select>
 
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="form-input"
+                  style={{ maxWidth: '180px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
+                >
+                  <option value="all">전체 기종 ({devices.filter(d => !d.deleted_at && !d.is_sold).length}대)</option>
+                  {uniqueModels.active.map(([model, count]) => (
+                    <option key={model} value={model}>{model} ({count}대)</option>
+                  ))}
+                </select>
+
                 <div style={{ display: 'flex', alignItems: 'center', fontSize: '13px', fontWeight: 700, color: 'var(--purple-l)', marginLeft: '12px', whiteSpace: 'nowrap' }}>
                   조회된 재고: {filteredActiveDevices.length}대
                 </div>
@@ -1898,60 +1910,6 @@ export default function StaffDashboard() {
                   ➕ 수동입고
                 </button>
               </div>
-            </div>
-
-            {/* Category Quick Filter Tag Shortcuts */}
-            <div className="category-shortcuts" style={{ display: 'flex', gap: '6px', overflowX: 'auto', padding: '6px 10px', background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              {/* All Option */}
-              <button
-                type="button"
-                onClick={() => setCategoryFilter('all')}
-                style={{
-                  padding: '5px 10px',
-                  borderRadius: '999px',
-                  border: '1px solid',
-                  borderColor: categoryFilter === 'all' ? 'var(--purple-l)' : 'var(--border)',
-                  background: categoryFilter === 'all' ? 'var(--purple-l)' : '#fff',
-                  color: categoryFilter === 'all' ? '#fff' : 'var(--t1)',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  transition: 'all 0.2s',
-                  boxShadow: categoryFilter === 'all' ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none'
-                }}
-              >
-                📱 {t('all') || '전체'} ({devices.filter(d => !d.deleted_at && !d.is_sold).length})
-              </button>
-
-              {/* Dynamic Model Options */}
-              {uniqueModels.active.map(([model, count]) => (
-                <button
-                  key={model}
-                  type="button"
-                  onClick={() => setCategoryFilter(model)}
-                  style={{
-                    padding: '5px 10px',
-                    borderRadius: '999px',
-                    border: '1px solid',
-                    borderColor: categoryFilter === model ? 'var(--purple-l)' : 'var(--border)',
-                    background: categoryFilter === model ? 'var(--purple-l)' : '#fff',
-                    color: categoryFilter === model ? '#fff' : 'var(--t1)',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    transition: 'all 0.2s',
-                    boxShadow: categoryFilter === model ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none'
-                  }}
-                >
-                  {model} ({count})
-                </button>
-              ))}
-
-              {uniqueModels.active.length === 0 && (
-                <span style={{ fontSize: '11px', color: 'var(--t3)', padding: '5px 8px' }}>보유 재고 없음</span>
-              )}
             </div>
 
             {/* Devices Stock Grid Table */}
@@ -2211,6 +2169,19 @@ export default function StaffDashboard() {
                   className="form-input"
                   style={{ maxWidth: '220px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                 />
+
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="form-input"
+                  style={{ maxWidth: '180px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
+                >
+                  <option value="all">전체 기종 ({devices.filter(d => !d.deleted_at && d.is_sold).length}대)</option>
+                  {uniqueModels.sold.map(([model, count]) => (
+                    <option key={model} value={model}>{model} ({count}대)</option>
+                  ))}
+                </select>
+
                 {selectedIds.length > 0 && (
                   <div style={{ display: 'flex', gap: '6px' }}>
                     <button 
@@ -2232,60 +2203,6 @@ export default function StaffDashboard() {
               <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--purple-l)', whiteSpace: 'nowrap' }}>
                 총 판매 대수: {filteredSoldDevices.length}대
               </div>
-            </div>
-
-            {/* Category Quick Filter Tag Shortcuts */}
-            <div className="category-shortcuts" style={{ display: 'flex', gap: '6px', overflowX: 'auto', padding: '6px 10px', background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              {/* All Option */}
-              <button
-                type="button"
-                onClick={() => setCategoryFilter('all')}
-                style={{
-                  padding: '5px 10px',
-                  borderRadius: '999px',
-                  border: '1px solid',
-                  borderColor: categoryFilter === 'all' ? 'var(--purple-l)' : 'var(--border)',
-                  background: categoryFilter === 'all' ? 'var(--purple-l)' : '#fff',
-                  color: categoryFilter === 'all' ? '#fff' : 'var(--t1)',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  transition: 'all 0.2s',
-                  boxShadow: categoryFilter === 'all' ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none'
-                }}
-              >
-                📱 {t('all') || '전체'} ({devices.filter(d => !d.deleted_at && d.is_sold).length})
-              </button>
-
-              {/* Dynamic Model Options */}
-              {uniqueModels.sold.map(([model, count]) => (
-                <button
-                  key={model}
-                  type="button"
-                  onClick={() => setCategoryFilter(model)}
-                  style={{
-                    padding: '5px 10px',
-                    borderRadius: '999px',
-                    border: '1px solid',
-                    borderColor: categoryFilter === model ? 'var(--purple-l)' : 'var(--border)',
-                    background: categoryFilter === model ? 'var(--purple-l)' : '#fff',
-                    color: categoryFilter === model ? '#fff' : 'var(--t1)',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    transition: 'all 0.2s',
-                    boxShadow: categoryFilter === model ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none'
-                  }}
-                >
-                  {model} ({count})
-                </button>
-              ))}
-
-              {uniqueModels.sold.length === 0 && (
-                <span style={{ fontSize: '11px', color: 'var(--t3)', padding: '5px 8px' }}>판매 데이터 없음</span>
-              )}
             </div>
 
             {/* Sales Grid Table */}
