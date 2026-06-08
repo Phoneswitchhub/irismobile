@@ -1639,7 +1639,11 @@ export default function StaffDashboard() {
   // 7. Selling Single Device Process Handler
   const handleOpenSellModal = (device: DeviceItem) => {
     setSellingDevice(device);
-    setSaleDate(new Date().toLocaleDateString('ko-KR').slice(2));
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    setSaleDate(`${yyyy}-${mm}-${dd}`);
     setSellerName('');
     setSaleNotes('');
     setSaleType('transfer');
@@ -1651,6 +1655,20 @@ export default function StaffDashboard() {
     setCustName('');
     setCustPhone('');
     setInstNumber('');
+  };
+
+  const formatDateToDot = (dateStr: string): string => {
+    if (!dateStr) return '';
+    if (dateStr.includes('-')) {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const year = parts[0].slice(-2);
+        const month = parseInt(parts[1], 10);
+        const day = parseInt(parts[2], 10);
+        return `${year}. ${month}. ${day}.`;
+      }
+    }
+    return dateStr;
   };
 
   const handleProcessSale = async () => {
@@ -1684,6 +1702,7 @@ export default function StaffDashboard() {
         paymentStatus = 'collecting';
       }
 
+      const formattedSaleDate = formatDateToDot(saleDate);
       let instHistory: any[] = [];
       if (saleType === 'installment') {
         const months = Number(instMonths) || 0;
@@ -1691,7 +1710,7 @@ export default function StaffDashboard() {
         for (let i = 1; i <= months; i++) {
           instHistory.push({
             sequence: i,
-            due_date: calculateDueDate(saleDate, i),
+            due_date: calculateDueDate(formattedSaleDate, i),
             amount: monthlyAmount,
             status: 'unpaid',
             paid_date: null
@@ -1706,7 +1725,7 @@ export default function StaffDashboard() {
           is_reserved: false,
           reserved_by: null,
           reserved_date: null,
-          sale_date: saleDate,
+          sale_date: formattedSaleDate,
           seller_name: sellerName.trim(),
           notes: saleNotes.trim() || null,
           selling_price: calculatedFinalPrice,
@@ -3319,11 +3338,21 @@ export default function StaffDashboard() {
                 <table className="tbl" style={{ tableLayout: 'fixed', width: '100%' }}>
                   <thead>
                     <tr>
-                      <th style={{ width: '8%' }}>구매일</th>
-                      <th style={{ width: '13%' }}>기기 정보</th>
-                      <th style={{ width: '15%' }}>할부번호 / 고객정보</th>
-                      <th style={{ width: '14%' }}>할부 조건 (계약 금액)</th>
-                      <th style={{ width: '10%', textAlign: 'right' }}>수납액 / 할부총액</th>
+                      <th style={{ width: '8%', cursor: 'pointer' }} onClick={() => toggleSort('sale_date')}>
+                        구매일 {sortField === 'sale_date' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th style={{ width: '13%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
+                        기기 정보 {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('customer_name')}>
+                        할부번호 / 고객정보 {sortField === 'customer_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th style={{ width: '14%', cursor: 'pointer' }} onClick={() => toggleSort('installment_amount')}>
+                        할부 조건 (계약 금액) {sortField === 'installment_amount' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th style={{ width: '10%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
+                        수납액 / 할부총액 {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
                       <th style={{ width: '34%' }}>회차별 수금 관리 (클릭 시 수납 처리)</th>
                       <th style={{ width: '6%', textAlign: 'center' }}>조작</th>
                     </tr>
@@ -3336,7 +3365,7 @@ export default function StaffDashboard() {
                         </td>
                       </tr>
                     ) : (
-                      filteredInstallments.map(item => {
+                      sortDevices(filteredInstallments).map(item => {
                         const history = item.installment_history || [];
                         const paidTotal = history.filter((h: any) => h.status === 'paid').reduce((s: number, h: any) => s + (Number(h.amount) || 0), 0);
                         const totalInstPrice = (item.installment_months || 0) * (item.installment_amount || 0);
@@ -3775,13 +3804,25 @@ export default function StaffDashboard() {
                 <table className="tbl" style={{ margin: 0 }}>
                   <thead>
                     <tr>
-                      <th style={{ width: '10%' }}>판매일</th>
-                      <th style={{ width: '15%' }}>기기 정보</th>
-                      <th style={{ width: '11%' }}>IMEI</th>
-                      <th style={{ width: '14%' }}>고객 정보 (Customer Info)</th>
+                      <th style={{ width: '10%', cursor: 'pointer' }} onClick={() => toggleSort('sale_date')}>
+                        판매일 {sortField === 'sale_date' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
+                        기기 정보 {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th style={{ width: '11%', cursor: 'pointer' }} onClick={() => toggleSort('imei')}>
+                        IMEI {sortField === 'imei' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th style={{ width: '14%', cursor: 'pointer' }} onClick={() => toggleSort('customer_name')}>
+                        고객 정보 (Customer Info) {sortField === 'customer_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
                       <th style={{ width: '22%' }}>판매 상세 (Payment Details)</th>
-                      <th style={{ width: '13%', textAlign: 'right' }}>미수 금액 (Balance)</th>
-                      <th style={{ width: '7%', textAlign: 'center' }}>상태</th>
+                      <th style={{ width: '13%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('cod_amount')}>
+                        미수 금액 (Balance) {sortField === 'cod_amount' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th style={{ width: '7%', textAlign: 'center', cursor: 'pointer' }} onClick={() => toggleSort('payment_status')}>
+                        상태 {sortField === 'payment_status' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
                       <th style={{ width: '8%', textAlign: 'center' }}>입금 확인</th>
                     </tr>
                   </thead>
@@ -3791,7 +3832,7 @@ export default function StaffDashboard() {
                         <td colSpan={8} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>정산 대기 중인 미수금 내역이 없습니다. (No pending receivables.)</td>
                       </tr>
                     ) : (
-                      marginStats.unpaidList.map(item => (
+                      sortDevices(marginStats.unpaidList).map(item => (
                         <tr key={item.id}>
                           <td style={{ fontWeight: 700 }}>{item.sale_date || '-'}</td>
                           <td style={{ fontWeight: 700 }}>{item.model_name}</td>
@@ -3901,13 +3942,25 @@ export default function StaffDashboard() {
                 <table className="tbl" style={{ margin: 0 }}>
                   <thead>
                     <tr>
-                      <th style={{ width: '10%' }}>판매일</th>
-                      <th style={{ width: '15%' }}>기기 정보</th>
-                      <th style={{ width: '12%', textAlign: 'right' }}>매입원가</th>
-                      <th style={{ width: '12%', textAlign: 'right' }}>소매판매가</th>
+                      <th style={{ width: '10%', cursor: 'pointer' }} onClick={() => toggleSort('sale_date')}>
+                        판매일 {sortField === 'sale_date' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
+                        기기 정보 {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th style={{ width: '12%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('purchase_cost_krw')}>
+                        매입원가 {sortField === 'purchase_cost_krw' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th style={{ width: '12%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
+                        소매판매가 {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
                       <th style={{ width: '25%' }}>판매 상세 (Payment Details)</th>
-                      <th style={{ width: '10%', textAlign: 'center' }}>수납 상태</th>
-                      <th style={{ width: '8%', textAlign: 'center' }}>담당자</th>
+                      <th style={{ width: '10%', textAlign: 'center', cursor: 'pointer' }} onClick={() => toggleSort('payment_status')}>
+                        수납 상태 {sortField === 'payment_status' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th style={{ width: '8%', textAlign: 'center', cursor: 'pointer' }} onClick={() => toggleSort('seller_name')}>
+                        담당자 {sortField === 'seller_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
                       <th style={{ width: '8%', textAlign: 'right' }}>마진(예상)</th>
                     </tr>
                   </thead>
@@ -3917,7 +3970,7 @@ export default function StaffDashboard() {
                         <td colSpan={8} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>판매 완료된 기기 내역이 없습니다. (No sales completed.)</td>
                       </tr>
                     ) : (
-                      marginStats.soldList.map(item => {
+                      sortDevices(marginStats.soldList).map(item => {
                         const cost = item.purchase_cost_krw || 0;
                         const price = item.selling_price || 0;
                         return (
@@ -4023,13 +4076,27 @@ export default function StaffDashboard() {
                 <table className="tbl" style={{ margin: 0 }}>
                   <thead>
                     <tr>
-                      <th style={{ width: '12%' }}>판매일</th>
-                      <th style={{ width: '18%' }}>고객명 (Customer)</th>
-                      <th style={{ width: '18%' }}>연락처 (Phone)</th>
-                      <th style={{ width: '20%' }}>기기 모델 (Device)</th>
-                      <th style={{ width: '12%', textAlign: 'center' }}>수납 상태</th>
-                      <th style={{ width: '12%', textAlign: 'right' }}>미수 금액</th>
-                      <th style={{ width: '8%', textAlign: 'center' }}>담당자</th>
+                      <th style={{ width: '12%', cursor: 'pointer' }} onClick={() => toggleSort('sale_date')}>
+                        판매일 {sortField === 'sale_date' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th style={{ width: '18%', cursor: 'pointer' }} onClick={() => toggleSort('customer_name')}>
+                        고객명 (Customer) {sortField === 'customer_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th style={{ width: '18%', cursor: 'pointer' }} onClick={() => toggleSort('customer_phone')}>
+                        연락처 (Phone) {sortField === 'customer_phone' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th style={{ width: '20%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
+                        기기 모델 (Device) {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th style={{ width: '12%', textAlign: 'center', cursor: 'pointer' }} onClick={() => toggleSort('payment_status')}>
+                        수납 상태 {sortField === 'payment_status' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th style={{ width: '12%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('cod_amount')}>
+                        미수 금액 {sortField === 'cod_amount' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th style={{ width: '8%', textAlign: 'center', cursor: 'pointer' }} onClick={() => toggleSort('seller_name')}>
+                        담당자 {sortField === 'seller_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -4038,7 +4105,7 @@ export default function StaffDashboard() {
                         <td colSpan={7} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>선택한 월에 해당하는 고객 내역이 없습니다. (No customer records for this month.)</td>
                       </tr>
                     ) : (
-                      filteredCustomersForMonth.map(item => {
+                      sortDevices(filteredCustomersForMonth).map(item => {
                         const balance = item.payment_status === 'unpaid' ? (item.cod_amount || 0) : item.payment_status === 'collecting' ? (item.installment_months || 0) * (item.installment_amount || 0) : 0;
                         return (
                           <tr key={item.id}>
@@ -4782,8 +4849,7 @@ export default function StaffDashboard() {
               <div className="form-group" style={{ marginBottom: '12px' }}>
                 <label className="form-label">{t('staff_label_sale_date')} *</label>
                 <input
-                  type="text"
-                  placeholder="26. 6. 8."
+                  type="date"
                   value={saleDate}
                   onChange={(e) => setSaleDate(e.target.value)}
                   className="form-input"
