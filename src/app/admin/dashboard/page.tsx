@@ -52,6 +52,8 @@ export default function AdminDashboard() {
 
   // Config Partner Modal States
   const [selectedSellerForConfig, setSelectedSellerForConfig] = useState<any>(null);
+  const [confName, setConfName] = useState('');
+  const [confStoreName, setConfStoreName] = useState('');
   const [confPartnerType, setConfPartnerType] = useState('partner');
   const [confCommRate, setConfCommRate] = useState(10.0);
   const [confPayoutMethod, setConfPayoutMethod] = useState('parent_payment');
@@ -442,6 +444,8 @@ export default function AdminDashboard() {
 
   const handleOpenPartnerConfig = (seller: any) => {
     setSelectedSellerForConfig(seller);
+    setConfName(seller.name || '');
+    setConfStoreName(seller.store_name || '');
     setConfPartnerType(seller.partner_type || 'partner');
     setConfCommRate(seller.commission_rate || 10.0);
     setConfPayoutMethod(seller.payout_method || 'parent_payment');
@@ -458,6 +462,10 @@ export default function AdminDashboard() {
 
   const handleSavePartnerConfig = async () => {
     if (!selectedSellerForConfig) return;
+    if (!confName.trim()) {
+      showToast('❌ Please enter a user name.', 'error');
+      return;
+    }
     if (!confProvince || !confDistrict) {
       showToast('❌ Please select both province and district.', 'error');
       return;
@@ -466,6 +474,8 @@ export default function AdminDashboard() {
     const { error } = await supabase
       .from('profiles')
       .update({
+        name: confName.trim(),
+        store_name: confStoreName.trim() || null,
         partner_type: confPartnerType,
         commission_rate: confCommRate,
         payout_method: confPayoutMethod,
@@ -1820,15 +1830,28 @@ export default function AdminDashboard() {
               <button className="modal-x" onClick={() => setSelectedSellerForConfig(null)}>✕</button>
             </div>
             <div style={{ textAlign: 'left' }}>
-              <div className="form-group">
-                <label className="form-label">{t('store_name_label')}</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={selectedSellerForConfig.store_name || selectedSellerForConfig.name} 
-                  disabled 
-                  style={{ opacity: 0.7 }} 
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '12px' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">사용자 이름 (User Name) *</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    value={confName} 
+                    onChange={(e) => setConfName(e.target.value)}
+                    style={{ margin: 0 }}
+                  />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">매장/표시 이름 (Store/Display Name)</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    value={confStoreName} 
+                    onChange={(e) => setConfStoreName(e.target.value)}
+                    placeholder="예: Jane (Staff)"
+                    style={{ margin: 0 }}
+                  />
+                </div>
               </div>
               <div className="form-group">
                 <label className="form-label">{t('modal_partner_type')}</label>

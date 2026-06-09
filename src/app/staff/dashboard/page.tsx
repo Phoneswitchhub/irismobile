@@ -486,7 +486,7 @@ export default function StaffDashboard() {
       const [locsRes, modsRes, staffRes] = await Promise.all([
         supabase.from('settings_locations').select('*').order('name', { ascending: true }),
         supabase.from('settings_models').select('*').order('name', { ascending: true }),
-        supabase.from('profiles').select('id, name, store_name').in('role', ['admin', 'staff', 'seller']).order('name', { ascending: true })
+        supabase.from('profiles').select('id, name, store_name').in('role', ['admin', 'staff', 'seller']).eq('is_approved', true).order('name', { ascending: true })
       ]);
       if (locsRes.error) throw locsRes.error;
       if (modsRes.error) throw modsRes.error;
