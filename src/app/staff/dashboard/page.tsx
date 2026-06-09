@@ -51,8 +51,8 @@ export default function StaffDashboard() {
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [redirectCountdown, setRedirectCountdown] = useState(3);
 
-  // Active Tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake' | 'history_log'
-  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake' | 'history_log'>('overview');
+  // Active Tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake' | 'history_log' | 'cod' | 'customers'
+  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake' | 'history_log' | 'cod' | 'customers'>('overview');
 
   // Sorting States
   const [sortField, setSortField] = useState<string>('created_at');
@@ -87,6 +87,12 @@ export default function StaffDashboard() {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   });
+  const [marginSelectedMonth, setMarginSelectedMonth] = useState(() => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [codSelectedMonth, setCodSelectedMonth] = useState('all');
+  const [custSearch, setCustSearch] = useState('');
   const [isDayFilterOpen, setIsDayFilterOpen] = useState(false);
 
   // Intake Modals (Manual & CSV Upload)
@@ -234,7 +240,11 @@ export default function StaffDashboard() {
 
   const marginStats = useMemo(() => {
     // Only approved sold items are counted in margins!
-    const soldList = devices.filter(d => !d.deleted_at && d.is_sold && d.is_approved);
+    let soldList = devices.filter(d => !d.deleted_at && d.is_sold && d.is_approved);
+    
+    if (marginSelectedMonth && marginSelectedMonth !== 'all') {
+      soldList = soldList.filter(d => getYearMonth(d.sale_date) === marginSelectedMonth);
+    }
     
     // totalSalesTHB: Sum of selling_price for all approved sold items
     const totalSalesTHB = soldList.reduce((sum, d) => sum + Number(d.selling_price || 0), 0);
@@ -267,7 +277,7 @@ export default function StaffDashboard() {
       unpaidList,
       soldList
     };
-  }, [devices, exchangeRate]);
+  }, [devices, exchangeRate, marginSelectedMonth, getYearMonth]);
 
   const customerMonths = useMemo(() => {
     const months = new Set<string>();
@@ -2585,7 +2595,7 @@ export default function StaffDashboard() {
   };
 
   // Tab Change Handler
-  const handleTabChange = (tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake' | 'history_log') => {
+  const handleTabChange = (tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake' | 'history_log' | 'cod' | 'customers') => {
     setActiveTab(tab);
     setSelectedIds([]);
     setCategoryFilter('all');
@@ -2686,13 +2696,29 @@ export default function StaffDashboard() {
           </button>
 
           {(staffProfile?.role === 'admin' || staffProfile?.role === 'manager') && (
-            <button 
-              className={`sb-link ${activeTab === 'installment' ? 'active' : ''}`}
-              onClick={() => handleTabChange('installment')}
-            >
-              <span className="ico">💳</span> 할부 수금 및 고객 관리
-            </button>
+            <>
+              <button 
+                className={`sb-link ${activeTab === 'installment' ? 'active' : ''}`}
+                onClick={() => handleTabChange('installment')}
+              >
+                <span className="ico">💳</span> 할부 수금 관리
+              </button>
+
+              <button 
+                className={`sb-link ${activeTab === 'cod' ? 'active' : ''}`}
+                onClick={() => handleTabChange('cod')}
+              >
+                <span className="ico">💵</span> COD 수금 관리
+              </button>
+            </>
           )}
+
+          <button 
+            className={`sb-link ${activeTab === 'customers' ? 'active' : ''}`}
+            onClick={() => handleTabChange('customers')}
+          >
+            <span className="ico">👤</span> 고객 관리
+          </button>
 
           <button 
             className={`sb-link ${activeTab === 'settings' ? 'active' : ''}`}
@@ -2756,7 +2782,9 @@ export default function StaffDashboard() {
               {activeTab === 'sales' && `💸 ${t('staff_menu_sales') || '판매 완료 처리'}`}
               {activeTab === 'pending_intake' && `📥 입고 대기 목록`}
               {activeTab === 'history_log' && `📋 재고/판매 로그`}
-              {activeTab === 'installment' && `💳 할부 수금 및 고객 관리`}
+              {activeTab === 'installment' && `💳 할부 수금 관리`}
+              {activeTab === 'cod' && `💵 COD 수금 관리`}
+              {activeTab === 'customers' && `👤 고객 관리`}
               {activeTab === 'settings' && `⚙️ ${t('staff_menu_settings') || '기준 정보 관리'}`}
               {activeTab === 'margin' && `📈 마진 및 정산관리`}
               {activeTab === 'trash' && `🗑️ 휴지통`}
@@ -4602,6 +4630,25 @@ export default function StaffDashboard() {
         {activeTab === 'margin' && staffProfile?.role === 'admin' && (
           <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             
+            {/* Header and Monthly Filter */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>📈 마진 및 정산관리</h3>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', fontWeight: 700 }}>월별 필터:</span>
+                <select
+                  value={marginSelectedMonth}
+                  onChange={(e) => setMarginSelectedMonth(e.target.value)}
+                  className="form-input"
+                  style={{ width: '150px', margin: 0, padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                >
+                  <option value="all">전체 월 (All Months)</option>
+                  {customerMonths.map(month => (
+                    <option key={month} value={month}>{month}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             {/* Margins Summary Widgets */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
               {/* Total Margin Card */}
@@ -4610,27 +4657,27 @@ export default function StaffDashboard() {
                 <div style={{ textAlign: 'left' }}>
                   <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>총 정산 마진 (Total Margin)</div>
                   <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--green)', marginTop: '4px' }}>₩{marginStats.totalMarginKRW.toLocaleString()}</div>
-                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>판매가: ฿{marginStats.totalSalesTHB.toLocaleString()} | 원가: ₩{marginStats.totalCostKRW.toLocaleString()}</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>판매금액 환율 계산 후 마진액</div>
                 </div>
               </div>
 
-              {/* Receivables Card */}
+              {/* Total Sales Card */}
               <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>⏳</div>
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>📈</div>
                 <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>COD 미수금 잔액 (COD Receivables)</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--red)', marginTop: '4px' }}>฿{marginStats.totalUnpaidCODTHB.toLocaleString()}</div>
-                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>배송 완료 후 정산 대기</div>
+                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>총 소매 판매가 (Total Sales)</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--blue)', marginTop: '4px' }}>฿{marginStats.totalSalesTHB.toLocaleString()}</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>₩{Math.round(marginStats.totalSalesTHB * exchangeRate).toLocaleString()} 상당</div>
                 </div>
               </div>
 
-              {/* Installments Card */}
+              {/* Total Cost Card */}
               <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>📅</div>
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(107, 114, 128, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>📉</div>
                 <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>할부 판매 진행 건 (Installments)</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#d97706', marginTop: '4px' }}>{marginStats.activeInstallmentCount}건 (Sales)</div>
-                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>매월 계약서 기준 분납 수납</div>
+                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>총 매입 원가 (Total Cost)</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--t1)', marginTop: '4px' }}>₩{marginStats.totalCostKRW.toLocaleString()}</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>한국 매입 총 원가</div>
                 </div>
               </div>
             </div>
@@ -4741,144 +4788,6 @@ export default function StaffDashboard() {
               );
             })()}
 
-            {/* Part 1: Receivables & Unpaid Table */}
-            <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ color: 'var(--red)' }}>🔴</span> 미수금 및 할부 수납 관리 (Receivables & Collections)
-              </h4>
-              <div className="tbl-wrap" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
-                <table className="tbl" style={{ margin: 0 }}>
-                  <thead>
-                    <tr>
-                      <th style={{ width: '10%', cursor: 'pointer' }} onClick={() => toggleSort('sale_date')}>
-                        판매일 {sortField === 'sale_date' && (sortDirection === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
-                        기기 정보 {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th style={{ width: '11%', cursor: 'pointer' }} onClick={() => toggleSort('imei')}>
-                        IMEI {sortField === 'imei' && (sortDirection === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th style={{ width: '14%', cursor: 'pointer' }} onClick={() => toggleSort('customer_name')}>
-                        고객 정보 (Customer Info) {sortField === 'customer_name' && (sortDirection === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th style={{ width: '22%' }}>판매 상세 (Payment Details)</th>
-                      <th style={{ width: '13%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('cod_amount')}>
-                        미수 금액 (Balance) {sortField === 'cod_amount' && (sortDirection === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th style={{ width: '7%', textAlign: 'center', cursor: 'pointer' }} onClick={() => toggleSort('payment_status')}>
-                        상태 {sortField === 'payment_status' && (sortDirection === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th style={{ width: '8%', textAlign: 'center' }}>입금 확인</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {marginStats.unpaidList.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>정산 대기 중인 미수금 내역이 없습니다. (No pending receivables.)</td>
-                      </tr>
-                    ) : (
-                      sortDevices(marginStats.unpaidList).map(item => (
-                        <tr key={item.id}>
-                          <td style={{ fontWeight: 700 }}>{item.sale_date || '-'}</td>
-                          <td style={{ fontWeight: 700 }}>{item.model_name}</td>
-                          <td className="font-mono" style={{ fontSize: '11px' }}>{item.imei}</td>
-                          <td>
-                            {/* Customer Name */}
-                            <div style={{ marginBottom: '6px' }}>
-                              {editingCell?.id === item.id && editingCell?.field === 'customer_name' ? (
-                                <input
-                                  type="text"
-                                  value={editCellValue}
-                                  onChange={(e) => setEditCellValue(e.target.value)}
-                                  onBlur={() => handleInlineSave(item.id, 'customer_name', editCellValue)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleInlineSave(item.id, 'customer_name', editCellValue);
-                                    if (e.key === 'Escape') setEditingCell(null);
-                                  }}
-                                  autoFocus
-                                  className="form-input"
-                                  style={{ margin: 0, padding: '4px 6px', fontSize: '11px', height: '26px', width: '100%', boxSizing: 'border-box' }}
-                                />
-                              ) : (
-                                <div
-                                  style={{ cursor: 'pointer', fontWeight: 700, color: item.customer_name ? 'var(--t1)' : 'var(--t3)', fontSize: '12.5px', textDecoration: 'underline dotted var(--border)' }}
-                                  onClick={() => {
-                                    setEditingCell({ id: item.id, field: 'customer_name' });
-                                    setEditCellValue(item.customer_name || '');
-                                  }}
-                                  title="클릭하여 성함 수정"
-                                >
-                                  👤 {item.customer_name || '미기입'}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Customer Phone */}
-                            <div>
-                              {editingCell?.id === item.id && editingCell?.field === 'customer_phone' ? (
-                                <input
-                                  type="text"
-                                  value={editCellValue}
-                                  onChange={(e) => setEditCellValue(e.target.value)}
-                                  onBlur={() => handleInlineSave(item.id, 'customer_phone', editCellValue)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleInlineSave(item.id, 'customer_phone', editCellValue);
-                                    if (e.key === 'Escape') setEditingCell(null);
-                                  }}
-                                  autoFocus
-                                  className="form-input"
-                                  style={{ margin: 0, padding: '4px 6px', fontSize: '11px', height: '26px', width: '100%', boxSizing: 'border-box' }}
-                                />
-                              ) : (
-                                <div
-                                  style={{ cursor: 'pointer', fontWeight: 500, color: item.customer_phone ? 'var(--t2)' : 'var(--t3)', fontSize: '11px', textDecoration: 'underline dotted var(--border)' }}
-                                  onClick={() => {
-                                    setEditingCell({ id: item.id, field: 'customer_phone' });
-                                    setEditCellValue(item.customer_phone || '');
-                                  }}
-                                  title="클릭하여 연락처 수정"
-                                >
-                                  📞 {item.customer_phone || '미기입'}
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td>{getSaleDetailsLabel(item)}</td>
-                          <td style={{ textAlign: 'right', fontWeight: 800, color: item.payment_status === 'unpaid' ? 'var(--red)' : '#d97706' }}>
-                            ฿{item.payment_status === 'unpaid' ? formatPrice(item.cod_amount || 0) : formatPrice((item.installment_months || 0) * (item.installment_amount || 0))}
-                          </td>
-                          <td style={{ textAlign: 'center' }}>{getPaymentStatusBadge(item.payment_status)}</td>
-                          <td style={{ textAlign: 'center' }}>
-                            {item.payment_status === 'unpaid' && (
-                              <button
-                                type="button"
-                                className="btn-sm btn-green"
-                                onClick={() => handleConfirmPayment(item.id)}
-                                style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 800, margin: 0 }}
-                              >
-                                입금 완료
-                              </button>
-                            )}
-                            {item.payment_status === 'collecting' && (
-                              <button
-                                type="button"
-                                className="btn-sm btn-blue"
-                                onClick={() => handleConfirmPayment(item.id)}
-                                style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 800, margin: 0 }}
-                              >
-                                완납 처리
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
             {/* Part 2: Complete Margin Ledger */}
             <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -4888,94 +4797,45 @@ export default function StaffDashboard() {
                 <table className="tbl" style={{ margin: 0 }}>
                   <thead>
                     <tr>
-                      <th style={{ width: '10%', cursor: 'pointer' }} onClick={() => toggleSort('sale_date')}>
+                      <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('sale_date')}>
                         판매일 {sortField === 'sale_date' && (sortDirection === 'asc' ? '▲' : '▼')}
                       </th>
-                      <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
-                        기기 정보 {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      <th style={{ width: '25%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
+                        판매모델 {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
                       </th>
-                      <th style={{ width: '12%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('purchase_cost_krw')}>
+                      <th style={{ width: '15%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('purchase_cost_krw')}>
                         매입원가 {sortField === 'purchase_cost_krw' && (sortDirection === 'asc' ? '▲' : '▼')}
                       </th>
-                      <th style={{ width: '12%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
-                        소매판매가 {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      <th style={{ width: '15%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
+                        판매금액 {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
                       </th>
-                      <th style={{ width: '25%' }}>판매 상세 (Payment Details)</th>
-                      <th style={{ width: '10%', textAlign: 'center', cursor: 'pointer' }} onClick={() => toggleSort('payment_status')}>
-                        수납 상태 {sortField === 'payment_status' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('seller_name')}>
+                        판매사원 {sortField === 'seller_name' && (sortDirection === 'asc' ? '▲' : '▼')}
                       </th>
-                      <th style={{ width: '8%', textAlign: 'center', cursor: 'pointer' }} onClick={() => toggleSort('seller_name')}>
-                        담당자 {sortField === 'seller_name' && (sortDirection === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th style={{ width: '8%', textAlign: 'right' }}>마진(예상)</th>
+                      <th style={{ width: '15%', textAlign: 'right' }}>마진</th>
                     </tr>
                   </thead>
                   <tbody>
                     {marginStats.soldList.length === 0 ? (
                       <tr>
-                        <td colSpan={8} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>판매 완료된 기기 내역이 없습니다. (No sales completed.)</td>
+                        <td colSpan={6} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>판매 완료된 기기 내역이 없습니다. (No sales completed.)</td>
                       </tr>
                     ) : (
                       sortDevices(marginStats.soldList).map(item => {
                         const price = item.selling_price || 0;
                         const cost = price === 0 ? 0 : (item.purchase_cost_krw || 0);
+                        const marginKRW = price === 0 ? 0 : (Math.round(price * exchangeRate) - cost);
                         return (
                           <tr key={item.id}>
                             <td>{item.sale_date || '-'}</td>
-                            <td style={{ fontWeight: 700 }}>{item.model_name}</td>
-                            <td style={{ textAlign: 'right', color: '#94a3b8' }}>₩{formatPrice(cost)}</td>
-                            <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)' }}>฿{formatPrice(price)}</td>
-                            <td style={{ fontSize: '11.5px' }}>
-                              {getSaleDetailsLabel(item)}
-                              {item.installment_number && (
-                                <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--purple-l)', fontWeight: 800 }}>
-                                  📄 {item.installment_number}
-                                </div>
-                              )}
-                              <div style={{ marginTop: '2px', fontSize: '10.5px', color: 'var(--t2)', fontWeight: 'normal' }}>
-                                👤{' '}
-                                {editingCell?.id === item.id && editingCell?.field === 'customer_name' ? (
-                                  <input
-                                    type="text"
-                                    value={editCellValue}
-                                    onChange={(e) => setEditCellValue(e.target.value)}
-                                    onBlur={() => handleInlineSave(item.id, 'customer_name', editCellValue)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') handleInlineSave(item.id, 'customer_name', editCellValue);
-                                      if (e.key === 'Escape') setEditingCell(null);
-                                    }}
-                                    autoFocus
-                                    className="form-input"
-                                    style={{ margin: 0, padding: '2px 4px', fontSize: '10.5px', height: '22px', width: '80px', display: 'inline-block' }}
-                                  />
-                                ) : (
-                                  <span
-                                    style={{ cursor: 'pointer', fontWeight: 600, color: 'var(--t1)', textDecoration: 'underline dotted var(--border)' }}
-                                    onClick={() => {
-                                      setEditingCell({ id: item.id, field: 'customer_name' });
-                                      setEditCellValue(item.customer_name || '');
-                                    }}
-                                    title="클릭하여 수정"
-                                  >
-                                    {item.customer_name || '미기입'}
-                                  </span>
-                                )}
-                                {item.customer_phone ? ` (${item.customer_phone})` : ''}
+                            <td style={{ fontWeight: 700 }}>
+                              {item.model_name}
+                              <div style={{ fontSize: '10.5px', color: 'var(--t3)', fontWeight: 'normal', marginTop: '2px', fontFamily: 'monospace' }}>
+                                IMEI: {item.imei}
                               </div>
                             </td>
-                            <td style={{ textAlign: 'center' }}>
-                              <div>{getPaymentStatusBadge(item.payment_status)}</div>
-                              {item.payment_status === 'paid' && (item.sale_type === 'cod' || item.sale_type === 'installment') && (
-                                <button
-                                  type="button"
-                                  className="btn-sm btn-red"
-                                  onClick={() => handleCancelPayment(item.id, item.sale_type)}
-                                  style={{ padding: '2px 6px', fontSize: '9.5px', fontWeight: 800, marginTop: '4px', display: 'inline-block', cursor: 'pointer', margin: 0 }}
-                                >
-                                  완납 취소
-                                </button>
-                              )}
-                            </td>
+                            <td style={{ textAlign: 'right', color: '#94a3b8' }}>₩{formatPrice(cost)}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)' }}>฿{formatPrice(price)}</td>
                             <td>
                               {staffProfile?.role === 'admin' ? (
                                 editingCell?.id === item.id && editingCell?.field === 'seller_name' ? (
@@ -5008,159 +4868,411 @@ export default function StaffDashboard() {
                                 item.seller_name || '-'
                               )}
                             </td>
-                            <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--green)' }}>
-                              ฿{formatPrice(price)}<br/>
-                              <span style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: 'normal' }}>(-₩{formatPrice(cost)})</span>
+                            <td style={{ textAlign: 'right', fontWeight: 800, color: marginKRW >= 0 ? 'var(--green)' : '#e11d48' }}>
+                              ₩{marginKRW.toLocaleString()}
                             </td>
                           </tr>
                         );
                       })
                     )}
                   </tbody>
+                  {marginStats.soldList.length > 0 && (() => {
+                    const totalCost = marginStats.soldList.reduce((sum, item) => {
+                      const price = Number(item.selling_price || 0);
+                      const cost = price === 0 ? 0 : Number(item.purchase_cost_krw || 0);
+                      return sum + cost;
+                    }, 0);
+                    const totalSales = marginStats.soldList.reduce((sum, item) => sum + Number(item.selling_price || 0), 0);
+                    const totalMargin = marginStats.soldList.reduce((sum, item) => {
+                      const price = Number(item.selling_price || 0);
+                      const cost = price === 0 ? 0 : Number(item.purchase_cost_krw || 0);
+                      const margin = price === 0 ? 0 : (Math.round(price * exchangeRate) - cost);
+                      return sum + margin;
+                    }, 0);
+                    return (
+                      <tfoot>
+                        <tr style={{ background: '#f8fafc', borderTop: '2px solid var(--border)', fontWeight: 800 }}>
+                          <td colSpan={2} style={{ fontWeight: 800 }}>합계 ({marginStats.soldList.length}대)</td>
+                          <td style={{ textAlign: 'right', color: '#64748b' }}>₩{totalCost.toLocaleString()}</td>
+                          <td style={{ textAlign: 'right', color: 'var(--green)' }}>฿{totalSales.toLocaleString()}</td>
+                          <td></td>
+                          <td style={{ textAlign: 'right', fontWeight: 900, color: totalMargin >= 0 ? 'var(--green)' : '#e11d48' }}>
+                            ₩{totalMargin.toLocaleString()}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    );
+                  })()}
                 </table>
               </div>
             </div>
 
-            {/* Part 3: Monthly Customer Directory */}
-            <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>📞</span> Part 3: 월별 고객 연락처 및 수납 대장 (Monthly Customer & Accounts Directory)
-                </h4>
+          </div>
+        )}
+
+        {/* ==================== VIEW: COD 수금 관리 ==================== */}
+        {activeTab === 'cod' && (staffProfile?.role === 'admin' || staffProfile?.role === 'manager') && (() => {
+          const codDevices = devices.filter(d => !d.deleted_at && d.is_sold && d.sale_type === 'cod');
+          
+          let filteredCOD = codDevices;
+          if (codSelectedMonth !== 'all') {
+            filteredCOD = filteredCOD.filter(d => getYearMonth(d.sale_date) === codSelectedMonth);
+          }
+
+          const totalUnpaidCOD = codDevices.filter(d => d.payment_status === 'unpaid').reduce((sum, d) => sum + (d.cod_amount || 0), 0);
+          const totalPaidCOD = codDevices.filter(d => d.payment_status === 'paid').reduce((sum, d) => sum + (d.cod_amount || 0), 0);
+          
+          return (
+            <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              
+              {/* COD Summary Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+                <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>⏳</div>
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>미수금 총액 (Total Unpaid COD)</div>
+                    <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--red)', marginTop: '4px' }}>฿{totalUnpaidCOD.toLocaleString()}</div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>배송 후 정산 완료 대기 중인 금액</div>
+                  </div>
+                </div>
+
+                <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>✅</div>
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>정산 완료 총액 (Total Paid COD)</div>
+                    <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--green)', marginTop: '4px' }}>฿{totalPaidCOD.toLocaleString()}</div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>수금 완료된 총 COD 금액</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Filter controls */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '8px 12px' }}>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 700 }}>월별 필터:</span>
                   <select
-                    value={selectedCustomerMonth}
-                    onChange={(e) => setSelectedCustomerMonth(e.target.value)}
+                    value={codSelectedMonth}
+                    onChange={(e) => setCodSelectedMonth(e.target.value)}
                     className="form-input"
                     style={{ width: '150px', margin: 0, padding: '6px 12px', fontSize: '13px', height: '34px' }}
                   >
-                    <option value="">전체 월 (All Months)</option>
+                    <option value="all">전체 월 (All Months)</option>
                     {customerMonths.map(month => (
                       <option key={month} value={month}>{month}</option>
                     ))}
                   </select>
-                  <button
-                    onClick={handleCopyCustomerList}
-                    className="btn-purple"
-                    style={{ margin: 0, padding: '8px 12px', fontSize: '12px', borderRadius: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', border: 'none', color: '#fff' }}
-                  >
-                    📋 전체 고객 텍스트 복사
-                  </button>
                 </div>
               </div>
 
-              <div className="tbl-wrap" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
-                <table className="tbl" style={{ margin: 0 }}>
-                  <thead>
-                    <tr>
-                      <th style={{ width: '12%', cursor: 'pointer' }} onClick={() => toggleSort('sale_date')}>
-                        판매일 {sortField === 'sale_date' && (sortDirection === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th style={{ width: '18%', cursor: 'pointer' }} onClick={() => toggleSort('customer_name')}>
-                        고객명 (Customer) {sortField === 'customer_name' && (sortDirection === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th style={{ width: '18%', cursor: 'pointer' }} onClick={() => toggleSort('customer_phone')}>
-                        연락처 (Phone) {sortField === 'customer_phone' && (sortDirection === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th style={{ width: '20%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
-                        기기 모델 (Device) {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th style={{ width: '12%', textAlign: 'center', cursor: 'pointer' }} onClick={() => toggleSort('payment_status')}>
-                        수납 상태 {sortField === 'payment_status' && (sortDirection === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th style={{ width: '12%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('cod_amount')}>
-                        미수 금액 {sortField === 'cod_amount' && (sortDirection === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th style={{ width: '8%', textAlign: 'center', cursor: 'pointer' }} onClick={() => toggleSort('seller_name')}>
-                        담당자 {sortField === 'seller_name' && (sortDirection === 'asc' ? '▲' : '▼')}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredCustomersForMonth.length === 0 ? (
+              {/* COD Table */}
+              <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>📦</span> COD 수납 대장 (COD Collections)
+                </h4>
+                <div className="tbl-wrap" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+                  <table className="tbl" style={{ margin: 0 }}>
+                    <thead>
                       <tr>
-                        <td colSpan={7} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>선택한 월에 해당하는 고객 내역이 없습니다. (No customer records for this month.)</td>
+                        <th style={{ width: '10%' }}>판매일</th>
+                        <th style={{ width: '15%' }}>기기 정보</th>
+                        <th style={{ width: '12%' }}>IMEI</th>
+                        <th style={{ width: '15%' }}>고객 정보</th>
+                        <th style={{ width: '15%', textAlign: 'right' }}>판매금액</th>
+                        <th style={{ width: '13%', textAlign: 'right' }}>COD 미수금</th>
+                        <th style={{ width: '10%', textAlign: 'center' }}>상태</th>
+                        <th style={{ width: '10%', textAlign: 'center' }}>작업</th>
                       </tr>
-                    ) : (
-                      sortDevices(filteredCustomersForMonth).map(item => {
-                        const balance = item.payment_status === 'unpaid' ? (item.cod_amount || 0) : item.payment_status === 'collecting' ? (item.installment_months || 0) * (item.installment_amount || 0) : 0;
-                        return (
+                    </thead>
+                    <tbody>
+                      {filteredCOD.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>COD 내역이 없습니다. (No COD records.)</td>
+                        </tr>
+                      ) : (
+                        sortDevices(filteredCOD).map(item => (
                           <tr key={item.id}>
-                            <td>{item.sale_date || '-'}</td>
-                            <td style={{ fontWeight: 700 }}>
-                              {editingCell?.id === item.id && editingCell?.field === 'customer_name' ? (
-                                <input
-                                  type="text"
-                                  value={editCellValue}
-                                  onChange={(e) => setEditCellValue(e.target.value)}
-                                  onBlur={() => handleInlineSave(item.id, 'customer_name', editCellValue)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleInlineSave(item.id, 'customer_name', editCellValue);
-                                    if (e.key === 'Escape') setEditingCell(null);
-                                  }}
-                                  autoFocus
-                                  className="form-input"
-                                  style={{ margin: 0, padding: '4px 6px', fontSize: '11px', height: '26px', width: '100%', boxSizing: 'border-box' }}
-                                />
-                              ) : (
-                                <div
-                                  style={{ cursor: 'pointer', color: item.customer_name ? 'var(--t1)' : 'var(--t3)', textDecoration: 'underline dotted var(--border)' }}
-                                  onClick={() => {
-                                    setEditingCell({ id: item.id, field: 'customer_name' });
-                                    setEditCellValue(item.customer_name || '');
-                                  }}
-                                  title="클릭하여 성함 수정"
-                                >
-                                  👤 {item.customer_name || '미기입'}
-                                </div>
-                              )}
-                            </td>
+                            <td style={{ fontWeight: 700 }}>{item.sale_date || '-'}</td>
+                            <td style={{ fontWeight: 700 }}>{item.model_name}</td>
+                            <td className="font-mono" style={{ fontSize: '11px' }}>{item.imei}</td>
                             <td>
-                              {editingCell?.id === item.id && editingCell?.field === 'customer_phone' ? (
-                                <input
-                                  type="text"
-                                  value={editCellValue}
-                                  onChange={(e) => setEditCellValue(e.target.value)}
-                                  onBlur={() => handleInlineSave(item.id, 'customer_phone', editCellValue)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleInlineSave(item.id, 'customer_phone', editCellValue);
-                                    if (e.key === 'Escape') setEditingCell(null);
-                                  }}
-                                  autoFocus
-                                  className="form-input"
-                                  style={{ margin: 0, padding: '4px 6px', fontSize: '11px', height: '26px', width: '100%', boxSizing: 'border-box' }}
-                                />
-                              ) : (
-                                <div
-                                  style={{ cursor: 'pointer', color: item.customer_phone ? 'var(--t2)' : 'var(--t3)', textDecoration: 'underline dotted var(--border)' }}
-                                  onClick={() => {
-                                    setEditingCell({ id: item.id, field: 'customer_phone' });
-                                    setEditCellValue(item.customer_phone || '');
-                                  }}
-                                  title="클릭하여 연락처 수정"
+                              <div style={{ fontWeight: 700 }}>👤 {item.customer_name || '미기입'}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '2px' }}>📞 {item.customer_phone || '미기입'}</div>
+                            </td>
+                            <td style={{ textAlign: 'right', fontWeight: 700 }}>฿{formatPrice(item.selling_price || 0)}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 800, color: item.payment_status === 'unpaid' ? 'var(--red)' : 'var(--green)' }}>
+                              ฿{formatPrice(item.cod_amount || 0)}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>{getPaymentStatusBadge(item.payment_status)}</td>
+                            <td style={{ textAlign: 'center' }}>
+                              {item.payment_status === 'unpaid' ? (
+                                <button
+                                  type="button"
+                                  className="btn-sm btn-green"
+                                  onClick={() => handleConfirmPayment(item.id)}
+                                  style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 800, margin: 0, cursor: 'pointer' }}
                                 >
-                                  📞 {item.customer_phone || '미기입'}
-                                </div>
+                                  입금 완료
+                                </button>
+                              ) : (
+                                <span style={{ color: 'var(--t3)', fontSize: '12px' }}>-</span>
                               )}
                             </td>
-                            <td style={{ fontWeight: 600 }}>{item.model_name}</td>
-                            <td style={{ textAlign: 'center' }}>{getPaymentStatusBadge(item.payment_status)}</td>
-                            <td style={{ textAlign: 'right', fontWeight: 700, color: balance > 0 ? 'var(--red)' : 'var(--t3)' }}>
-                              {balance > 0 ? `฿${formatPrice(balance)}` : '-'}
-                            </td>
-                            <td style={{ textAlign: 'center' }}>{item.seller_name || '-'}</td>
                           </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
+
             </div>
+          );
+        })()}
 
+        {/* ==================== VIEW: 고객 관리 ==================== */}
+        {activeTab === 'customers' && (() => {
+          const customerDevices = devices.filter(d => !d.deleted_at && d.is_sold);
 
-          </div>
-        )}
+          let filteredCustomers = customerDevices;
+          if (selectedCustomerMonth) {
+            filteredCustomers = filteredCustomers.filter(d => getYearMonth(d.sale_date) === selectedCustomerMonth);
+          }
+
+          const searchedCustomers = filteredCustomers.filter(d => {
+            const matchName = d.customer_name?.toLowerCase().includes(custSearch.toLowerCase()) || false;
+            const matchPhone = d.customer_phone?.toLowerCase().includes(custSearch.toLowerCase()) || false;
+            const matchModel = d.model_name?.toLowerCase().includes(custSearch.toLowerCase()) || false;
+            const matchImei = d.imei?.includes(custSearch) || false;
+            return matchName || matchPhone || matchModel || matchImei;
+          });
+
+          const handleCopyFilteredCustomers = () => {
+            if (searchedCustomers.length === 0) {
+              showToast('복사할 고객 정보가 없습니다.', 'error');
+              return;
+            }
+            const textLines = searchedCustomers.map((item, idx) => {
+              const name = item.customer_name || '미기입';
+              const phone = item.customer_phone || '미기입';
+              const model = item.model_name;
+              const imei = item.imei;
+              const date = item.sale_date || '미기입';
+              const type = item.sale_type === 'installment' ? '할부' : item.sale_type === 'cod' ? 'COD' : '현금';
+              const seller = item.seller_name || '미지정';
+              const note = item.notes || '-';
+              return `${idx + 1}. [${date}] ${name} (${phone}) - 모델: ${model} (IMEI: ${imei}) - 방식: ${type} - 담당: ${seller} - 메모: ${note}`;
+            });
+            navigator.clipboard.writeText(textLines.join('\n'))
+              .then(() => showToast('고객 정보가 클립보드에 복사되었습니다.', 'success'))
+              .catch(() => showToast('복사 실패', 'error'));
+          };
+
+          return (
+            <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              
+              <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>👤</span> 고객 정보 관리 대장 (Customer Directory)
+                  </h4>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      placeholder="고객명, 연락처, 기종, IMEI 검색..."
+                      value={custSearch}
+                      onChange={(e) => setCustSearch(e.target.value)}
+                      className="form-input"
+                      style={{ width: '220px', margin: 0, padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                    />
+                    <select
+                      value={selectedCustomerMonth}
+                      onChange={(e) => setSelectedCustomerMonth(e.target.value)}
+                      className="form-input"
+                      style={{ width: '150px', margin: 0, padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                    >
+                      <option value="">전체 월 (All Months)</option>
+                      {customerMonths.map(month => (
+                        <option key={month} value={month}>{month}</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={handleCopyFilteredCustomers}
+                      className="btn-purple"
+                      style={{ margin: 0, padding: '8px 12px', fontSize: '12px', borderRadius: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', border: 'none', color: '#fff', height: '34px' }}
+                    >
+                      📋 고객 텍스트 복사
+                    </button>
+                  </div>
+                </div>
+
+                <div className="tbl-wrap" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+                  <table className="tbl" style={{ margin: 0 }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: '10%' }}>구입일</th>
+                        <th style={{ width: '15%' }}>고객명</th>
+                        <th style={{ width: '15%' }}>전화번호</th>
+                        <th style={{ width: '15%' }}>기타메모 (Line ID 등)</th>
+                        <th style={{ width: '15%' }}>구매모델</th>
+                        <th style={{ width: '12%' }}>구매모델 IMEI</th>
+                        <th style={{ width: '10%', textAlign: 'center' }}>구매방식</th>
+                        <th style={{ width: '8%' }}>판매사</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {searchedCustomers.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>고객 내역이 없습니다. (No customer records.)</td>
+                        </tr>
+                      ) : (
+                        sortDevices(searchedCustomers).map(item => {
+                          const paymentTypeLabel = item.sale_type === 'installment' ? '할부' : item.sale_type === 'cod' ? 'COD' : (item.sale_type === 'cash' || item.sale_type === 'transfer') ? '현금' : item.sale_type || '-';
+                          return (
+                            <tr key={item.id}>
+                              <td>{item.sale_date || '-'}</td>
+                              <td style={{ fontWeight: 700 }}>
+                                {staffProfile?.role === 'admin' ? (
+                                  editingCell?.id === item.id && editingCell?.field === 'customer_name' ? (
+                                    <input
+                                      type="text"
+                                      value={editCellValue}
+                                      onChange={(e) => setEditCellValue(e.target.value)}
+                                      onBlur={() => handleInlineSave(item.id, 'customer_name', editCellValue)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleInlineSave(item.id, 'customer_name', editCellValue);
+                                        if (e.key === 'Escape') setEditingCell(null);
+                                      }}
+                                      autoFocus
+                                      className="form-input"
+                                      style={{ margin: 0, padding: '4px 6px', fontSize: '11px', height: '26px', width: '100%', boxSizing: 'border-box' }}
+                                    />
+                                  ) : (
+                                    <div
+                                      style={{ cursor: 'pointer', color: item.customer_name ? 'var(--t1)' : 'var(--t3)', textDecoration: 'underline dotted var(--border)' }}
+                                      onClick={() => {
+                                        setEditingCell({ id: item.id, field: 'customer_name' });
+                                        setEditCellValue(item.customer_name || '');
+                                      }}
+                                      title="클릭하여 수정"
+                                    >
+                                      👤 {item.customer_name || '미기입'}
+                                    </div>
+                                  )
+                                ) : (
+                                  item.customer_name || '-'
+                                )}
+                              </td>
+                              <td>
+                                {staffProfile?.role === 'admin' ? (
+                                  editingCell?.id === item.id && editingCell?.field === 'customer_phone' ? (
+                                    <input
+                                      type="text"
+                                      value={editCellValue}
+                                      onChange={(e) => setEditCellValue(e.target.value)}
+                                      onBlur={() => handleInlineSave(item.id, 'customer_phone', editCellValue)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleInlineSave(item.id, 'customer_phone', editCellValue);
+                                        if (e.key === 'Escape') setEditingCell(null);
+                                      }}
+                                      autoFocus
+                                      className="form-input"
+                                      style={{ margin: 0, padding: '4px 6px', fontSize: '11px', height: '26px', width: '100%', boxSizing: 'border-box' }}
+                                    />
+                                  ) : (
+                                    <div
+                                      style={{ cursor: 'pointer', color: item.customer_phone ? 'var(--t2)' : 'var(--t3)', textDecoration: 'underline dotted var(--border)' }}
+                                      onClick={() => {
+                                        setEditingCell({ id: item.id, field: 'customer_phone' });
+                                        setEditCellValue(item.customer_phone || '');
+                                      }}
+                                      title="클릭하여 수정"
+                                    >
+                                      📞 {item.customer_phone || '미기입'}
+                                    </div>
+                                  )
+                                ) : (
+                                  item.customer_phone || '-'
+                                )}
+                              </td>
+                              <td>
+                                {staffProfile?.role === 'admin' ? (
+                                  editingCell?.id === item.id && editingCell?.field === 'notes' ? (
+                                    <input
+                                      type="text"
+                                      value={editCellValue}
+                                      onChange={(e) => setEditCellValue(e.target.value)}
+                                      onBlur={() => handleInlineSave(item.id, 'notes', editCellValue)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleInlineSave(item.id, 'notes', editCellValue);
+                                        if (e.key === 'Escape') setEditingCell(null);
+                                      }}
+                                      autoFocus
+                                      className="form-input"
+                                      style={{ margin: 0, padding: '4px 6px', fontSize: '11px', height: '26px', width: '100%', boxSizing: 'border-box' }}
+                                    />
+                                  ) : (
+                                    <div
+                                      style={{ cursor: 'pointer', color: item.notes ? 'var(--t2)' : 'var(--t3)', textDecoration: 'underline dotted var(--border)' }}
+                                      onClick={() => {
+                                        setEditingCell({ id: item.id, field: 'notes' });
+                                        setEditCellValue(item.notes || '');
+                                      }}
+                                      title="클릭하여 수정"
+                                    >
+                                      📝 {item.notes || '미기입'}
+                                    </div>
+                                  )
+                                ) : (
+                                  item.notes || '-'
+                                )}
+                              </td>
+                              <td style={{ fontWeight: 700 }}>{item.model_name}</td>
+                              <td className="font-mono" style={{ fontSize: '11px' }}>{item.imei}</td>
+                              <td style={{ textAlign: 'center', fontWeight: 800 }}>{paymentTypeLabel}</td>
+                              <td>
+                                {staffProfile?.role === 'admin' ? (
+                                  editingCell?.id === item.id && editingCell?.field === 'seller_name' ? (
+                                    <input
+                                      type="text"
+                                      value={editCellValue}
+                                      onChange={(e) => setEditCellValue(e.target.value)}
+                                      onBlur={() => handleInlineSave(item.id, 'seller_name', editCellValue)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleInlineSave(item.id, 'seller_name', editCellValue);
+                                        if (e.key === 'Escape') setEditingCell(null);
+                                      }}
+                                      autoFocus
+                                      className="form-input"
+                                      style={{ margin: 0, padding: '4px 6px', fontSize: '11px', height: '26px', width: '100%', boxSizing: 'border-box' }}
+                                    />
+                                  ) : (
+                                    <span
+                                      style={{ cursor: 'pointer', textDecoration: 'underline dotted var(--border)' }}
+                                      onClick={() => {
+                                        setEditingCell({ id: item.id, field: 'seller_name' });
+                                        setEditCellValue(item.seller_name || '');
+                                      }}
+                                      title="클릭하여 수정"
+                                    >
+                                      {item.seller_name || '미지정'}
+                                    </span>
+                                  )
+                                ) : (
+                                  item.seller_name || '-'
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          );
+        })()}
 
         {/* ==================== VIEW 6: TRASH BIN ==================== */}
         {activeTab === 'trash' && (
