@@ -91,6 +91,10 @@ export default function StaffDashboard() {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   });
+  const [instSelectedMonth, setInstSelectedMonth] = useState(() => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  });
   const [codSelectedMonth, setCodSelectedMonth] = useState('all');
   const [custSearch, setCustSearch] = useState('');
   const [isDayFilterOpen, setIsDayFilterOpen] = useState(false);
@@ -4197,14 +4201,17 @@ export default function StaffDashboard() {
           const installmentDevices = devices.filter(d => !d.deleted_at && d.is_sold && d.sale_type === 'installment');
           
           const now = new Date();
-          const currYear = now.getFullYear() % 100;
+          const targetYearNum = instSelectedMonth !== 'all' ? Number(instSelectedMonth.split('-')[0]) : now.getFullYear();
+          const targetMonthNum = instSelectedMonth !== 'all' ? Number(instSelectedMonth.split('-')[1]) : (now.getMonth() + 1);
+          const filterYear = targetYearNum % 100;
+          const filterMonth = targetMonthNum;
           const currMonth = now.getMonth() + 1;
           
-          const isDueThisMonth = (dueDate: string) => {
+          const isDueInSelectedMonth = (dueDate: string) => {
             if (!dueDate) return false;
             const pts = dueDate.split('.').map(x => x.trim()).filter(Boolean);
             if (pts.length >= 2) {
-              return Number(pts[0]) === currYear && Number(pts[1]) === currMonth;
+              return Number(pts[0]) === filterYear && Number(pts[1]) === filterMonth;
             }
             return false;
           };
@@ -4214,15 +4221,16 @@ export default function StaffDashboard() {
           let totalUnpaidBalance = 0;
           
           installmentDevices.forEach(d => {
+            const isFullyPaid = d.payment_status === 'paid';
             const history = d.installment_history || [];
             history.forEach((h: any) => {
-              if (isDueThisMonth(h.due_date)) {
+              if (isDueInSelectedMonth(h.due_date)) {
                 expectedThisMonth += Number(h.amount) || 0;
                 if (h.status === 'paid') {
                   collectedThisMonth += Number(h.amount) || 0;
                 }
               }
-              if (h.status === 'unpaid') {
+              if (h.status === 'unpaid' && !isFullyPaid) {
                 totalUnpaidBalance += Number(h.amount) || 0;
               }
             });
@@ -4230,8 +4238,15 @@ export default function StaffDashboard() {
           
           const remainingThisMonth = expectedThisMonth - collectedThisMonth;
 
-          // Filter installments based on search query
+          // Filter installments based on search query and month filter
           const filteredInstallments = installmentDevices.filter(d => {
+            // Month filter: show only contracts that have a payment due in the selected month
+            if (instSelectedMonth !== 'all') {
+              const history = d.installment_history || [];
+              const hasDue = history.some((h: any) => isDueInSelectedMonth(h.due_date));
+              if (!hasDue) return false;
+            }
+
             const custNameMatch = d.customer_name?.toLowerCase().includes(installmentSearchQuery.toLowerCase());
             const custPhoneMatch = d.customer_phone?.includes(installmentSearchQuery);
             const stickerMatch = d.sticker?.toLowerCase().includes(installmentSearchQuery.toLowerCase());
@@ -4248,7 +4263,9 @@ export default function StaffDashboard() {
                 <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
                   <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>📅</div>
                   <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600 }}>이번 달 청구 예정액 ({currMonth}월)</div>
+                    <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600 }}>
+                      {instSelectedMonth !== 'all' ? `${targetMonthNum}월 청구 예정액` : `이번 달 청구 예정액 (${currMonth}월)`}
+                    </div>
                     <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--purple-l)', marginTop: '4px' }}>฿{expectedThisMonth.toLocaleString()}</div>
                     <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>총 청구 회차 합산</div>
                   </div>
@@ -4257,7 +4274,9 @@ export default function StaffDashboard() {
                 <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
                   <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>🟢</div>
                   <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600 }}>이번 달 수납 완료액</div>
+                    <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600 }}>
+                      {instSelectedMonth !== 'all' ? `${targetMonthNum}월 수납 완료액` : '이번 달 수납 완료액'}
+                    </div>
                     <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--green)', marginTop: '4px' }}>฿{collectedThisMonth.toLocaleString()}</div>
                     <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>수금 완료액</div>
                   </div>
@@ -4275,14 +4294,28 @@ export default function StaffDashboard() {
 
               {/* Installment Search & Count */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '8px 12px' }}>
-                <input
-                  type="text"
-                  placeholder="고객명, 연락처, 기기 검색..."
-                  value={installmentSearchQuery}
-                  onChange={(e) => setInstallmentSearchQuery(e.target.value)}
-                  className="form-input"
-                  style={{ maxWidth: '240px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
-                />
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    placeholder="고객명, 연락처, 기기 검색..."
+                    value={installmentSearchQuery}
+                    onChange={(e) => setInstallmentSearchQuery(e.target.value)}
+                    className="form-input"
+                    style={{ maxWidth: '240px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
+                  />
+                  <span style={{ fontSize: '13px', fontWeight: 700, marginLeft: '8px' }}>청구 월:</span>
+                  <select
+                    value={instSelectedMonth}
+                    onChange={(e) => setInstSelectedMonth(e.target.value)}
+                    className="form-input"
+                    style={{ width: '150px', margin: 0, padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                  >
+                    <option value="all">전체 월 (All Months)</option>
+                    {soldMonths.map(month => (
+                      <option key={month} value={month}>{month}</option>
+                    ))}
+                  </select>
+                </div>
                 <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--purple-l)' }}>
                   총 할부 거래 수: {installmentDevices.length}건 (검색됨: {filteredInstallments.length}건)
                 </div>
@@ -4452,8 +4485,10 @@ export default function StaffDashboard() {
                               <div style={{ fontSize: '11px', color: 'var(--t3)', marginTop: '2px' }}>최종 판매가: ฿{formatPrice((item.deposit_amount || 0) + totalInstPrice)}</div>
                             </td>
                             <td style={{ textAlign: 'right', fontWeight: 800 }}>
-                              <span style={{ color: isFinished ? 'var(--green)' : '#d97706' }}>฿{formatPrice(paidTotal)}</span>
-                              <span style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 'normal' }}> / ฿{formatPrice(totalInstPrice)}</span>
+                              <div style={{ color: isFinished ? 'var(--green)' : '#d97706' }}>฿{formatPrice(paidTotal)} / ฿{formatPrice(totalInstPrice)}</div>
+                              <div style={{ fontSize: '10.5px', color: isFinished ? 'var(--t3)' : 'var(--red)', fontWeight: 'bold', marginTop: '2px' }}>
+                                {isFinished ? '완납' : `남은금액: ฿${formatPrice(totalInstPrice - paidTotal)}`}
+                              </div>
                             </td>
                             <td>
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
