@@ -1809,8 +1809,7 @@ img {
   .grid-2, 
   .grid-3, 
   .grid-4,
-  .sellers-grid,
-  .products-grid {
+  .sellers-grid {
     grid-template-columns: 1fr !important;
     gap: 12px !important;
   }
