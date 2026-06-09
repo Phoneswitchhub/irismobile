@@ -1553,7 +1553,9 @@ export default function StaffDashboard() {
         }
       });
 
-      // Fallbacks
+      // Fallbacks (Dynamic based on column count if no header detected)
+      const csvStartIdx = headerRowIdx + 1 < rows.length ? headerRowIdx + 1 : headerRowIdx;
+      const firstRowLength = rows[csvStartIdx] ? rows[csvStartIdx].length : 0;
       if (siteDateIdx === -1) siteDateIdx = 0;
       if (stickerIdx === -1) stickerIdx = 1;
       if (modelIdx === -1) modelIdx = 2;
@@ -1561,8 +1563,12 @@ export default function StaffDashboard() {
       if (colorIdx === -1) colorIdx = 4;
       if (isSoldIdx === -1) isSoldIdx = 5;
       if (locationIdx === -1) locationIdx = 6;
-      if (batteryIdx === -1) batteryIdx = 7;
-      if (purchaseCostIdx === -1) purchaseCostIdx = 8;
+      if (batteryIdx === -1) {
+        batteryIdx = (firstRowLength <= 8) ? 99 : 7;
+      }
+      if (purchaseCostIdx === -1) {
+        purchaseCostIdx = (firstRowLength <= 8) ? 7 : 8;
+      }
       if (saleDateIdx === -1) saleDateIdx = 99;
       if (sellerIdx === -1) sellerIdx = 99;
       if (notesIdx === -1) notesIdx = 99;
@@ -1609,7 +1615,8 @@ export default function StaffDashboard() {
         const isSoldStr = row[isSoldIdx] ? row[isSoldIdx].trim().toUpperCase() : 'FALSE';
         const soldFlag = isSoldStr === 'TRUE' || isSoldStr === 'YES' || isSoldStr === '예' || isSoldStr === '1';
         const loc = row[locationIdx] ? row[locationIdx].trim() : 'Shop';
-        const battery = row[batteryIdx] ? row[batteryIdx].trim() : '100';
+        const batteryClean = row[batteryIdx] ? row[batteryIdx].trim().replace(/[^\d]/g, '') : '100';
+        const battery = batteryClean || '100';
         const seller = row[sellerIdx] ? row[sellerIdx].trim() : '';
         const note = row[notesIdx] ? row[notesIdx].trim() : '';
 
@@ -1800,7 +1807,9 @@ export default function StaffDashboard() {
     }
     setImportingCSV(true);
     try {
-      const rows = pasteText.trim().split(/\r?\n/).map(row => row.split('\t'));
+      const rows = pasteText.trim().split(/\r?\n/).map(row => {
+        return row.includes('\t') ? row.split('\t') : row.split(/ {2,}/);
+      });
       if (rows.length === 0) {
         showToast(t('toast_no_valid_text_data'), 'error');
         setImportingCSV(false);
@@ -1885,7 +1894,9 @@ export default function StaffDashboard() {
         });
       }
 
-      // Fallbacks
+      // Fallbacks (Dynamic based on column count if no header detected)
+      const pasteStartIdx = headerDetected ? headerRowIdx + 1 : 0;
+      const firstRowLength = rows[pasteStartIdx] ? rows[pasteStartIdx].length : 0;
       if (siteDateIdx === -1) siteDateIdx = 0;
       if (stickerIdx === -1) stickerIdx = 1;
       if (modelIdx === -1) modelIdx = 2;
@@ -1893,8 +1904,12 @@ export default function StaffDashboard() {
       if (colorIdx === -1) colorIdx = 4;
       if (isSoldIdx === -1) isSoldIdx = 5;
       if (locationIdx === -1) locationIdx = 6;
-      if (batteryIdx === -1) batteryIdx = 7;
-      if (purchaseCostIdx === -1) purchaseCostIdx = 8;
+      if (batteryIdx === -1) {
+        batteryIdx = (firstRowLength <= 8) ? 99 : 7;
+      }
+      if (purchaseCostIdx === -1) {
+        purchaseCostIdx = (firstRowLength <= 8) ? 7 : 8;
+      }
       if (saleDateIdx === -1) saleDateIdx = 99;
       if (sellerIdx === -1) sellerIdx = 99;
       if (notesIdx === -1) notesIdx = 99;
@@ -1944,7 +1959,8 @@ export default function StaffDashboard() {
         const isSoldStr = row[isSoldIdx] ? row[isSoldIdx].trim().toUpperCase() : 'FALSE';
         const isSoldVal = isSoldStr === 'TRUE' || isSoldStr === 'YES' || isSoldStr === '예' || isSoldStr === '1';
         const loc = row[locationIdx] ? row[locationIdx].trim() : 'Shop';
-        const battery = row[batteryIdx] ? row[batteryIdx].trim() : '100';
+        const batteryClean = row[batteryIdx] ? row[batteryIdx].trim().replace(/[^\d]/g, '') : '100';
+        const battery = batteryClean || '100';
         const seller = row[sellerIdx] ? row[sellerIdx].trim() : '';
         const note = row[notesIdx] ? row[notesIdx].trim() : '';
 

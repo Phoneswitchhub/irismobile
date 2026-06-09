@@ -1,0 +1,21 @@
+const { createClient } = require('c:/Users/ASUS/Documents/GitHub/phoneswitchhub/node_modules/@supabase/supabase-js');
+
+const supabaseUrl = 'https://mkruzdmtfyibtpfdutty.supabase.co';
+const supabaseAnonKey = 'sb_publishable_WoOZ0hIKP7EV8_l5FKUuyw_awLAvP0Q';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+async function run() {
+  console.log('Fuzzy searching for IMEI 351338912074951...');
+  const { data, error } = await supabase
+    .from('sheets_inventory')
+    .select('id, imei, sticker, model_name, deleted_at, is_sold')
+    .ilike('imei', '%351338912074951%');
+
+  if (error) {
+    console.error('Error:', error);
+  } else {
+    console.log('Fuzzy search results:', data);
+  }
+}
+
+run();
