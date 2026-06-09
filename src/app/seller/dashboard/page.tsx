@@ -386,7 +386,7 @@ export default function SellerDashboard() {
     if (!sellerProfile || !sellerProfile.store_name) return;
     try {
       if (device.notes && device.notes.includes('[이관신청:')) {
-        showToast('이미 신청된 기기입니다.', 'error');
+        showToast(t('toast_already_requested') || '이미 신청된 기기입니다.', 'error');
         return;
       }
 
@@ -401,10 +401,10 @@ export default function SellerDashboard() {
 
       if (error) throw error;
 
-      showToast('이관 신청이 완료되었습니다.', 'success');
+      showToast(t('toast_transfer_request_success') || '이관 신청이 완료되었습니다.', 'success');
       await loadPartnerData();
     } catch (e: any) {
-      showToast('신청 실패: ' + e.message, 'error');
+      showToast((t('toast_transfer_request_failed') || '신청 실패: ') + e.message, 'error');
     }
   };
 
@@ -417,7 +417,7 @@ export default function SellerDashboard() {
     if (!sellingItem || !sellerProfile) return;
     const priceNum = Number(customSalePrice);
     if (isNaN(priceNum) || priceNum <= 0) {
-      showToast('올바른 판매 가격을 입력해 주세요.', 'error');
+      showToast(t('toast_invalid_sale_price') || '올바른 판매 가격을 입력해 주세요.', 'error');
       return;
     }
 
@@ -448,11 +448,11 @@ export default function SellerDashboard() {
 
       if (error) throw error;
 
-      showToast('판매 처리가 완료되었습니다. 본사 승인 대기 중입니다.', 'success');
+      showToast(t('toast_partner_sale_success') || '판매 처리가 완료되었습니다. 본사 승인 대기 중입니다.', 'success');
       setSellingItem(null);
       await loadPartnerData();
     } catch (err: any) {
-      showToast('판매 처리 실패: ' + err.message, 'error');
+      showToast((t('toast_partner_sale_failed') || '판매 처리 실패: ') + err.message, 'error');
     } finally {
       setIsProcessingSale(false);
     }
@@ -1311,8 +1311,8 @@ export default function SellerDashboard() {
                       </div>
                       <div className="p-info">
                         <div className="meta-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                          <span className="badge bg-purple" style={{ fontSize: '9px' }}>등급: {conditionText}</span>
-                          <span style={{ fontSize: '11px', color: 'var(--t2)' }}>재고: <b>{p.stock}</b></span>
+                          <span className="badge bg-purple" style={{ fontSize: '9px' }}>{t('grade_label') || '등급'}: {conditionText}</span>
+                          <span style={{ fontSize: '11px', color: 'var(--t2)' }}>{t('search_stock') || '재고'}: <b>{p.stock}</b></span>
                         </div>
                         <div className="p-title" style={{ marginTop: '4px', fontSize: '12px', height: '36px', overflow: 'hidden' }}>{p.title}</div>
                         <div className="p-price" style={{ fontSize: '16px', marginBottom: '8px' }}>
@@ -1367,23 +1367,23 @@ export default function SellerDashboard() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ fontSize: '18px' }}>🏪</span>
                     <span style={{ fontWeight: 800, fontSize: '15px', letterSpacing: '0.3px' }}>
-                      {sellerProfile?.store_name || sellerProfile?.name} {t('store_stock_title') || '지점 재고 현황'}
+                      {sellerProfile?.store_name || sellerProfile?.name} {t('store_stock_title')}
                     </span>
                   </div>
                   <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.2)', padding: '3px 8px', borderRadius: '20px', fontWeight: 700 }}>
-                    {t('partner_partner') || '협력 지점'}
+                    {t('partner_partner')}
                   </span>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '12px', borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '12px' }}>
                   <div>
-                    <div style={{ fontSize: '10px', opacity: 0.75, textTransform: 'uppercase', fontWeight: 600 }}>{t('partner_active_stock') || '보유 기기 수량'}</div>
+                    <div style={{ fontSize: '10px', opacity: 0.75, textTransform: 'uppercase', fontWeight: 600 }}>{t('partner_active_stock')}</div>
                     <div style={{ fontSize: '24px', fontWeight: 900, fontFamily: "'Outfit', sans-serif", marginTop: '2px' }}>
-                      {totalCount}<span style={{ fontSize: '13px', fontWeight: 500, marginLeft: '2px' }}>대</span>
+                      {totalCount}<span style={{ fontSize: '13px', fontWeight: 500, marginLeft: '2px' }}>{t('staff_qty_unit')}</span>
                     </div>
                   </div>
                   <div style={{ borderLeft: '1px solid rgba(255,255,255,0.15)', paddingLeft: '14px' }}>
-                    <div style={{ fontSize: '10px', opacity: 0.75, textTransform: 'uppercase', fontWeight: 600 }}>{t('partner_total_value') || '총 재고 가치 (도매)'}</div>
+                    <div style={{ fontSize: '10px', opacity: 0.75, textTransform: 'uppercase', fontWeight: 600 }}>{t('partner_total_value')}</div>
                     <div style={{ fontSize: '24px', fontWeight: 900, fontFamily: "'Outfit', sans-serif", marginTop: '2px', color: '#fbbf24' }}>
                       ฿{totalValue.toLocaleString()}
                     </div>
@@ -1399,7 +1399,7 @@ export default function SellerDashboard() {
                 <span style={{ position: 'absolute', left: '12px', color: 'var(--t3)', fontSize: '14px' }}>🔍</span>
                 <input
                   type="text"
-                  placeholder="모델명, 스티커, IMEI 번호 검색..."
+                  placeholder={t('search_placeholder_device')}
                   value={partnerInventorySearch}
                   onChange={(e) => setPartnerInventorySearch(e.target.value)}
                   style={{
@@ -1439,11 +1439,11 @@ export default function SellerDashboard() {
                 {['All', 'iPhone', 'Samsung', 'iPad', 'Other'].map((cat) => {
                   const isActive = partnerInventoryCategory === cat;
                   const labelMap: Record<string, string> = {
-                    All: '전체 All',
+                    All: t('all_categories') + ' (All)',
                     iPhone: '🍎 iPhone',
                     Samsung: '🌟 Samsung',
                     iPad: '📱 iPad',
-                    Other: '📦 기타'
+                    Other: '📦 ' + t('category_other')
                   };
                   return (
                     <button
@@ -1474,16 +1474,16 @@ export default function SellerDashboard() {
             <div className="main-body" style={{ textAlign: 'left', margin: 0 }}>
               {loadingPartnerData ? (
                 <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--t3)' }}>
-                  <span className="spinner" style={{ marginRight: '8px' }}></span> {t('loading_data') || '불러오는 중...'}
+                  <span className="spinner" style={{ marginRight: '8px' }}></span> {t('loading_data')}
                 </div>
               ) : filteredPartnerInventory.length === 0 ? (
                 <div className="card" style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--t2)', border: '1px dashed var(--border)', borderRadius: '16px', background: 'var(--card)' }}>
                   <div style={{ fontSize: '48px', marginBottom: '12px', textAlign: 'center' }}>🏪</div>
                   <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '14px' }}>
-                    {partnerInventorySearch || partnerInventoryCategory !== 'All' ? '검색 결과가 없습니다.' : '보유 중인 재고가 없습니다.'}
+                    {partnerInventorySearch || partnerInventoryCategory !== 'All' ? t('partner_search_empty_results') : t('partner_search_empty_inventory')}
                   </div>
                   <div style={{ textAlign: 'center', fontSize: '11.5px', color: 'var(--t3)', marginTop: '6px' }}>
-                    {partnerInventorySearch || partnerInventoryCategory !== 'All' ? '검색어를 변경하거나 필터를 초기화해 보세요.' : '[기기 신청] 탭에서 필요한 기기를 신청하여 이관받으실 수 있습니다.'}
+                    {partnerInventorySearch || partnerInventoryCategory !== 'All' ? t('partner_search_empty_results_desc') : t('partner_search_empty_inventory_desc')}
                   </div>
                 </div>
               ) : (
@@ -1524,7 +1524,7 @@ export default function SellerDashboard() {
                           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
                             {item.sticker && (
                               <span style={{ fontSize: '10.5px', color: '#475569', background: '#f1f5f9', fontWeight: 700, padding: '1px 6px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
-                                Label: {item.sticker}
+                                {t('label_sticker_no')}: {item.sticker}
                               </span>
                             )}
                             {item.imei && (
@@ -1536,7 +1536,7 @@ export default function SellerDashboard() {
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '2px', fontSize: '11px', color: 'var(--t2)' }}>
                             <span style={{ background: '#ecfdf5', color: '#065f46', fontWeight: 800, padding: '1px 6px', borderRadius: '4px' }}>
-                              🎨 {item.color || '지정 없음'}
+                              🎨 {item.color || t('label_unassigned_color')}
                             </span>
                             {renderBatteryIndicator(item.battery_pct)}
                           </div>
@@ -1566,7 +1566,7 @@ export default function SellerDashboard() {
                             }}
                             onClick={() => handleOpenSellModal(item)}
                           >
-                            💸 판매 완료
+                            💸 {t('btn_sale_complete')}
                           </button>
                         </div>
                       </div>
@@ -1584,9 +1584,9 @@ export default function SellerDashboard() {
         <div className="view-section active animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div className="main-hd">
             <div>
-              <h1>📥 본사 기기 이관 신청</h1>
+              <h1>📥 {t('btn_request_transfer')}</h1>
               <p style={{ color: 'var(--t2)', fontSize: '12px', marginTop: '4px' }}>
-                본사에서 파트너 지점용으로 공유해 둔 기기 목록입니다. 필요한 제품을 선택해 이관을 신청하세요.
+                {t('partner_request_empty_shared_desc')}
               </p>
             </div>
           </div>
@@ -1598,7 +1598,7 @@ export default function SellerDashboard() {
               <span style={{ position: 'absolute', left: '12px', color: 'var(--t3)', fontSize: '14px' }}>🔍</span>
               <input
                 type="text"
-                placeholder="모델명, 스티커, IMEI 번호 검색..."
+                placeholder={t('search_placeholder_device')}
                 value={partnerRequestSearch}
                 onChange={(e) => setPartnerRequestSearch(e.target.value)}
                 style={{
@@ -1638,11 +1638,11 @@ export default function SellerDashboard() {
               {['All', 'iPhone', 'Samsung', 'iPad', 'Other'].map((cat) => {
                 const isActive = partnerRequestCategory === cat;
                 const labelMap: Record<string, string> = {
-                  All: '전체 All',
+                  All: t('all_categories') + ' (All)',
                   iPhone: '🍎 iPhone',
                   Samsung: '🌟 Samsung',
                   iPad: '📱 iPad',
-                  Other: '📦 기타'
+                  Other: '📦 ' + t('category_other')
                 };
                 return (
                   <button
@@ -1672,16 +1672,16 @@ export default function SellerDashboard() {
           <div className="main-body" style={{ textAlign: 'left', margin: 0 }}>
             {loadingPartnerData ? (
               <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--t3)' }}>
-                <span className="spinner" style={{ marginRight: '8px' }}></span> {t('loading_data') || '불러오는 중...'}
+                <span className="spinner" style={{ marginRight: '8px' }}></span> {t('loading_data')}
               </div>
             ) : filteredPartnerSharedStock.length === 0 ? (
               <div className="card" style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--t2)', border: '1px dashed var(--border)', borderRadius: '16px', background: 'var(--card)' }}>
                 <div style={{ fontSize: '48px', marginBottom: '12px', textAlign: 'center' }}>📥</div>
                 <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '14px' }}>
-                  {partnerRequestSearch || partnerRequestCategory !== 'All' ? '공유 중인 기기 중 검색 결과가 없습니다.' : '본사에서 공유 중인 기기가 없습니다.'}
+                  {partnerRequestSearch || partnerRequestCategory !== 'All' ? t('partner_search_empty_results') : t('partner_request_empty_shared')}
                 </div>
                 <div style={{ textAlign: 'center', fontSize: '11.5px', color: 'var(--t3)', marginTop: '6px' }}>
-                  {partnerRequestSearch || partnerRequestCategory !== 'All' ? '검색어를 변경하거나 필터를 초기화해 보세요.' : '필요하신 기종이 있는 경우 본사 담당자에게 기기 공유를 요청해 주세요.'}
+                  {partnerRequestSearch || partnerRequestCategory !== 'All' ? t('partner_search_empty_results_desc') : t('partner_request_empty_shared_desc')}
                 </div>
               </div>
             ) : (
@@ -1724,7 +1724,7 @@ export default function SellerDashboard() {
                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
                           {item.sticker && (
                             <span style={{ fontSize: '10.5px', color: '#475569', background: '#f1f5f9', fontWeight: 700, padding: '1px 6px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
-                              Label: {item.sticker}
+                              {t('label_sticker_no')}: {item.sticker}
                             </span>
                           )}
                           {item.imei && (
@@ -1736,7 +1736,7 @@ export default function SellerDashboard() {
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '2px', fontSize: '11px', color: 'var(--t2)' }}>
                           <span style={{ background: '#ecfdf5', color: '#065f46', fontWeight: 800, padding: '1px 6px', borderRadius: '4px' }}>
-                            🎨 {item.color || '지정 없음'}
+                            🎨 {item.color || t('label_unassigned_color')}
                           </span>
                           {renderBatteryIndicator(item.battery_pct)}
                         </div>
@@ -1753,7 +1753,7 @@ export default function SellerDashboard() {
                             disabled 
                             style={{ padding: '7px 12px', fontSize: '11px', background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: '8px', cursor: 'default', fontWeight: 800, whiteSpace: 'nowrap' }}
                           >
-                            ⏳ 신청 완료
+                            ⏳ {t('btn_request_complete')}
                           </button>
                         ) : isRequestedByOther ? (
                           <button 
@@ -1761,7 +1761,7 @@ export default function SellerDashboard() {
                             disabled 
                             style={{ padding: '7px 12px', fontSize: '11px', background: '#f1f5f9', color: '#94a3b8', border: '1px solid #e2e8f0', borderRadius: '8px', cursor: 'not-allowed', fontWeight: 800, whiteSpace: 'nowrap' }}
                           >
-                            🔒 타점 신청 중
+                            🔒 {t('btn_request_other')}
                           </button>
                         ) : (
                           <button 
@@ -1777,7 +1777,7 @@ export default function SellerDashboard() {
                               boxShadow: '0 2px 8px rgba(139, 92, 246, 0.15)'
                             }}
                           >
-                            🔌 이관 신청
+                            🔌 {t('btn_request_transfer')}
                           </button>
                         )}
                       </div>
@@ -2280,11 +2280,11 @@ export default function SellerDashboard() {
           <>
             <div className={`tab-item ${activeTab === 'partner_inventory' ? 'active' : ''}`} onClick={() => { handleCloseActiveChatPanel(); setActiveTab('partner_inventory'); }}>
               <span className="tab-item-icon">🏪</span>
-              <span>우리 매장 재고</span>
+              <span>{t('tab_partner_inventory') || '우리 매장 재고'}</span>
             </div>
             <div className={`tab-item ${activeTab === 'partner_request' ? 'active' : ''}`} onClick={() => { handleCloseActiveChatPanel(); setActiveTab('partner_request'); }}>
               <span className="tab-item-icon">📥</span>
-              <span>기기 신청</span>
+              <span>{t('tab_request_devices') || '기기 신청'}</span>
             </div>
           </>
         )}
@@ -2322,7 +2322,7 @@ export default function SellerDashboard() {
         <div className="modal-bg open" style={{ display: 'flex', zIndex: 3100 }}>
           <div className="modal animate-slide-up" style={{ maxWidth: '400px', padding: '20px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-hd" style={{ marginBottom: '16px' }}>
-              <span className="modal-title">💸 판매 완료 처리 (Record Sale)</span>
+              <span className="modal-title">{t('modal_sell_title') || '💸 판매 완료 처리 (Record Sale)'}</span>
               <button className="modal-x" onClick={() => setSellingItem(null)}>✕</button>
             </div>
             
@@ -2330,15 +2330,15 @@ export default function SellerDashboard() {
               <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', marginBottom: '16px', border: '1px solid var(--border)' }}>
                 <div style={{ fontWeight: 800, fontSize: '14px' }}>{sellingItem.model_name}</div>
                 <div style={{ fontSize: '11.5px', color: 'var(--t2)', marginTop: '4px' }}>
-                  Sticker: {sellingItem.sticker || '없음'} | IMEI: {sellingItem.imei}
+                  Sticker: {sellingItem.sticker || t('none_label') || '없음'} | IMEI: {sellingItem.imei}
                 </div>
                 <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>
-                  기본 도매가: ฿{getDisplayPrice(sellingItem).toLocaleString()}
+                  {t('modal_sell_base_wholesale') || '기본 도매가'}: ฿{getDisplayPrice(sellingItem).toLocaleString()}
                 </div>
               </div>
 
               <div className="form-group" style={{ marginBottom: '16px' }}>
-                <label className="form-label">실제 판매 가격 (Actual Sold Price in ฿) *</label>
+                <label className="form-label">{t('modal_sell_actual_price') || '실제 판매 가격 (Actual Sold Price in ฿) *'}</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ fontSize: '16px', fontWeight: 'bold' }}>฿</span>
                   <input
@@ -2346,14 +2346,14 @@ export default function SellerDashboard() {
                     className="form-input"
                     value={customSalePrice}
                     onChange={(e) => setCustomSalePrice(e.target.value)}
-                    placeholder="판매가 입력"
+                    placeholder={t('modal_sell_placeholder') || '판매가 입력'}
                     autoFocus
                   />
                 </div>
               </div>
 
               <p style={{ fontSize: '11px', color: 'var(--t3)', lineHeight: 1.4, marginBottom: '16px' }}>
-                * 판매 완료 처리 시 기기는 매장 재고 목록에서 즉시 제외되며 본사 판매 승인 대기 목록으로 연동됩니다. 본사의 최종 입금 확인 및 승인 후 매출 장부에 최종 반영됩니다.
+                {t('modal_sell_warning') || '* 판매 완료 처리 시 기기는 매장 재고 목록에서 즉시 제외되며 본사 판매 승인 대기 목록으로 연동됩니다. 본사의 최종 입금 확인 및 승인 후 매출 장부에 최종 반영됩니다.'}
               </p>
             </div>
 
@@ -2363,7 +2363,7 @@ export default function SellerDashboard() {
                 onClick={() => setSellingItem(null)}
                 style={{ height: '36px', padding: '0 16px', borderRadius: '8px', cursor: 'pointer' }}
               >
-                취소 (Cancel)
+                {t('modal_sell_cancel') || '취소 (Cancel)'}
               </button>
               <button
                 className="btn-sm btn-green"
@@ -2371,7 +2371,7 @@ export default function SellerDashboard() {
                 disabled={isProcessingSale}
                 style={{ height: '36px', padding: '0 20px', borderRadius: '8px', fontWeight: 800, cursor: 'pointer' }}
               >
-                {isProcessingSale ? '처리 중...' : '판매 완료 (Confirm Sell)'}
+                {isProcessingSale ? (t('modal_sell_processing') || '처리 중...') : (t('modal_sell_confirm') || '판매 완료 (Confirm Sell)')}
               </button>
             </div>
           </div>
