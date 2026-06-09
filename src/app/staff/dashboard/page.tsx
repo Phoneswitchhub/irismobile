@@ -4941,7 +4941,7 @@ export default function StaffDashboard() {
                   <tbody>
                     {marginStats.soldList.length === 0 ? (
                       <tr>
-                        <td colSpan={6} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>판매 완료된 기기 내역이 없습니다. (No sales completed.)</td>
+                        <td colSpan={6} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>{t('staff_no_sales_records')}</td>
                       </tr>
                     ) : (
                       sortDevices(marginStats.soldList).map(item => {
@@ -5825,17 +5825,17 @@ export default function StaffDashboard() {
             
             <div className="modal-body" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '12px', padding: '12px 16px', fontSize: '12px', lineHeight: 1.6, color: 'var(--t2)' }}>
-                <h4 style={{ fontWeight: 800, color: 'var(--t1)', marginBottom: '4px' }}>💡 사용 방법</h4>
+                <h4 style={{ fontWeight: 800, color: 'var(--t1)', marginBottom: '4px' }}>💡 {t('staff_audit_how_to')}</h4>
                 <p style={{ margin: 0 }}>
-                  실사 및 확인하려는 IMEI 리스트를 아래 입력창에 줄바꿈 또는 공백으로 구분하여 붙여넣으세요.
-                  현재 사내 재고 목록(입고 대기 DHL 제외)과 실시간으로 비교하여 미등록 및 누락 기기를 분류합니다.
+                  {t('staff_audit_how_to_desc')}<br/>
+                  {t('staff_audit_desc')}
                 </p>
               </div>
 
               <div className="form-group" style={{ margin: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                   <label className="form-label" style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--t2)', margin: 0 }}>
-                    ✍️ 비교할 IMEI 리스트 붙여넣기
+                    {t('staff_audit_imei_label')}
                   </label>
                   
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
