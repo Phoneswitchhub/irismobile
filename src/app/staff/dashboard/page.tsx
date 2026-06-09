@@ -3848,7 +3848,7 @@ export default function StaffDashboard() {
                   className="form-input"
                   style={{ maxWidth: '180px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                 >
-                  <option value="all">{lang === 'ko' ? '전체 월 (All Months)' : 'All Months'}</option>
+                  <option value="all">{t('staff_all_months')}</option>
                   {soldMonths.map(month => (
                     <option key={month} value={month}>{month}</option>
                   ))}
@@ -4164,9 +4164,9 @@ export default function StaffDashboard() {
                                   setEditingCell({ id: item.id, field: 'seller_name' });
                                   setEditCellValue(item.seller_name || '');
                                 }}
-                                title="클릭하여 수정"
+                                title={t('staff_click_to_edit')}
                               >
-                                {item.seller_name || '미지정'}
+                                {item.seller_name || t('staff_unassigned')}
                               </span>
                             )
                           ) : (
@@ -4335,20 +4335,20 @@ export default function StaffDashboard() {
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <input
                     type="text"
-                    placeholder="고객명, 연락처, 기기 검색..."
+                    placeholder={t('staff_search_cod_placeholder')}
                     value={installmentSearchQuery}
                     onChange={(e) => setInstallmentSearchQuery(e.target.value)}
                     className="form-input"
                     style={{ maxWidth: '240px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                   />
-                  <span style={{ fontSize: '13px', fontWeight: 700, marginLeft: '8px' }}>청구 월:</span>
+                  <span style={{ fontSize: '13px', fontWeight: 700, marginLeft: '8px' }}>{t('staff_billing_month')}</span>
                   <select
                     value={instSelectedMonth}
                     onChange={(e) => setInstSelectedMonth(e.target.value)}
                     className="form-input"
                     style={{ width: '150px', margin: 0, padding: '6px 12px', fontSize: '13px', height: '34px' }}
                   >
-                    <option value="all">전체 월 (All Months)</option>
+                    <option value="all">{t('staff_all_months')}</option>
                     {soldMonths.map(month => (
                       <option key={month} value={month}>{month}</option>
                     ))}
@@ -4361,11 +4361,11 @@ export default function StaffDashboard() {
                       onChange={(e) => setShowOverdueOnly(e.target.checked)}
                       style={{ cursor: 'pointer', width: '16px', height: '16px' }}
                     />
-                    <span style={{ color: 'var(--red)' }}>⚠️ 연체 고객만 보기 (Overdue Only)</span>
+                    <span style={{ color: 'var(--red)' }}>⚠️ {t('staff_overdue_only')}</span>
                   </label>
                 </div>
                 <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--purple-l)' }}>
-                  총 할부 거래 수: {installmentDevices.length}건 (검색됨: {filteredInstallments.length}건)
+                  {t('staff_total_installment_count', { total: installmentDevices.length, searched: filteredInstallments.length })}
                 </div>
               </div>
 
@@ -4466,7 +4466,7 @@ export default function StaffDashboard() {
                                     setEditingCell({ id: item.id, field: 'installment_number' });
                                     setEditCellValue(item.installment_number || 'IRIS000000');
                                   }}
-                                  title="클릭하여 수정"
+                                  title={t('staff_click_to_edit')}
                                 >
                                   📄 {item.installment_number || 'IRIS000000'}
                                 </div>
@@ -4494,9 +4494,9 @@ export default function StaffDashboard() {
                                     setEditingCell({ id: item.id, field: 'customer_name' });
                                     setEditCellValue(item.customer_name || '');
                                   }}
-                                  title="클릭하여 수정"
+                                  title={t('staff_click_to_edit')}
                                 >
-                                  <span>👤 {item.customer_name || '미기입'}</span>
+                                  <span>👤 {item.customer_name || t('unfilled')}</span>
                                   {hasOverdue && (
                                     <span style={{ 
                                       background: 'var(--red)', 
@@ -4507,7 +4507,7 @@ export default function StaffDashboard() {
                                       fontWeight: 'bold', 
                                       display: 'inline-block'
                                     }}>
-                                      연체
+                                      {t('staff_overdue_badge')}
                                     </span>
                                   )}
                                 </div>
@@ -4535,21 +4535,21 @@ export default function StaffDashboard() {
                                     setEditingCell({ id: item.id, field: 'customer_phone' });
                                     setEditCellValue(item.customer_phone || '');
                                   }}
-                                  title="클릭하여 수정"
+                                  title={t('staff_click_to_edit')}
                                 >
-                                  📞 {item.customer_phone || '미기입'}
+                                  📞 {item.customer_phone || t('unfilled')}
                                 </div>
                               )}
                             </td>
                             <td>
-                              <div style={{ fontSize: '11px', color: 'var(--t2)' }}>인도금: ฿{formatPrice(item.deposit_amount || 0)}</div>
-                              <div style={{ fontSize: '11px', fontWeight: 700 }}>분납: ฿{formatPrice(item.installment_amount || 0)} x {item.installment_months}개월</div>
-                              <div style={{ fontSize: '11px', color: 'var(--t3)', marginTop: '2px' }}>최종 판매가: ฿{formatPrice((item.deposit_amount || 0) + totalInstPrice)}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{t('staff_label_deposit') || '인도금'}: ฿{formatPrice(item.deposit_amount || 0)}</div>
+                              <div style={{ fontSize: '11px', fontWeight: 700 }}>{t('staff_label_installment_monthly') || '분납'}: ฿{formatPrice(item.installment_amount || 0)} x {item.installment_months}{t('months_unit')}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--t3)', marginTop: '2px' }}>{t('staff_label_final_price') || '최종 판매가'}: ฿{formatPrice((item.deposit_amount || 0) + totalInstPrice)}</div>
                             </td>
                             <td style={{ textAlign: 'right', fontWeight: 800 }}>
                               <div style={{ color: isFinished ? 'var(--green)' : '#d97706' }}>฿{formatPrice(paidTotal)} / ฿{formatPrice(totalInstPrice)}</div>
                               <div style={{ fontSize: '10.5px', color: isFinished ? 'var(--t3)' : 'var(--red)', fontWeight: 'bold', marginTop: '2px' }}>
-                                {isFinished ? '완납' : `남은금액: ฿${formatPrice(totalInstPrice - paidTotal)}`}
+                                {isFinished ? t('staff_status_paid') || '완납' : `${t('staff_balance_remaining') || '남은금액'}: ฿${formatPrice(totalInstPrice - paidTotal)}`}
                               </div>
                             </td>
                             <td>
@@ -4574,9 +4574,9 @@ export default function StaffDashboard() {
                                         textAlign: 'center',
                                         boxSizing: 'border-box'
                                       }}
-                                      title={`예정일: ${inst.due_date}${inst.paid_date ? ` (수금일: ${inst.paid_date})` : ''}${isOverdue ? ' [연체됨]' : ''}`}
+                                      title={`${t('staff_due_date') || '예정일'}: ${inst.due_date}${inst.paid_date ? ` (${t('staff_payment_date') || '수금일'}: ${inst.paid_date})` : ''}${isOverdue ? t('staff_overdue_suffix') : ''}`}
                                     >
-                                      {inst.sequence}회차 ({inst.due_date.split('.').slice(1,2).join('.') + '월'}): ฿{formatPrice(inst.amount)} {isPaid ? '🟢' : isOverdue ? '⚠️' : '🔴'}
+                                      {inst.sequence}{t('staff_round_unit') || '회차'} ({inst.due_date.split('.').slice(1,2).join('.')}{t('staff_month_unit') || '월'}): ฿{formatPrice(inst.amount)} {isPaid ? '🟢' : isOverdue ? '⚠️' : '🔴'}
                                     </button>
                                   );
                                 })}
@@ -4589,7 +4589,7 @@ export default function StaffDashboard() {
                                   onClick={() => handleFinalizeInstallment(item.id)}
                                   style={{ padding: '4px 8px', fontSize: '10.5px', fontWeight: 800, margin: 0, whiteSpace: 'nowrap', cursor: 'pointer' }}
                                 >
-                                  완납 처리
+                                  {t('staff_btn_finalize') || '완납 처리'}
                                 </button>
                               ) : (
                                 <button
@@ -4597,7 +4597,7 @@ export default function StaffDashboard() {
                                   onClick={() => handleCancelPayment(item.id, 'installment')}
                                   style={{ padding: '4px 8px', fontSize: '10.5px', fontWeight: 800, margin: 0, whiteSpace: 'nowrap', cursor: 'pointer' }}
                                 >
-                                  완납 취소
+                                  {t('staff_btn_cancel_finalize') || '완납 취소'}
                                 </button>
                               )}
                             </td>
@@ -4982,9 +4982,9 @@ export default function StaffDashboard() {
                                       setEditingCell({ id: item.id, field: 'seller_name' });
                                       setEditCellValue(item.seller_name || '');
                                     }}
-                                    title="클릭하여 수정"
+                                    title={t('staff_click_to_edit')}
                                   >
-                                    {item.seller_name || '미지정'}
+                                    {item.seller_name || t('staff_unassigned')}
                                   </span>
                                 )
                               ) : (
@@ -5085,27 +5085,27 @@ export default function StaffDashboard() {
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <input
                     type="text"
-                    placeholder="고객명, 연락처, 기기 검색..."
+                    placeholder={t('staff_search_cod_placeholder')}
                     value={codSearchQuery}
                     onChange={(e) => setCodSearchQuery(e.target.value)}
                     className="form-input"
                     style={{ maxWidth: '240px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                   />
-                  <span style={{ fontSize: '13px', fontWeight: 700, marginLeft: '8px' }}>청구 월:</span>
+                  <span style={{ fontSize: '13px', fontWeight: 700, marginLeft: '8px' }}>{t('staff_billing_month')}</span>
                   <select
                     value={codSelectedMonth}
                     onChange={(e) => setCodSelectedMonth(e.target.value)}
                     className="form-input"
                     style={{ width: '150px', margin: 0, padding: '6px 12px', fontSize: '13px', height: '34px' }}
                   >
-                    <option value="all">전체 월 (All Months)</option>
+                    <option value="all">{t('staff_all_months')}</option>
                     {customerMonths.map(month => (
                       <option key={month} value={month}>{month}</option>
                     ))}
                   </select>
                 </div>
                 <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--purple-l)' }}>
-                  총 COD 거래 수: {codDevices.length}건 (검색됨: {filteredCOD.length}건)
+                  {t('staff_total_cod_count', { total: codDevices.length, searched: filteredCOD.length })}
                 </div>
               </div>
 
@@ -5134,10 +5134,10 @@ export default function StaffDashboard() {
                           판매금액 {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
                         </th>
                         <th style={{ width: '12%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('deposit_amount')}>
-                          인도금 (보증금) {sortField === 'deposit_amount' && (sortDirection === 'asc' ? '▲' : '▼')}
+                          {t('staff_th_deposit')} {sortField === 'deposit_amount' && (sortDirection === 'asc' ? '▲' : '▼')}
                         </th>
                         <th style={{ width: '12%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('cod_amount')}>
-                          COD 미수금 {sortField === 'cod_amount' && (sortDirection === 'asc' ? '▲' : '▼')}
+                          {t('staff_th_cod_unpaid')} {sortField === 'cod_amount' && (sortDirection === 'asc' ? '▲' : '▼')}
                         </th>
                         <th style={{ width: '10%', textAlign: 'center', cursor: 'pointer' }} onClick={() => toggleSort('payment_status')}>
                           상태 {sortField === 'payment_status' && (sortDirection === 'asc' ? '▲' : '▼')}
