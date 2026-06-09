@@ -45,6 +45,12 @@ export default function SellerDashboard() {
   const [partnerSharedStock, setPartnerSharedStock] = useState<any[]>([]);
   const [loadingPartnerData, setLoadingPartnerData] = useState(false);
 
+  // Search & Filter for Partner Inventory & Requests
+  const [partnerInventorySearch, setPartnerInventorySearch] = useState('');
+  const [partnerInventoryCategory, setPartnerInventoryCategory] = useState('All');
+  const [partnerRequestSearch, setPartnerRequestSearch] = useState('');
+  const [partnerRequestCategory, setPartnerRequestCategory] = useState('All');
+
   // Seller Sale States
   const [sellingItem, setSellingItem] = useState<any | null>(null);
   const [customSalePrice, setCustomSalePrice] = useState<string>('');
@@ -121,6 +127,106 @@ export default function SellerDashboard() {
     };
     return map[status] || status;
   }, [t]);
+
+  const getBrandLogo = (modelName: string) => {
+    const name = (modelName || '').toLowerCase();
+    if (name.includes('iphone') || name.includes('aip')) return '🍎';
+    if (name.includes('ipad')) return '📱';
+    if (name.includes('samsung') || name.includes('galaxy') || name.startsWith('s2') || name.startsWith('a5') || name.startsWith('a7')) return '🌟';
+    if (name.includes('xiaomi') || name.includes('redmi')) return '🔴';
+    return '📱';
+  };
+
+  const getBrandColor = (modelName: string) => {
+    const name = (modelName || '').toLowerCase();
+    if (name.includes('iphone') || name.includes('aip') || name.includes('ipad')) {
+      return 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)'; // Apple Purple
+    }
+    if (name.includes('samsung') || name.includes('galaxy')) {
+      return 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'; // Samsung Amber
+    }
+    if (name.includes('xiaomi') || name.includes('redmi')) {
+      return 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)'; // Xiaomi Red
+    }
+    return 'linear-gradient(135deg, #64748b 0%, #475569 100%)'; // Other Gray
+  };
+
+  const renderBatteryIndicator = (battery: string | number) => {
+    if (!battery) return null;
+    const bStr = String(battery).trim();
+    const cleanStr = bStr.replace(/%/g, '');
+    const num = parseInt(cleanStr, 10);
+    
+    if (isNaN(num)) {
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'rgba(239, 68, 68, 0.08)', color: 'var(--red)', padding: '2px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: 600, border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+          🔧 {bStr}
+        </span>
+      );
+    }
+    
+    let bgColor = 'rgba(16, 185, 129, 0.08)';
+    let textColor = 'var(--green)';
+    let borderColor = 'rgba(16, 185, 129, 0.15)';
+    if (num < 80) {
+      bgColor = 'rgba(217, 119, 6, 0.08)';
+      textColor = 'var(--gold)';
+      borderColor = 'rgba(217, 119, 6, 0.15)';
+    }
+    if (num < 70) {
+      bgColor = 'rgba(220, 38, 38, 0.08)';
+      textColor = 'var(--red)';
+      borderColor = 'rgba(220, 38, 38, 0.15)';
+    }
+    
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: bgColor, color: textColor, padding: '2px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: 700, border: `1px solid ${borderColor}` }}>
+        🔋 {num}%
+      </span>
+    );
+  };
+
+  const filteredPartnerInventory = useMemo(() => {
+    return partnerInventory.filter(item => {
+      const q = partnerInventorySearch.trim().toLowerCase();
+      const matchSearch = !q || 
+        (item.model_name && item.model_name.toLowerCase().includes(q)) ||
+        (item.sticker && item.sticker.toLowerCase().includes(q)) ||
+        (item.imei && item.imei.toLowerCase().includes(q));
+
+      if (!matchSearch) return false;
+      if (partnerInventoryCategory === 'All') return true;
+      if (partnerInventoryCategory === 'iPhone') return item.model_name?.toLowerCase().includes('iphone') || item.model_name?.toLowerCase().includes('aip');
+      if (partnerInventoryCategory === 'Samsung') return item.model_name?.toLowerCase().includes('samsung') || item.model_name?.toLowerCase().includes('galaxy');
+      if (partnerInventoryCategory === 'iPad') return item.model_name?.toLowerCase().includes('ipad');
+      if (partnerInventoryCategory === 'Other') {
+        const name = item.model_name?.toLowerCase() || '';
+        return !name.includes('iphone') && !name.includes('aip') && !name.includes('samsung') && !name.includes('galaxy') && !name.includes('ipad');
+      }
+      return true;
+    });
+  }, [partnerInventory, partnerInventorySearch, partnerInventoryCategory]);
+
+  const filteredPartnerSharedStock = useMemo(() => {
+    return partnerSharedStock.filter(item => {
+      const q = partnerRequestSearch.trim().toLowerCase();
+      const matchSearch = !q || 
+        (item.model_name && item.model_name.toLowerCase().includes(q)) ||
+        (item.sticker && item.sticker.toLowerCase().includes(q)) ||
+        (item.imei && item.imei.toLowerCase().includes(q));
+
+      if (!matchSearch) return false;
+      if (partnerRequestCategory === 'All') return true;
+      if (partnerRequestCategory === 'iPhone') return item.model_name?.toLowerCase().includes('iphone') || item.model_name?.toLowerCase().includes('aip');
+      if (partnerRequestCategory === 'Samsung') return item.model_name?.toLowerCase().includes('samsung') || item.model_name?.toLowerCase().includes('galaxy');
+      if (partnerRequestCategory === 'iPad') return item.model_name?.toLowerCase().includes('ipad');
+      if (partnerRequestCategory === 'Other') {
+        const name = item.model_name?.toLowerCase() || '';
+        return !name.includes('iphone') && !name.includes('aip') && !name.includes('samsung') && !name.includes('galaxy') && !name.includes('ipad');
+      }
+      return true;
+    });
+  }, [partnerSharedStock, partnerRequestSearch, partnerRequestCategory]);
 
   // 1. Auth check guard
   useEffect(() => {
@@ -1235,91 +1341,247 @@ export default function SellerDashboard() {
       )}
 
       {/* ==================== VIEW 2-B: PARTNER INVENTORY (Franchise/Partner only) ==================== */}
-      {activeTab === 'partner_inventory' && sellerProfile?.store_type !== 'direct' && (
-        <div className="view-section active animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div className="main-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h1>🏪 우리 매장 보유 재고</h1>
-              <p style={{ color: 'var(--t2)', fontSize: '12px', marginTop: '4px' }}>
-                현재 매장 보관 위치({sellerProfile?.store_name})에 이관되어 보관 중인 제품 목록입니다.
-              </p>
-            </div>
-            <span className="badge bg-purple" style={{ padding: '6px 12px', fontSize: '12px' }}>보유 재고: {partnerInventory.length}대</span>
-          </div>
+      {activeTab === 'partner_inventory' && sellerProfile?.store_type !== 'direct' && (() => {
+        const totalCount = partnerInventory.length;
+        const totalValue = partnerInventory.reduce((sum, item) => sum + getDisplayPrice(item), 0);
 
-          <div className="main-body" style={{ textAlign: 'left' }}>
-            {loadingPartnerData ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--t3)' }}>
-                <span className="spinner" style={{ marginRight: '8px' }}></span> 로딩 중...
+        return (
+          <div className="view-section active animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Header Gradient Stats Banner */}
+            <div 
+              style={{ 
+                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', 
+                borderRadius: '16px', 
+                padding: '20px', 
+                color: '#ffffff',
+                boxShadow: '0 8px 30px rgba(99, 102, 241, 0.15)',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              {/* Decorative background glow orb */}
+              <div style={{ position: 'absolute', right: '-20px', top: '-20px', width: '120px', height: '120px', background: 'rgba(255,255,255,0.08)', borderRadius: '50%' }}></div>
+              
+              <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '18px' }}>🏪</span>
+                    <span style={{ fontWeight: 800, fontSize: '15px', letterSpacing: '0.3px' }}>
+                      {sellerProfile?.store_name || sellerProfile?.name} {t('store_stock_title') || '지점 재고 현황'}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.2)', padding: '3px 8px', borderRadius: '20px', fontWeight: 700 }}>
+                    {t('partner_partner') || '협력 지점'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '12px', borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '12px' }}>
+                  <div>
+                    <div style={{ fontSize: '10px', opacity: 0.75, textTransform: 'uppercase', fontWeight: 600 }}>{t('partner_active_stock') || '보유 기기 수량'}</div>
+                    <div style={{ fontSize: '24px', fontWeight: 900, fontFamily: "'Outfit', sans-serif", marginTop: '2px' }}>
+                      {totalCount}<span style={{ fontSize: '13px', fontWeight: 500, marginLeft: '2px' }}>대</span>
+                    </div>
+                  </div>
+                  <div style={{ borderLeft: '1px solid rgba(255,255,255,0.15)', paddingLeft: '14px' }}>
+                    <div style={{ fontSize: '10px', opacity: 0.75, textTransform: 'uppercase', fontWeight: 600 }}>{t('partner_total_value') || '총 재고 가치 (도매)'}</div>
+                    <div style={{ fontSize: '24px', fontWeight: 900, fontFamily: "'Outfit', sans-serif", marginTop: '2px', color: '#fbbf24' }}>
+                      ฿{totalValue.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
               </div>
-            ) : partnerInventory.length === 0 ? (
-              <div className="card" style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--t2)', border: '1px dashed var(--border)', borderRadius: '16px', background: 'var(--card)' }}>
-                <div style={{ fontSize: '48px', marginBottom: '12px', textAlign: 'center' }}>🏪</div>
-                <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '15px' }}>현재 매장에 보유 중인 재고가 없습니다.</div>
-                <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--t3)', marginTop: '6px' }}>[기기 신청] 탭에서 필요한 기기를 신청하여 이관받으실 수 있습니다.</div>
+            </div>
+
+            {/* Search and Filters Card */}
+            <div style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: '16px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+              {/* Search input bar */}
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <span style={{ position: 'absolute', left: '12px', color: 'var(--t3)', fontSize: '14px' }}>🔍</span>
+                <input
+                  type="text"
+                  placeholder="모델명, 스티커, IMEI 번호 검색..."
+                  value={partnerInventorySearch}
+                  onChange={(e) => setPartnerInventorySearch(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 36px 10px 34px',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border)',
+                    fontSize: '12.5px',
+                    outline: 'none',
+                    background: '#f8fafc',
+                    color: 'var(--t1)',
+                    transition: 'all 0.2s'
+                  }}
+                />
+                {partnerInventorySearch && (
+                  <button
+                    onClick={() => setPartnerInventorySearch('')}
+                    style={{ position: 'absolute', right: '12px', background: 'transparent', border: 'none', color: 'var(--t3)', fontSize: '13px', cursor: 'pointer' }}
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {partnerInventory.map((item) => {
-                  const price = getDisplayPrice(item);
+
+              {/* Horizontal Category Pills */}
+              <div 
+                style={{ 
+                  display: 'flex', 
+                  gap: '6px', 
+                  overflowX: 'auto', 
+                  paddingBottom: '2px',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none'
+                }}
+                className="hide-scrollbar"
+              >
+                {['All', 'iPhone', 'Samsung', 'iPad', 'Other'].map((cat) => {
+                  const isActive = partnerInventoryCategory === cat;
+                  const labelMap: Record<string, string> = {
+                    All: '전체 All',
+                    iPhone: '🍎 iPhone',
+                    Samsung: '🌟 Samsung',
+                    iPad: '📱 iPad',
+                    Other: '📦 기타'
+                  };
                   return (
-                    <div 
-                      key={item.id} 
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'space-between', 
-                        padding: '14px 16px', 
-                        background: '#ffffff', 
-                        border: '1px solid var(--border)', 
-                        borderRadius: '12px',
-                        boxShadow: '0 2px 6px rgba(15,23,42,0.03)',
-                        gap: '12px'
+                    <button
+                      key={cat}
+                      onClick={() => setPartnerInventoryCategory(cat)}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '20px',
+                        fontSize: '11.5px',
+                        fontWeight: 700,
+                        border: 'none',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        background: isActive ? 'var(--gp)' : '#f1f5f9',
+                        color: isActive ? '#ffffff' : 'var(--t2)',
+                        boxShadow: isActive ? '0 4px 10px rgba(124, 58, 237, 0.2)' : 'none',
+                        transition: 'all 0.2s'
                       }}
                     >
-                      {/* Left side: Info stack */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 800, fontSize: '13.5px', color: 'var(--t1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {item.model_name}
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--t3)', fontFamily: 'monospace' }}>
-                          Sticker: {item.sticker || '없음'} | IMEI: {item.imei}
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--t2)' }}>
-                          색상: {item.color || '지정 없음'} | 배터리: {item.battery_pct || '100'}%
-                        </div>
-                        {item.notes && (
-                          <div style={{ fontSize: '10.5px', color: 'var(--purple-l)', background: 'rgba(139,92,246,0.04)', padding: '4px 8px', borderRadius: '6px', marginTop: '4px', border: '1px dashed rgba(139,92,246,0.1)' }}>
-                            📝 {item.notes}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Right side: Price & Action button */}
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
-                        <div style={{ fontSize: '16px', fontWeight: 900, color: 'var(--gold)', fontFamily: "'Outfit', sans-serif" }}>
-                          ฿{price ? price.toLocaleString() : 0}
-                        </div>
-                        <button
-                          className="btn-sm btn-green"
-                          style={{ padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                          onClick={() => handleOpenSellModal(item)}
-                        >
-                          💸 판매 완료
-                        </button>
-                      </div>
-                    </div>
+                      {labelMap[cat] || cat}
+                    </button>
                   );
                 })}
               </div>
-            )}
+            </div>
+
+            {/* Inventory List */}
+            <div className="main-body" style={{ textAlign: 'left', margin: 0 }}>
+              {loadingPartnerData ? (
+                <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--t3)' }}>
+                  <span className="spinner" style={{ marginRight: '8px' }}></span> {t('loading_data') || '불러오는 중...'}
+                </div>
+              ) : filteredPartnerInventory.length === 0 ? (
+                <div className="card" style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--t2)', border: '1px dashed var(--border)', borderRadius: '16px', background: 'var(--card)' }}>
+                  <div style={{ fontSize: '48px', marginBottom: '12px', textAlign: 'center' }}>🏪</div>
+                  <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '14px' }}>
+                    {partnerInventorySearch || partnerInventoryCategory !== 'All' ? '검색 결과가 없습니다.' : '보유 중인 재고가 없습니다.'}
+                  </div>
+                  <div style={{ textAlign: 'center', fontSize: '11.5px', color: 'var(--t3)', marginTop: '6px' }}>
+                    {partnerInventorySearch || partnerInventoryCategory !== 'All' ? '검색어를 변경하거나 필터를 초기화해 보세요.' : '[기기 신청] 탭에서 필요한 기기를 신청하여 이관받으실 수 있습니다.'}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {filteredPartnerInventory.map((item) => {
+                    const price = getDisplayPrice(item);
+                    const cleanNotesText = (item.notes || '').replace(/\[협력사공개\]/g, '').trim();
+                    const brandColor = getBrandColor(item.model_name);
+                    const brandLogo = getBrandLogo(item.model_name);
+
+                    return (
+                      <div 
+                        key={item.id} 
+                        style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'space-between', 
+                          padding: '14px 16px', 
+                          background: '#ffffff', 
+                          border: '1px solid var(--border)', 
+                          borderLeft: `4px solid`,
+                          borderImage: `${brandColor} 1`, // Apply gradient left border
+                          borderRadius: '12px',
+                          boxShadow: '0 3px 8px rgba(15,23,42,0.02)',
+                          gap: '12px',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {/* Left side: Info stack */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '13px' }}>{brandLogo}</span>
+                            <div style={{ fontWeight: 850, fontSize: '13.5px', color: 'var(--t1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {item.model_name}
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
+                            {item.sticker && (
+                              <span style={{ fontSize: '10.5px', color: '#475569', background: '#f1f5f9', fontWeight: 700, padding: '1px 6px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                                Label: {item.sticker}
+                              </span>
+                            )}
+                            {item.imei && (
+                              <span style={{ fontSize: '10.5px', color: '#64748b', background: '#f8fafc', fontFamily: 'monospace', padding: '1px 6px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                                IMEI: {item.imei}
+                              </span>
+                            )}
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '2px', fontSize: '11px', color: 'var(--t2)' }}>
+                            <span style={{ background: '#ecfdf5', color: '#065f46', fontWeight: 800, padding: '1px 6px', borderRadius: '4px' }}>
+                              🎨 {item.color || '지정 없음'}
+                            </span>
+                            {renderBatteryIndicator(item.battery_pct)}
+                          </div>
+
+                          {cleanNotesText && (
+                            <div style={{ fontSize: '10.5px', color: 'var(--purple-l)', background: 'rgba(139,92,246,0.03)', padding: '4px 8px', borderRadius: '6px', marginTop: '4px', border: '1px dashed rgba(139,92,246,0.12)', lineHeight: 1.3 }}>
+                              📝 {cleanNotesText}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Right side: Price & Action button */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
+                          <div style={{ fontSize: '16.5px', fontWeight: 900, color: 'var(--gold)', fontFamily: "'Outfit', sans-serif" }}>
+                            ฿{price ? price.toLocaleString() : 0}
+                          </div>
+                          <button
+                            className="btn-sm btn-green"
+                            style={{ 
+                              padding: '7px 12px', 
+                              fontSize: '11px', 
+                              borderRadius: '8px', 
+                              fontWeight: 800, 
+                              cursor: 'pointer', 
+                              whiteSpace: 'nowrap',
+                              boxShadow: '0 2px 8px rgba(16, 185, 129, 0.15)'
+                            }}
+                            onClick={() => handleOpenSellModal(item)}
+                          >
+                            💸 판매 완료
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ==================== VIEW 2-C: PARTNER REQUESTS (Franchise/Partner only) ==================== */}
       {activeTab === 'partner_request' && sellerProfile?.store_type !== 'direct' && (
-        <div className="view-section active animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div className="view-section active animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div className="main-hd">
             <div>
               <h1>📥 본사 기기 이관 신청</h1>
@@ -1329,23 +1591,107 @@ export default function SellerDashboard() {
             </div>
           </div>
 
-          <div className="main-body" style={{ textAlign: 'left' }}>
+          {/* Search and Filters Card */}
+          <div style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: '16px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+            {/* Search input bar */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <span style={{ position: 'absolute', left: '12px', color: 'var(--t3)', fontSize: '14px' }}>🔍</span>
+              <input
+                type="text"
+                placeholder="모델명, 스티커, IMEI 번호 검색..."
+                value={partnerRequestSearch}
+                onChange={(e) => setPartnerRequestSearch(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 36px 10px 34px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border)',
+                  fontSize: '12.5px',
+                  outline: 'none',
+                  background: '#f8fafc',
+                  color: 'var(--t1)',
+                  transition: 'all 0.2s'
+                }}
+              />
+              {partnerRequestSearch && (
+                <button
+                  onClick={() => setPartnerRequestSearch('')}
+                  style={{ position: 'absolute', right: '12px', background: 'transparent', border: 'none', color: 'var(--t3)', fontSize: '13px', cursor: 'pointer' }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Horizontal Category Pills */}
+            <div 
+              style={{ 
+                display: 'flex', 
+                gap: '6px', 
+                overflowX: 'auto', 
+                paddingBottom: '2px',
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none'
+              }}
+              className="hide-scrollbar"
+            >
+              {['All', 'iPhone', 'Samsung', 'iPad', 'Other'].map((cat) => {
+                const isActive = partnerRequestCategory === cat;
+                const labelMap: Record<string, string> = {
+                  All: '전체 All',
+                  iPhone: '🍎 iPhone',
+                  Samsung: '🌟 Samsung',
+                  iPad: '📱 iPad',
+                  Other: '📦 기타'
+                };
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setPartnerRequestCategory(cat)}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '20px',
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      border: 'none',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      background: isActive ? 'var(--gp)' : '#f1f5f9',
+                      color: isActive ? '#ffffff' : 'var(--t2)',
+                      boxShadow: isActive ? '0 4px 10px rgba(124, 58, 237, 0.2)' : 'none',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {labelMap[cat] || cat}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="main-body" style={{ textAlign: 'left', margin: 0 }}>
             {loadingPartnerData ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--t3)' }}>
-                <span className="spinner" style={{ marginRight: '8px' }}></span> 로딩 중...
+              <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--t3)' }}>
+                <span className="spinner" style={{ marginRight: '8px' }}></span> {t('loading_data') || '불러오는 중...'}
               </div>
-            ) : partnerSharedStock.length === 0 ? (
+            ) : filteredPartnerSharedStock.length === 0 ? (
               <div className="card" style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--t2)', border: '1px dashed var(--border)', borderRadius: '16px', background: 'var(--card)' }}>
                 <div style={{ fontSize: '48px', marginBottom: '12px', textAlign: 'center' }}>📥</div>
-                <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '15px' }}>본사에서 공유 중인 기기가 없습니다.</div>
-                <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--t3)', marginTop: '6px' }}>필요하신 기종이 있는 경우 본사 담당자에게 기기 공유를 요청해 주세요.</div>
+                <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '14px' }}>
+                  {partnerRequestSearch || partnerRequestCategory !== 'All' ? '공유 중인 기기 중 검색 결과가 없습니다.' : '본사에서 공유 중인 기기가 없습니다.'}
+                </div>
+                <div style={{ textAlign: 'center', fontSize: '11.5px', color: 'var(--t3)', marginTop: '6px' }}>
+                  {partnerRequestSearch || partnerRequestCategory !== 'All' ? '검색어를 변경하거나 필터를 초기화해 보세요.' : '필요하신 기종이 있는 경우 본사 담당자에게 기기 공유를 요청해 주세요.'}
+                </div>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {partnerSharedStock.map((item) => {
+                {filteredPartnerSharedStock.map((item) => {
                   const isRequestedByMe = item.notes && item.notes.includes(`[이관신청: ${sellerProfile.store_name}`);
                   const isRequestedByOther = item.notes && item.notes.includes('[이관신청:') && !isRequestedByMe;
                   const price = getDisplayPrice(item);
+                  const brandColor = getBrandColor(item.model_name);
+                  const brandLogo = getBrandLogo(item.model_name);
 
                   return (
                     <div 
@@ -1357,35 +1703,55 @@ export default function SellerDashboard() {
                         padding: '14px 16px', 
                         background: '#ffffff', 
                         border: '1px solid var(--border)', 
+                        borderLeft: `4px solid`,
+                        borderImage: `${brandColor} 1`, // Apply gradient left border
                         borderRadius: '12px',
-                        boxShadow: '0 2px 6px rgba(15,23,42,0.03)',
+                        boxShadow: '0 3px 8px rgba(15,23,42,0.02)',
                         gap: '12px',
-                        opacity: isRequestedByOther ? 0.5 : 1
+                        opacity: isRequestedByOther ? 0.5 : 1,
+                        transition: 'all 0.2s'
                       }}
                     >
                       {/* Left side: Info stack */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 800, fontSize: '13.5px', color: 'var(--t1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {item.model_name}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '13px' }}>{brandLogo}</span>
+                          <div style={{ fontWeight: 850, fontSize: '13.5px', color: 'var(--t1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {item.model_name}
+                          </div>
                         </div>
-                        <div style={{ fontSize: '11px', color: 'var(--t3)', fontFamily: 'monospace' }}>
-                          Sticker: {item.sticker || '없음'} | IMEI: {item.imei}
+
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
+                          {item.sticker && (
+                            <span style={{ fontSize: '10.5px', color: '#475569', background: '#f1f5f9', fontWeight: 700, padding: '1px 6px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                              Label: {item.sticker}
+                            </span>
+                          )}
+                          {item.imei && (
+                            <span style={{ fontSize: '10.5px', color: '#64748b', background: '#f8fafc', fontFamily: 'monospace', padding: '1px 6px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                              IMEI: {item.imei}
+                            </span>
+                          )}
                         </div>
-                        <div style={{ fontSize: '11px', color: 'var(--t2)' }}>
-                          색상: {item.color || '지정 없음'} | 배터리: {item.battery_pct || '100'}%
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '2px', fontSize: '11px', color: 'var(--t2)' }}>
+                          <span style={{ background: '#ecfdf5', color: '#065f46', fontWeight: 800, padding: '1px 6px', borderRadius: '4px' }}>
+                            🎨 {item.color || '지정 없음'}
+                          </span>
+                          {renderBatteryIndicator(item.battery_pct)}
                         </div>
                       </div>
 
                       {/* Right side: Price & Request status buttons */}
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
-                        <div style={{ fontSize: '16px', fontWeight: 900, color: 'var(--gold)', fontFamily: "'Outfit', sans-serif" }}>
+                        <div style={{ fontSize: '16.5px', fontWeight: 900, color: 'var(--gold)', fontFamily: "'Outfit', sans-serif" }}>
                           ฿{price ? price.toLocaleString() : 0}
                         </div>
                         {isRequestedByMe ? (
                           <button 
                             className="btn-sm" 
                             disabled 
-                            style={{ padding: '6px 12px', fontSize: '11px', background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: '6px', cursor: 'default', fontWeight: 700, whiteSpace: 'nowrap' }}
+                            style={{ padding: '7px 12px', fontSize: '11px', background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: '8px', cursor: 'default', fontWeight: 800, whiteSpace: 'nowrap' }}
                           >
                             ⏳ 신청 완료
                           </button>
@@ -1393,7 +1759,7 @@ export default function SellerDashboard() {
                           <button 
                             className="btn-sm" 
                             disabled 
-                            style={{ padding: '6px 12px', fontSize: '11px', background: '#f1f5f9', color: '#94a3b8', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'not-allowed', fontWeight: 700, whiteSpace: 'nowrap' }}
+                            style={{ padding: '7px 12px', fontSize: '11px', background: '#f1f5f9', color: '#94a3b8', border: '1px solid #e2e8f0', borderRadius: '8px', cursor: 'not-allowed', fontWeight: 800, whiteSpace: 'nowrap' }}
                           >
                             🔒 타점 신청 중
                           </button>
@@ -1401,7 +1767,15 @@ export default function SellerDashboard() {
                           <button 
                             className="btn-sm btn-purple" 
                             onClick={() => handleRequestPartnerDevice(item)}
-                            style={{ padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                            style={{ 
+                              padding: '7px 12px', 
+                              fontSize: '11px', 
+                              borderRadius: '8px', 
+                              fontWeight: 800, 
+                              cursor: 'pointer', 
+                              whiteSpace: 'nowrap',
+                              boxShadow: '0 2px 8px rgba(139, 92, 246, 0.15)'
+                            }}
                           >
                             🔌 이관 신청
                           </button>
