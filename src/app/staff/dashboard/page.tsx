@@ -81,6 +81,7 @@ export default function StaffDashboard() {
   const [trashSearchQuery, setTrashSearchQuery] = useState('');
   const [selectedCustomerMonth, setSelectedCustomerMonth] = useState('');
   const [locationFilter, setLocationFilter] = useState('all');
+  const [partnerShareFilter, setPartnerShareFilter] = useState<'all' | 'shared' | 'unshared'>('all');
   const [selectedStatsLocation, setSelectedStatsLocation] = useState('all');
   const [soldSelectedDays, setSoldSelectedDays] = useState<number[]>([]);
   const [soldSelectedMonth, setSoldSelectedMonth] = useState(() => {
@@ -104,6 +105,11 @@ export default function StaffDashboard() {
   // Intake Modals (Manual & CSV Upload)
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
+
+  // Bulk Partner Share States
+  const [isBulkPartnerShareModalOpen, setIsBulkPartnerShareModalOpen] = useState(false);
+  const [bulkShareDevices, setBulkShareDevices] = useState<{ id: string; model_name: string; sticker?: string; imei?: string; selling_price: number; isShared: boolean; wholesale_price: string }[]>([]);
+  const [isSavingBulkShare, setIsSavingBulkShare] = useState(false);
   // IMEI auditor states
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [auditText, setAuditText] = useState('');
@@ -1144,7 +1150,13 @@ export default function StaffDashboard() {
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchLoc = isSearchActive || locationFilter === 'all' || d.stock_location === locationFilter;
       const matchCat = isSearchActive || matchesCategory(d.model_name, categoryFilter);
-      return matchSearch && matchLoc && matchCat;
+      
+      const isShared = !!(d.notes && d.notes.includes('[협력사공개]'));
+      const matchShare = isSearchActive || partnerShareFilter === 'all' || 
+                         (partnerShareFilter === 'shared' && isShared) || 
+                         (partnerShareFilter === 'unshared' && !isShared);
+      
+      return matchSearch && matchLoc && matchCat && matchShare;
     });
 
     // Pin reserved items to the very top, sorted.
@@ -1152,7 +1164,7 @@ export default function StaffDashboard() {
     const normal = list.filter(d => !d.is_reserved);
 
     return [...sortDevices(reserved), ...sortDevices(normal)];
-  }, [devices, searchQuery, locationFilter, categoryFilter, matchesCategory, sortDevices, normalizeModelName]);
+  }, [devices, searchQuery, locationFilter, categoryFilter, partnerShareFilter, matchesCategory, sortDevices, normalizeModelName]);
 
   const filteredActiveDevicesPurchaseCost = useMemo(() => {
     return filteredActiveDevices.reduce((sum, d) => sum + Number(d.purchase_cost_krw || 0), 0);
@@ -2246,6 +2258,119 @@ export default function StaffDashboard() {
     }
   };
 
+  const handleApproveTransfer = async (device: DeviceItem) => {
+    try {
+      const match = device.notes?.match(/\[이관신청:\s*(.*?),\s*(.*?)\]/);
+      if (!match) {
+        showToast('이관 요청 정보를 파싱할 수 없습니다.', 'error');
+        return;
+      }
+      const targetStore = match[1];
+      
+      let newNotes = device.notes || '';
+      newNotes = newNotes.replace(/\[이관신청:\s*(.*?),\s*(.*?)\]/g, '').trim();
+      newNotes = newNotes.replace(/\s*\[협력사공개\]/g, '').trim();
+      const completionTag = `[이관완료: ${targetStore}]`;
+      newNotes = newNotes ? `${newNotes} ${completionTag}` : completionTag;
+
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .update({
+          stock_location: targetStore,
+          notes: newNotes
+        })
+        .eq('id', device.id);
+
+      if (error) throw error;
+
+      showToast(`이관 요청이 승인되었습니다. (${targetStore} 매장으로 재고 이관)`, 'success');
+      await loadLedgerData();
+    } catch (err: any) {
+      showToast('이관 승인 실패: ' + err.message, 'error');
+    }
+  };
+
+  const handleRejectTransfer = async (device: DeviceItem) => {
+    try {
+      let newNotes = device.notes || '';
+      newNotes = newNotes.replace(/\[이관신청:\s*(.*?),\s*(.*?)\]/g, '').trim();
+
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .update({
+          notes: newNotes
+        })
+        .eq('id', device.id);
+
+      if (error) throw error;
+
+      showToast('이관 요청이 거절되었습니다.', 'info');
+      await loadLedgerData();
+    } catch (err: any) {
+      showToast('이관 거절 실패: ' + err.message, 'error');
+    }
+  };
+
+  const handleOpenBulkPartnerShareModal = () => {
+    const selectedDevices = devices.filter(d => selectedIds.includes(d.id));
+    const mapped = selectedDevices.map(d => {
+      const isShared = !!(d.notes && d.notes.includes('[협력사공개]'));
+      const match = d.notes?.match(/\[도매가:\s*(\d+)\]/);
+      const wholesale_price = match ? match[1] : String(d.selling_price);
+      return {
+        id: d.id,
+        model_name: d.model_name,
+        sticker: d.sticker,
+        imei: d.imei,
+        selling_price: d.selling_price,
+        isShared,
+        wholesale_price
+      };
+    });
+    setBulkShareDevices(mapped);
+    setIsBulkPartnerShareModalOpen(true);
+  };
+
+  const handleSaveBulkPartnerShare = async () => {
+    setIsSavingBulkShare(true);
+    try {
+      const promises = bulkShareDevices.map(async (d) => {
+        const original = devices.find(x => x.id === d.id);
+        if (!original) return;
+
+        let newNotes = original.notes || '';
+        
+        newNotes = newNotes.replace(/\s*\[협력사공개\]/g, '').trim();
+        newNotes = newNotes.replace(/\[도매가:\s*(\d+)\]/g, '').trim();
+
+        if (d.isShared) {
+          newNotes = newNotes ? `${newNotes} [협력사공개]` : '[협력사공개]';
+          const priceVal = d.wholesale_price.trim();
+          if (priceVal) {
+            newNotes = `${newNotes} [도매가: ${priceVal}]`;
+          }
+        }
+
+        const { error } = await supabase
+          .from('sheets_inventory')
+          .update({ notes: newNotes })
+          .eq('id', d.id);
+
+        if (error) throw error;
+      });
+
+      await Promise.all(promises);
+      showToast('협력사 공유 설정이 일괄 업데이트되었습니다.', 'success');
+      setIsBulkPartnerShareModalOpen(false);
+      setSelectedIds([]);
+      await loadLedgerData();
+    } catch (err: any) {
+      showToast('일괄 공유 설정 실패: ' + err.message, 'error');
+    } finally {
+      setIsSavingBulkShare(false);
+    }
+  };
+
   // Inline Cell Save Handler
   const handleInlineSave = async (
     id: string, 
@@ -2999,6 +3124,7 @@ export default function StaffDashboard() {
     setActiveTab(tab);
     setSelectedIds([]);
     setCategoryFilter('all');
+    setPartnerShareFilter('all');
     setSearchQuery('');
     setSoldSearchQuery('');
     setInstallmentSearchQuery('');
@@ -3012,6 +3138,7 @@ export default function StaffDashboard() {
     setSelectedIds([]);
     setCategoryFilter('all');
     setLocationFilter('all');
+    setPartnerShareFilter('all');
     setSoldSelectedMonth('all');
     if (tab === 'ledger' || tab === 'pending_intake') setSearchQuery(query);
     else if (tab === 'sales') setSoldSearchQuery(query);
@@ -3275,19 +3402,21 @@ export default function StaffDashboard() {
               >
                 <span className="ico">💵</span> {t('staff_menu_cod')}
               </button>
-
-              <button 
-                className={`sb-link ${activeTab === 'partner_transfer' ? 'active' : ''}`}
-                onClick={() => handleTabChange('partner_transfer')}
-              >
-                <span className="ico">🔌</span> 협력사 이관 요청 {(() => {
-                  const reqCount = devices.filter(d => !d.deleted_at && d.notes && d.notes.includes('[이관신청:')).length;
-                  return reqCount > 0 ? (
-                    <span style={{ background: 'var(--red)', color: '#fff', fontSize: '9.5px', fontWeight: 800, padding: '2px 6px', borderRadius: '10px', marginLeft: '6px' }}>{reqCount}</span>
-                  ) : null;
-                })()}
-              </button>
             </>
+          )}
+
+          {staffProfile?.role === 'admin' && (
+            <button 
+              className={`sb-link ${activeTab === 'partner_transfer' ? 'active' : ''}`}
+              onClick={() => handleTabChange('partner_transfer')}
+            >
+              <span className="ico">🔌</span> 협력사 이관 요청 {(() => {
+                const reqCount = devices.filter(d => !d.deleted_at && d.notes && d.notes.includes('[이관신청:')).length;
+                return reqCount > 0 ? (
+                  <span style={{ background: 'var(--red)', color: '#fff', fontSize: '9.5px', fontWeight: 800, padding: '2px 6px', borderRadius: '10px', marginLeft: '6px' }}>{reqCount}</span>
+                ) : null;
+              })()}
+            </button>
           )}
 
           <button 
@@ -3361,6 +3490,7 @@ export default function StaffDashboard() {
               {activeTab === 'history_log' && `📋 ${t('staff_menu_history_log')}`}
               {activeTab === 'installment' && `💳 ${t('staff_menu_installment')}`}
               {activeTab === 'cod' && `💵 ${t('staff_menu_cod')}`}
+              {activeTab === 'partner_transfer' && `👥 협력사 이관 요청 관리`}
               {activeTab === 'customers' && `👤 ${t('staff_menu_customers')}`}
               {activeTab === 'settings' && `⚙️ ${t('staff_menu_settings')}`}
               {activeTab === 'margin' && `📈 ${t('staff_menu_margin')}`}
@@ -3993,6 +4123,19 @@ export default function StaffDashboard() {
                   ))}
                 </select>
 
+                {staffProfile?.role === 'admin' && (
+                  <select
+                    value={partnerShareFilter}
+                    onChange={(e) => setPartnerShareFilter(e.target.value as any)}
+                    className="form-input"
+                    style={{ maxWidth: '150px', margin: 0, padding: '8px 12px', fontSize: '13px', border: '1px solid var(--purple-l)', color: 'var(--purple-l)', fontWeight: 800 }}
+                  >
+                    <option value="all">👥 전체 공유 상태</option>
+                    <option value="shared">🔮 협력사 공유 중</option>
+                    <option value="unshared">⚪ 협력사 미공유</option>
+                  </select>
+                )}
+
                 <select
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value)}
@@ -4017,8 +4160,16 @@ export default function StaffDashboard() {
                       style={{ margin: 0, background: 'linear-gradient(135deg, #7c3aed, #5b21b6)', border: 'none', color: '#fff', padding: '6px 14px', fontSize: '11px', borderRadius: '6px', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(124,58,237,0.35)' }}
                       onClick={handleOpenBulkSaleModal}
                     >
-                      📦 대량 판매 ({selectedIds.length})
+                      📦 {t('staff_btn_bulk_sale') || '대량 판매'} ({selectedIds.length})
                     </button>
+                    {staffProfile?.role === 'admin' && (
+                      <button
+                        style={{ margin: 0, background: 'rgba(124, 58, 237, 0.1)', border: '1px solid rgba(124, 58, 237, 0.25)', color: 'var(--purple-l)', padding: '6px 14px', fontSize: '11px', borderRadius: '6px', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        onClick={handleOpenBulkPartnerShareModal}
+                      >
+                        👥 협력사 일괄 공유 ({selectedIds.length})
+                      </button>
+                    )}
                     <button
                       style={{ margin: 0, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: 'var(--red)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                       onClick={handleBulkDelete}
@@ -4463,7 +4614,7 @@ export default function StaffDashboard() {
                                 📌
                               </button>
                             )}
-                            {(() => {
+                            {staffProfile?.role === 'admin' && (() => {
                               const isShared = item.notes && item.notes.includes('[협력사공개]');
                               return (
                                 <button
@@ -6293,6 +6444,95 @@ export default function StaffDashboard() {
           </div>
         )}
 
+        {/* ==================== VIEW 6-B: PARTNER TRANSFER REQUESTS ==================== */}
+        {activeTab === 'partner_transfer' && staffProfile?.role === 'admin' && (() => {
+          const transferRequests = devices.filter(d => !d.deleted_at && d.notes && d.notes.includes('[이관신청:'));
+
+          return (
+            <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              
+              <div className="main-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h1 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>👥 협력사 이관 요청 관리</h1>
+                  <p style={{ color: 'var(--t2)', fontSize: '12px', marginTop: '4px' }}>
+                    협력점(가맹점)에서 본사 재고에 대해 신청한 이관 요청 목록입니다. 승인 시 기기 보관 위치가 자동으로 변경됩니다.
+                  </p>
+                </div>
+                <span className="badge bg-purple" style={{ padding: '6px 12px', fontSize: '12px' }}>대기 중인 요청: {transferRequests.length}건</span>
+              </div>
+
+              <div className="main-body" style={{ textAlign: 'left' }}>
+                {transferRequests.length === 0 ? (
+                  <div className="card" style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--t2)', border: '1px dashed var(--border)', borderRadius: '16px', background: 'var(--card)' }}>
+                    <div style={{ fontSize: '48px', marginBottom: '12px', textAlign: 'center' }}>📥</div>
+                    <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '15px' }}>대기 중인 이관 요청이 없습니다.</div>
+                    <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--t3)', marginTop: '6px' }}>협력사에서 본사 공유 기기를 신청하면 이곳에 실시간으로 표시됩니다.</div>
+                  </div>
+                ) : (
+                  <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                    <div className="table-responsive">
+                      <table className="table">
+                        <thead>
+                          <tr>
+                            <th>{t('staff_col_model') || '모델명'}</th>
+                            <th>Sticker / IMEI</th>
+                            <th>{t('staff_col_location') || '현재 보관 위치'}</th>
+                            <th>신청 협력사 (Store Name)</th>
+                            <th style={{ textAlign: 'center' }}>{t('staff_col_actions') || '조작'}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {transferRequests.map((item) => {
+                            const match = item.notes?.match(/\[이관신청:\s*(.*?),\s*(.*?)\]/);
+                            const requestingStore = match ? match[1] : '알 수 없음';
+                            return (
+                              <tr key={item.id}>
+                                <td>
+                                  <div style={{ fontWeight: 800 }}>{item.model_name}</div>
+                                  <div style={{ fontSize: '11px', color: 'var(--t3)' }}>Color: {item.color || '미기입'}</div>
+                                </td>
+                                <td style={{ fontFamily: 'monospace', fontSize: '12.5px' }}>
+                                  <div>Sticker: {item.sticker || '없음'}</div>
+                                  <div style={{ color: 'var(--t3)', fontSize: '11px' }}>IMEI: {item.imei || '없음'}</div>
+                                </td>
+                                <td>
+                                  <span className="badge bg-grey">{item.stock_location}</span>
+                                </td>
+                                <td>
+                                  <span className="badge bg-purple" style={{ fontWeight: 800 }}>🏪 {requestingStore}</span>
+                                </td>
+                                <td>
+                                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                    <button
+                                      className="btn-sm btn-green"
+                                      style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '30px', padding: '0 12px', fontWeight: 800, borderRadius: '6px', cursor: 'pointer' }}
+                                      onClick={() => handleApproveTransfer(item)}
+                                    >
+                                      ✅ 승인 (Approve)
+                                    </button>
+                                    <button
+                                      className="btn-sm btn-red"
+                                      style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '30px', padding: '0 12px', fontWeight: 800, borderRadius: '6px', cursor: 'pointer' }}
+                                      onClick={() => handleRejectTransfer(item)}
+                                    >
+                                      ❌ 거절 (Reject)
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+            </div>
+          );
+        })()}
+
         {/* ==================== VIEW 7: DAILY HISTORY LOG ==================== */}
         {activeTab === 'history_log' && (
           <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -6966,6 +7206,103 @@ export default function StaffDashboard() {
           </div>
         );
       })()}
+
+      {/* BULK PARTNER SHARE MODAL */}
+      {isBulkPartnerShareModalOpen && (
+        <div className="modal-bg open" style={{ display: 'flex', zIndex: 3100 }}>
+          <div className="modal animate-slide-up" style={{ maxWidth: '680px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-hd">
+              <span className="modal-title">👥 협력사 일괄 공유 설정 (Bulk Partner Share)</span>
+              <button className="modal-x" onClick={() => setIsBulkPartnerShareModalOpen(false)}>✕</button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '20px', maxHeight: '60vh', overflowY: 'auto' }}>
+              <p style={{ fontSize: '12.5px', color: 'var(--t2)', marginBottom: '16px' }}>
+                선택한 {bulkShareDevices.length}대의 기기에 대해 협력사 공유(공개) 여부 및 도매가를 일괄 편집합니다. 엑셀처럼 가격을 입력하실 수 있습니다.
+              </p>
+
+              <div className="table-responsive">
+                <table className="table" style={{ fontSize: '12px' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '80px', textAlign: 'center' }}>공유 상태</th>
+                      <th>모델 / Sticker / IMEI</th>
+                      <th style={{ width: '120px' }}>소매가 (원가 참조)</th>
+                      <th style={{ width: '150px' }}>도매가 (Wholesale)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bulkShareDevices.map((item, idx) => (
+                      <tr key={item.id}>
+                        <td style={{ textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={item.isShared}
+                            onChange={(e) => {
+                              const updated = [...bulkShareDevices];
+                              updated[idx].isShared = e.target.checked;
+                              setBulkShareDevices(updated);
+                            }}
+                            style={{ transform: 'scale(1.2)', cursor: 'pointer' }}
+                          />
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 800 }}>{item.model_name}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--t3)' }}>
+                            Sticker: {item.sticker || '없음'} | IMEI: {item.imei || '없음'}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>฿{item.selling_price.toLocaleString()}</div>
+                          <div style={{ fontSize: '11px', color: '#b45309' }}>
+                            원가: ₩{(devices.find(d => d.id === item.id)?.purchase_cost_krw || 0).toLocaleString()}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ fontSize: '12px', color: 'var(--t2)' }}>฿</span>
+                            <input
+                              type="number"
+                              className="form-input"
+                              style={{ margin: 0, padding: '4px 8px', fontSize: '12px', height: '28px' }}
+                              value={item.wholesale_price}
+                              onChange={(e) => {
+                                const updated = [...bulkShareDevices];
+                                updated[idx].wholesale_price = e.target.value;
+                                setBulkShareDevices(updated);
+                              }}
+                              disabled={!item.isShared}
+                              placeholder="도매가 입력"
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="modal-ft" style={{ padding: '16px 20px', display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--border)', background: '#f8fafc' }}>
+              <button
+                className="btn-sm btn-grey"
+                onClick={() => setIsBulkPartnerShareModalOpen(false)}
+                style={{ height: '36px', padding: '0 16px', borderRadius: '8px', cursor: 'pointer' }}
+              >
+                취소 (Cancel)
+              </button>
+              <button
+                className="btn-sm btn-purple"
+                onClick={handleSaveBulkPartnerShare}
+                disabled={isSavingBulkShare}
+                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', fontWeight: 800, cursor: 'pointer' }}
+              >
+                {isSavingBulkShare ? '저장 중...' : '설정 저장 (Save Settings)'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MANUAL INTAKE & EDIT MODAL */}
       {isManualModalOpen && (

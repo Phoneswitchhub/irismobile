@@ -45,6 +45,11 @@ export default function SellerDashboard() {
   const [partnerSharedStock, setPartnerSharedStock] = useState<any[]>([]);
   const [loadingPartnerData, setLoadingPartnerData] = useState(false);
 
+  // Seller Sale States
+  const [sellingItem, setSellingItem] = useState<any | null>(null);
+  const [customSalePrice, setCustomSalePrice] = useState<string>('');
+  const [isProcessingSale, setIsProcessingSale] = useState(false);
+
   // Profile Form States
   const [profName, setProfName] = useState('');
   const [profStore, setProfStore] = useState('');
@@ -101,6 +106,11 @@ export default function SellerDashboard() {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   }, []);
+
+  const getDisplayPrice = (item: any) => {
+    const match = item.notes?.match(/\[도매가:\s*(\d+)\]/);
+    return match ? parseInt(match[1]) : item.selling_price;
+  };
 
   const getStatusText = useCallback((status: string) => {
     const map: Record<string, string> = {
@@ -289,6 +299,56 @@ export default function SellerDashboard() {
       await loadPartnerData();
     } catch (e: any) {
       showToast('신청 실패: ' + e.message, 'error');
+    }
+  };
+
+  const handleOpenSellModal = (item: any) => {
+    setSellingItem(item);
+    setCustomSalePrice(String(getDisplayPrice(item)));
+  };
+
+  const handleConfirmSell = async () => {
+    if (!sellingItem || !sellerProfile) return;
+    const priceNum = Number(customSalePrice);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      showToast('올바른 판매 가격을 입력해 주세요.', 'error');
+      return;
+    }
+
+    setIsProcessingSale(true);
+    try {
+      const today = new Date();
+      const yy = String(today.getFullYear()).slice(-2);
+      const mm = today.getMonth() + 1;
+      const dd = today.getDate();
+      const formattedSaleDate = `${yy}. ${mm}. ${dd}.`;
+
+      let newNotes = sellingItem.notes || '';
+      const saleTag = `[협력사판매: ${sellerProfile.store_name}]`;
+      newNotes = newNotes ? `${newNotes} ${saleTag}` : saleTag;
+
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .update({
+          is_sold: true,
+          is_approved: false, // Wait for headquarter approval
+          sale_date: formattedSaleDate,
+          seller_name: sellerProfile.store_name,
+          selling_price: priceNum,
+          notes: newNotes,
+          sale_type: 'transfer' // Default sale type
+        })
+        .eq('id', sellingItem.id);
+
+      if (error) throw error;
+
+      showToast('판매 처리가 완료되었습니다. 본사 승인 대기 중입니다.', 'success');
+      setSellingItem(null);
+      await loadPartnerData();
+    } catch (err: any) {
+      showToast('판매 처리 실패: ' + err.message, 'error');
+    } finally {
+      setIsProcessingSale(false);
     }
   };
 
@@ -1199,24 +1259,58 @@ export default function SellerDashboard() {
                 <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--t3)', marginTop: '6px' }}>[기기 신청] 탭에서 필요한 기기를 신청하여 이관받으실 수 있습니다.</div>
               </div>
             ) : (
-              <div className="products-grid">
-                {partnerInventory.map((item) => (
-                  <div key={item.id} className="product-card">
-                    <div className="p-img" style={{ fontSize: '44px' }}>
-                      📱
-                    </div>
-                    <div className="p-info" style={{ padding: '14px' }}>
-                      <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--t1)' }}>{item.model_name}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--t3)', fontFamily: 'monospace', marginTop: '4px' }}>Sticker: {item.sticker || '없음'}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--t3)', fontFamily: 'monospace' }}>IMEI: {item.imei}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '4px' }}>색상: {item.color || '지정 없음'} | 배터리: {item.battery_pct || '100'}%</div>
-                      {item.notes && <div style={{ fontSize: '10.5px', color: 'var(--purple-l)', background: 'rgba(139,92,246,0.05)', border: '1px dashed rgba(139,92,246,0.15)', padding: '6px 8px', borderRadius: '6px', marginTop: '8px', whiteSpace: 'normal', lineHeight: 1.3 }}>📝 {item.notes}</div>}
-                      <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--gold)', marginTop: '10px' }}>
-                        ฿{item.selling_price ? item.selling_price.toLocaleString() : 0}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div className="table-responsive">
+                  <table className="table" style={{ width: '100%', fontSize: '12.5px', textAlign: 'left' }}>
+                    <thead>
+                      <tr>
+                        <th>모델명 (Model)</th>
+                        <th>Sticker / IMEI</th>
+                        <th>색상 / 배터리</th>
+                        <th>비고 (Notes)</th>
+                        <th>도매가 (Price)</th>
+                        <th style={{ textAlign: 'center' }}>조작 (Action)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {partnerInventory.map((item) => {
+                        const price = getDisplayPrice(item);
+                        return (
+                          <tr key={item.id}>
+                            <td>
+                              <div style={{ fontWeight: 800 }}>{item.model_name}</div>
+                            </td>
+                            <td style={{ fontFamily: 'monospace' }}>
+                              <div>Sticker: {item.sticker || '없음'}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--t3)' }}>IMEI: {item.imei}</div>
+                            </td>
+                            <td>
+                              <div>{item.color || '지정 없음'}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--t3)' }}>배터리: {item.battery_pct || '100'}%</div>
+                            </td>
+                            <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.notes || ''}>
+                              {item.notes || '-'}
+                            </td>
+                            <td style={{ fontWeight: 800, color: 'var(--gold)' }}>
+                              ฿{price ? price.toLocaleString() : 0}
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                <button
+                                  className="btn-sm btn-green"
+                                  style={{ padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 800, cursor: 'pointer' }}
+                                  onClick={() => handleOpenSellModal(item)}
+                                >
+                                  💸 판매 완료
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
@@ -1247,55 +1341,75 @@ export default function SellerDashboard() {
                 <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--t3)', marginTop: '6px' }}>필요하신 기종이 있는 경우 본사 담당자에게 기기 공유를 요청해 주세요.</div>
               </div>
             ) : (
-              <div className="products-grid">
-                {partnerSharedStock.map((item) => {
-                  const isRequestedByMe = item.notes && item.notes.includes(`[이관신청: ${sellerProfile.store_name}`);
-                  const isRequestedByOther = item.notes && item.notes.includes('[이관신청:') && !isRequestedByMe;
+              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div className="table-responsive">
+                  <table className="table" style={{ width: '100%', fontSize: '12.5px', textAlign: 'left' }}>
+                    <thead>
+                      <tr>
+                        <th>모델명 (Model)</th>
+                        <th>Sticker / IMEI</th>
+                        <th>색상 / 배터리</th>
+                        <th>도매가 (Price)</th>
+                        <th style={{ textAlign: 'center' }}>조작 (Action)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {partnerSharedStock.map((item) => {
+                        const isRequestedByMe = item.notes && item.notes.includes(`[이관신청: ${sellerProfile.store_name}`);
+                        const isRequestedByOther = item.notes && item.notes.includes('[이관신청:') && !isRequestedByMe;
+                        const price = getDisplayPrice(item);
 
-                  return (
-                    <div key={item.id} className="product-card" style={{ opacity: isRequestedByOther ? 0.45 : 1 }}>
-                      <div className="p-img" style={{ fontSize: '44px' }}>
-                        📱
-                      </div>
-                      <div className="p-info" style={{ padding: '14px' }}>
-                        <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--t1)' }}>{item.model_name}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--t3)', fontFamily: 'monospace', marginTop: '4px' }}>Sticker: {item.sticker || '없음'}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--t3)', fontFamily: 'monospace' }}>IMEI: {item.imei}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '4px' }}>색상: {item.color || '지정 없음'} | 배터리: {item.battery_pct || '100'}%</div>
-                        <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--gold)', marginTop: '8px' }}>
-                          ฿{item.selling_price ? item.selling_price.toLocaleString() : 0}
-                        </div>
-                        <div style={{ marginTop: '12px' }}>
-                          {isRequestedByMe ? (
-                            <button 
-                              className="btn-sm" 
-                              disabled 
-                              style={{ width: '100%', padding: '8px', fontSize: '12px', background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: '8px', cursor: 'default', fontWeight: 700 }}
-                            >
-                              ⏳ 신청 완료 (승인 대기)
-                            </button>
-                          ) : isRequestedByOther ? (
-                            <button 
-                              className="btn-sm" 
-                              disabled 
-                              style={{ width: '100%', padding: '8px', fontSize: '12px', background: '#f1f5f9', color: '#94a3b8', border: '1px solid #e2e8f0', borderRadius: '8px', cursor: 'not-allowed', fontWeight: 700 }}
-                            >
-                              🔒 다른 대리점에서 신청 중
-                            </button>
-                          ) : (
-                            <button 
-                              className="btn-sm btn-purple" 
-                              onClick={() => handleRequestPartnerDevice(item)}
-                              style={{ width: '100%', padding: '8px', fontSize: '12px', borderRadius: '8px', fontWeight: 700 }}
-                            >
-                              🔌 이관 신청하기
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                        return (
+                          <tr key={item.id} style={{ opacity: isRequestedByOther ? 0.5 : 1 }}>
+                            <td>
+                              <div style={{ fontWeight: 800 }}>{item.model_name}</div>
+                            </td>
+                            <td style={{ fontFamily: 'monospace' }}>
+                              <div>Sticker: {item.sticker || '없음'}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--t3)' }}>IMEI: {item.imei}</div>
+                            </td>
+                            <td>
+                              <div>{item.color || '지정 없음'}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--t3)' }}>배터리: {item.battery_pct || '100'}%</div>
+                            </td>
+                            <td style={{ fontWeight: 800, color: 'var(--gold)' }}>
+                              ฿{price ? price.toLocaleString() : 0}
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                {isRequestedByMe ? (
+                                  <button 
+                                    className="btn-sm" 
+                                    disabled 
+                                    style={{ padding: '6px 12px', fontSize: '11px', background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: '6px', cursor: 'default', fontWeight: 700 }}
+                                  >
+                                    ⏳ 신청 완료 (승인 대기)
+                                  </button>
+                                ) : isRequestedByOther ? (
+                                  <button 
+                                    className="btn-sm" 
+                                    disabled 
+                                    style={{ padding: '6px 12px', fontSize: '11px', background: '#f1f5f9', color: '#94a3b8', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'not-allowed', fontWeight: 700 }}
+                                  >
+                                    🔒 다른 대리점 신청 중
+                                  </button>
+                                ) : (
+                                  <button 
+                                    className="btn-sm btn-purple" 
+                                    onClick={() => handleRequestPartnerDevice(item)}
+                                    style={{ padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}
+                                  >
+                                    🔌 이관 신청하기
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
@@ -1828,6 +1942,67 @@ export default function SellerDashboard() {
           <span>{t('tab_store_profile')}</span>
         </div>
       </div>
+
+      {/* PARTNER RECORD SALE MODAL */}
+      {sellingItem && (
+        <div className="modal-bg open" style={{ display: 'flex', zIndex: 3100 }}>
+          <div className="modal animate-slide-up" style={{ maxWidth: '400px', padding: '20px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-hd" style={{ marginBottom: '16px' }}>
+              <span className="modal-title">💸 판매 완료 처리 (Record Sale)</span>
+              <button className="modal-x" onClick={() => setSellingItem(null)}>✕</button>
+            </div>
+            
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', marginBottom: '16px', border: '1px solid var(--border)' }}>
+                <div style={{ fontWeight: 800, fontSize: '14px' }}>{sellingItem.model_name}</div>
+                <div style={{ fontSize: '11.5px', color: 'var(--t2)', marginTop: '4px' }}>
+                  Sticker: {sellingItem.sticker || '없음'} | IMEI: {sellingItem.imei}
+                </div>
+                <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>
+                  기본 도매가: ฿{getDisplayPrice(sellingItem).toLocaleString()}
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label className="form-label">실제 판매 가격 (Actual Sold Price in ฿) *</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '16px', fontWeight: 'bold' }}>฿</span>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={customSalePrice}
+                    onChange={(e) => setCustomSalePrice(e.target.value)}
+                    placeholder="판매가 입력"
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              <p style={{ fontSize: '11px', color: 'var(--t3)', lineHeight: 1.4, marginBottom: '16px' }}>
+                * 판매 완료 처리 시 기기는 매장 재고 목록에서 즉시 제외되며 본사 판매 승인 대기 목록으로 연동됩니다. 본사의 최종 입금 확인 및 승인 후 매출 장부에 최종 반영됩니다.
+              </p>
+            </div>
+
+            <div className="modal-ft" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--border)', paddingTop: '12px', marginTop: '12px' }}>
+              <button
+                className="btn-sm btn-grey"
+                onClick={() => setSellingItem(null)}
+                style={{ height: '36px', padding: '0 16px', borderRadius: '8px', cursor: 'pointer' }}
+              >
+                취소 (Cancel)
+              </button>
+              <button
+                className="btn-sm btn-green"
+                onClick={handleConfirmSell}
+                disabled={isProcessingSale}
+                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', fontWeight: 800, cursor: 'pointer' }}
+              >
+                {isProcessingSale ? '처리 중...' : '판매 완료 (Confirm Sell)'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ADD/EDIT PRODUCT MODAL */}
       {isProdModalOpen && (
