@@ -1259,58 +1259,58 @@ export default function SellerDashboard() {
                 <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--t3)', marginTop: '6px' }}>[기기 신청] 탭에서 필요한 기기를 신청하여 이관받으실 수 있습니다.</div>
               </div>
             ) : (
-              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                <div className="table-responsive">
-                  <table className="table" style={{ width: '100%', fontSize: '12.5px', textAlign: 'left' }}>
-                    <thead>
-                      <tr>
-                        <th>모델명 (Model)</th>
-                        <th>Sticker / IMEI</th>
-                        <th>색상 / 배터리</th>
-                        <th>비고 (Notes)</th>
-                        <th>도매가 (Price)</th>
-                        <th style={{ textAlign: 'center' }}>조작 (Action)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {partnerInventory.map((item) => {
-                        const price = getDisplayPrice(item);
-                        return (
-                          <tr key={item.id}>
-                            <td>
-                              <div style={{ fontWeight: 800 }}>{item.model_name}</div>
-                            </td>
-                            <td style={{ fontFamily: 'monospace' }}>
-                              <div>Sticker: {item.sticker || '없음'}</div>
-                              <div style={{ fontSize: '11px', color: 'var(--t3)' }}>IMEI: {item.imei}</div>
-                            </td>
-                            <td>
-                              <div>{item.color || '지정 없음'}</div>
-                              <div style={{ fontSize: '11px', color: 'var(--t3)' }}>배터리: {item.battery_pct || '100'}%</div>
-                            </td>
-                            <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.notes || ''}>
-                              {item.notes || '-'}
-                            </td>
-                            <td style={{ fontWeight: 800, color: 'var(--gold)' }}>
-                              ฿{price ? price.toLocaleString() : 0}
-                            </td>
-                            <td>
-                              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                <button
-                                  className="btn-sm btn-green"
-                                  style={{ padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 800, cursor: 'pointer' }}
-                                  onClick={() => handleOpenSellModal(item)}
-                                >
-                                  💸 판매 완료
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {partnerInventory.map((item) => {
+                  const price = getDisplayPrice(item);
+                  return (
+                    <div 
+                      key={item.id} 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between', 
+                        padding: '14px 16px', 
+                        background: '#ffffff', 
+                        border: '1px solid var(--border)', 
+                        borderRadius: '12px',
+                        boxShadow: '0 2px 6px rgba(15,23,42,0.03)',
+                        gap: '12px'
+                      }}
+                    >
+                      {/* Left side: Info stack */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, fontSize: '13.5px', color: 'var(--t1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {item.model_name}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--t3)', fontFamily: 'monospace' }}>
+                          Sticker: {item.sticker || '없음'} | IMEI: {item.imei}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--t2)' }}>
+                          색상: {item.color || '지정 없음'} | 배터리: {item.battery_pct || '100'}%
+                        </div>
+                        {item.notes && (
+                          <div style={{ fontSize: '10.5px', color: 'var(--purple-l)', background: 'rgba(139,92,246,0.04)', padding: '4px 8px', borderRadius: '6px', marginTop: '4px', border: '1px dashed rgba(139,92,246,0.1)' }}>
+                            📝 {item.notes}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right side: Price & Action button */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
+                        <div style={{ fontSize: '16px', fontWeight: 900, color: 'var(--gold)', fontFamily: "'Outfit', sans-serif" }}>
+                          ฿{price ? price.toLocaleString() : 0}
+                        </div>
+                        <button
+                          className="btn-sm btn-green"
+                          style={{ padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          onClick={() => handleOpenSellModal(item)}
+                        >
+                          💸 판매 완료
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1341,75 +1341,75 @@ export default function SellerDashboard() {
                 <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--t3)', marginTop: '6px' }}>필요하신 기종이 있는 경우 본사 담당자에게 기기 공유를 요청해 주세요.</div>
               </div>
             ) : (
-              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                <div className="table-responsive">
-                  <table className="table" style={{ width: '100%', fontSize: '12.5px', textAlign: 'left' }}>
-                    <thead>
-                      <tr>
-                        <th>모델명 (Model)</th>
-                        <th>Sticker / IMEI</th>
-                        <th>색상 / 배터리</th>
-                        <th>도매가 (Price)</th>
-                        <th style={{ textAlign: 'center' }}>조작 (Action)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {partnerSharedStock.map((item) => {
-                        const isRequestedByMe = item.notes && item.notes.includes(`[이관신청: ${sellerProfile.store_name}`);
-                        const isRequestedByOther = item.notes && item.notes.includes('[이관신청:') && !isRequestedByMe;
-                        const price = getDisplayPrice(item);
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {partnerSharedStock.map((item) => {
+                  const isRequestedByMe = item.notes && item.notes.includes(`[이관신청: ${sellerProfile.store_name}`);
+                  const isRequestedByOther = item.notes && item.notes.includes('[이관신청:') && !isRequestedByMe;
+                  const price = getDisplayPrice(item);
 
-                        return (
-                          <tr key={item.id} style={{ opacity: isRequestedByOther ? 0.5 : 1 }}>
-                            <td>
-                              <div style={{ fontWeight: 800 }}>{item.model_name}</div>
-                            </td>
-                            <td style={{ fontFamily: 'monospace' }}>
-                              <div>Sticker: {item.sticker || '없음'}</div>
-                              <div style={{ fontSize: '11px', color: 'var(--t3)' }}>IMEI: {item.imei}</div>
-                            </td>
-                            <td>
-                              <div>{item.color || '지정 없음'}</div>
-                              <div style={{ fontSize: '11px', color: 'var(--t3)' }}>배터리: {item.battery_pct || '100'}%</div>
-                            </td>
-                            <td style={{ fontWeight: 800, color: 'var(--gold)' }}>
-                              ฿{price ? price.toLocaleString() : 0}
-                            </td>
-                            <td>
-                              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                {isRequestedByMe ? (
-                                  <button 
-                                    className="btn-sm" 
-                                    disabled 
-                                    style={{ padding: '6px 12px', fontSize: '11px', background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: '6px', cursor: 'default', fontWeight: 700 }}
-                                  >
-                                    ⏳ 신청 완료 (승인 대기)
-                                  </button>
-                                ) : isRequestedByOther ? (
-                                  <button 
-                                    className="btn-sm" 
-                                    disabled 
-                                    style={{ padding: '6px 12px', fontSize: '11px', background: '#f1f5f9', color: '#94a3b8', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'not-allowed', fontWeight: 700 }}
-                                  >
-                                    🔒 다른 대리점 신청 중
-                                  </button>
-                                ) : (
-                                  <button 
-                                    className="btn-sm btn-purple" 
-                                    onClick={() => handleRequestPartnerDevice(item)}
-                                    style={{ padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}
-                                  >
-                                    🔌 이관 신청하기
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                  return (
+                    <div 
+                      key={item.id} 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between', 
+                        padding: '14px 16px', 
+                        background: '#ffffff', 
+                        border: '1px solid var(--border)', 
+                        borderRadius: '12px',
+                        boxShadow: '0 2px 6px rgba(15,23,42,0.03)',
+                        gap: '12px',
+                        opacity: isRequestedByOther ? 0.5 : 1
+                      }}
+                    >
+                      {/* Left side: Info stack */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, fontSize: '13.5px', color: 'var(--t1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {item.model_name}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--t3)', fontFamily: 'monospace' }}>
+                          Sticker: {item.sticker || '없음'} | IMEI: {item.imei}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--t2)' }}>
+                          색상: {item.color || '지정 없음'} | 배터리: {item.battery_pct || '100'}%
+                        </div>
+                      </div>
+
+                      {/* Right side: Price & Request status buttons */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
+                        <div style={{ fontSize: '16px', fontWeight: 900, color: 'var(--gold)', fontFamily: "'Outfit', sans-serif" }}>
+                          ฿{price ? price.toLocaleString() : 0}
+                        </div>
+                        {isRequestedByMe ? (
+                          <button 
+                            className="btn-sm" 
+                            disabled 
+                            style={{ padding: '6px 12px', fontSize: '11px', background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: '6px', cursor: 'default', fontWeight: 700, whiteSpace: 'nowrap' }}
+                          >
+                            ⏳ 신청 완료
+                          </button>
+                        ) : isRequestedByOther ? (
+                          <button 
+                            className="btn-sm" 
+                            disabled 
+                            style={{ padding: '6px 12px', fontSize: '11px', background: '#f1f5f9', color: '#94a3b8', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'not-allowed', fontWeight: 700, whiteSpace: 'nowrap' }}
+                          >
+                            🔒 타점 신청 중
+                          </button>
+                        ) : (
+                          <button 
+                            className="btn-sm btn-purple" 
+                            onClick={() => handleRequestPartnerDevice(item)}
+                            style={{ padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          >
+                            🔌 이관 신청
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
