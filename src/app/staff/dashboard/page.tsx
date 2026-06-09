@@ -167,6 +167,43 @@ export default function StaffDashboard() {
   const [instNumber, setInstNumber] = useState('');
   const [exchangeRate, setExchangeRate] = useState<number>(40.0);
 
+  // ── Bulk / Wholesale Sale Modal States ──────────────────────────────
+  type BulkSaleItem = { id: string; imei: string; model_name: string; price: number };
+  const [isBulkSaleModalOpen, setIsBulkSaleModalOpen] = useState(false);
+  const [bulkSaleItems, setBulkSaleItems] = useState<BulkSaleItem[]>([]);
+  const [bulkSellerName, setBulkSellerName] = useState('');
+  const [bulkBuyerName, setBulkBuyerName] = useState('');
+  const [bulkBuyerPhone, setBulkBuyerPhone] = useState('');
+  const [bulkBuyerAddress, setBulkBuyerAddress] = useState('');
+  const [bulkBuyerAddressCustom, setBulkBuyerAddressCustom] = useState('');
+  const [bulkSaleDate, setBulkSaleDate] = useState('');
+  const [bulkTaxIncluded, setBulkTaxIncluded] = useState(false);
+  const [processingBulkSale, setProcessingBulkSale] = useState(false);
+
+  // ── Receipt-Only Modal States (Sales tab) ─────────────────────────────
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [receiptItems, setReceiptItems] = useState<{ id: string; imei: string; model_name: string; price: number }[]>([]);
+  const [receiptBuyerName, setReceiptBuyerName] = useState('');
+  const [receiptBuyerPhone, setReceiptBuyerPhone] = useState('');
+  const [receiptBuyerAddress, setReceiptBuyerAddress] = useState('');
+  const [receiptBuyerAddressCustom, setReceiptBuyerAddressCustom] = useState('');
+  const [receiptSaleDate, setReceiptSaleDate] = useState('');
+  const [receiptTaxIncluded, setReceiptTaxIncluded] = useState(false);
+
+  // ── Return / Restore Modal States (Sales tab) ──────────────────────────
+  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+  const [returnDeviceIds, setReturnDeviceIds] = useState<string[]>([]);
+  const [returnType, setReturnType] = useState<'simple' | 'defect'>('simple');
+  const [returnNotes, setReturnNotes] = useState('');
+  const [processingReturn, setProcessingReturn] = useState(false);
+
+  // ── Exchange / Swap States (Sell Modal) ─────────────────────────────
+  const [exchangeReturnedDeviceId, setExchangeReturnedDeviceId] = useState('');
+  const [exchangeSearchQuery, setExchangeSearchQuery] = useState('');
+  const [exchangeMode, setExchangeMode] = useState<'even' | 'upgrade' | 'downgrade'>('even');
+  const [exchangeCashDiff, setExchangeCashDiff] = useState<number | string>(0);
+  const [exchangeMemo, setExchangeMemo] = useState('');
+
   const calculatedFinalPrice = useMemo(() => {
     const dep = Number(depositAmount) || 0;
     if (saleType === 'transfer' || saleType === 'cash') {
@@ -176,10 +213,22 @@ export default function StaffDashboard() {
     } else if (saleType === 'installment') {
       return dep + (Number(instMonths) || 0) * (Number(instMonthlyPayment) || 0);
     } else if (saleType === 'exchange') {
+      if (exchangeReturnedDeviceId) {
+        const returnedDev = devices.find(d => d.id === exchangeReturnedDeviceId);
+        const basePrice = returnedDev?.selling_price || 0;
+        const diff = Number(exchangeCashDiff) || 0;
+        if (exchangeMode === 'upgrade') {
+          return basePrice + diff;
+        } else if (exchangeMode === 'downgrade') {
+          return basePrice - diff;
+        } else {
+          return basePrice;
+        }
+      }
       return dep + (Number(tradeInValue) || 0);
     }
     return 0;
-  }, [saleType, depositAmount, transferAmount, codAmountInput, instMonths, instMonthlyPayment, tradeInValue]);
+  }, [saleType, depositAmount, transferAmount, codAmountInput, instMonths, instMonthlyPayment, tradeInValue, exchangeReturnedDeviceId, exchangeMode, exchangeCashDiff, devices]);
 
   useEffect(() => {
     if (!sellingDevice || saleType !== 'installment') return;
@@ -211,7 +260,13 @@ export default function StaffDashboard() {
     } else if (type === 'installment') {
       return `할부 (보증금 ฿${formatPrice(dep)} / ${item.installment_months}개월 x ฿${formatPrice(item.installment_amount || 0)})`;
     } else if (type === 'exchange') {
-      return `기기 맞교환 (추가 수금 ฿${formatPrice(dep)})`;
+      if (dep > 0) {
+        return `기기 교환 (추가 수금 ฿${formatPrice(dep)})`;
+      } else if (dep < 0) {
+        return `기기 교환 (차액 환불 ฿${formatPrice(Math.abs(dep))})`;
+      } else {
+        return `기기 맞교환`;
+      }
     }
     return '-';
   }, []);
@@ -1153,6 +1208,17 @@ export default function StaffDashboard() {
     });
     return sortDevices(list);
   }, [devices, soldSearchQuery, categoryFilter, soldSelectedDays, soldSelectedMonth, matchesCategory, sortDevices, normalizeModelName, getYearMonth]);
+
+  const filteredExchangeSoldDevices = useMemo(() => {
+    const query = exchangeSearchQuery.trim().toLowerCase();
+    const list = devices.filter(d => !d.deleted_at && d.is_sold);
+    if (!query) return list.slice(0, 10);
+    return list.filter(d => 
+      (d.model_name && d.model_name.toLowerCase().includes(query)) ||
+      (d.imei && d.imei.includes(query)) ||
+      (d.sticker && d.sticker.toLowerCase().includes(query))
+    );
+  }, [devices, exchangeSearchQuery]);
 
   const filteredTrashDevices = useMemo(() => {
     const list = devices.filter(d => {
@@ -2165,6 +2231,11 @@ export default function StaffDashboard() {
     setInstNumber('');
     setTradeInDeviceName('');
     setTradeInValue(0);
+    setExchangeReturnedDeviceId('');
+    setExchangeSearchQuery('');
+    setExchangeMode('even');
+    setExchangeCashDiff(0);
+    setExchangeMemo('');
   };
 
   const formatDateToDot = (dateStr: string): string => {
@@ -2213,9 +2284,53 @@ export default function StaffDashboard() {
       }
  
       let finalNotes = saleNotes.trim();
+      let cashDiffValue = Number(depositAmount) || 0;
+
       if (saleType === 'exchange') {
-        const tradeInPart = `[기기 보상: ${tradeInDeviceName.trim() || '미기입'} (฿${(Number(tradeInValue) || 0).toLocaleString()})]`;
-        finalNotes = finalNotes ? `${finalNotes} ${tradeInPart}` : tradeInPart;
+        if (!exchangeReturnedDeviceId) {
+          showToast('반납 기기를 선택해 주세요. (Please select a returned device.)', 'error');
+          return;
+        }
+        if (!exchangeMemo.trim()) {
+          showToast('교환 사유를 입력해 주세요. (Exchange reason is required.)', 'error');
+          return;
+        }
+
+        const returnedDev = devices.find(d => d.id === exchangeReturnedDeviceId);
+        if (!returnedDev) throw new Error('Return device not found');
+
+        const diff = Number(exchangeCashDiff) || 0;
+        if (exchangeMode === 'upgrade') {
+          cashDiffValue = diff;
+        } else if (exchangeMode === 'downgrade') {
+          cashDiffValue = -diff;
+        } else {
+          cashDiffValue = 0;
+        }
+
+        // 1. Update the returned device (cancel sale, restore to stock, add note)
+        const returnedDevNotes = returnedDev.notes || '';
+        const returnNote = `[교환반품] (사유: ${exchangeMemo.trim()}, 대체기기 IMEI: ${sellingDevice.imei})`;
+        const finalReturnedNotes = returnedDevNotes ? `${returnedDevNotes} | ${returnNote}` : returnNote;
+
+        const { error: returnError } = await supabase
+          .from('sheets_inventory')
+          .update({
+            is_sold: false,
+            sale_date: null,
+            seller_name: null,
+            is_reserved: false,
+            reserved_by: null,
+            reserved_date: null,
+            notes: finalReturnedNotes
+          })
+          .eq('id', exchangeReturnedDeviceId);
+
+        if (returnError) throw returnError;
+
+        // 2. Prep notes for the new device
+        const newDevNote = `[기기교환 반납IMEI: ${returnedDev.imei}] ${exchangeMemo.trim()}`;
+        finalNotes = finalNotes ? `${finalNotes} | ${newDevNote}` : newDevNote;
       }
  
       const formattedSaleDate = formatDateToDot(saleDate);
@@ -2246,7 +2361,7 @@ export default function StaffDashboard() {
           notes: finalNotes || null,
           selling_price: calculatedFinalPrice,
           sale_type: saleType,
-          deposit_amount: Number(depositAmount) || 0,
+          deposit_amount: saleType === 'exchange' ? cashDiffValue : (Number(depositAmount) || 0),
           cod_amount: saleType === 'cod' ? (Number(codAmountInput) || 0) : 0,
           installment_months: saleType === 'installment' ? (Number(instMonths) || 0) : 0,
           installment_amount: saleType === 'installment' ? (Number(instMonthlyPayment) || 0) : 0,
@@ -2290,7 +2405,166 @@ export default function StaffDashboard() {
     }
   };
 
+  // ── Bulk / Wholesale Sale Handlers ──────────────────────────────────
+  const handleOpenBulkSaleModal = () => {
+    if (selectedIds.length === 0) return;
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    setBulkSaleDate(`${yyyy}-${mm}-${dd}`);
+    setBulkSellerName('');
+    setBulkBuyerName('');
+    setBulkBuyerPhone('');
+    setBulkBuyerAddress('');
+    setBulkBuyerAddressCustom('');
+    setBulkTaxIncluded(false);
+    // Map selectedIds to BulkSaleItems with auto-loaded prices
+    const items = selectedIds.map(id => {
+      const dev = devices.find(d => d.id === id);
+      return {
+        id,
+        imei: dev?.imei || '',
+        model_name: dev?.model_name || '',
+        price: dev?.selling_price || 0,
+      };
+    });
+    setBulkSaleItems(items);
+    setIsBulkSaleModalOpen(true);
+  };
+
+  const handleProcessBulkSale = async () => {
+    if (!bulkSellerName.trim()) {
+      showToast('กรุณาเลือกชื่อพนักงานขาย (Seller name required)', 'error');
+      return;
+    }
+    setProcessingBulkSale(true);
+    try {
+      const formattedDate = formatDateToDot(bulkSaleDate);
+      for (const item of bulkSaleItems) {
+        const { error } = await supabase
+          .from('sheets_inventory')
+          .update({
+            is_sold: true,
+            is_reserved: false,
+            reserved_by: null,
+            reserved_date: null,
+            sale_date: formattedDate,
+            seller_name: bulkSellerName.trim(),
+            notes: '[대량판매] (Wholesale Sale)',
+            selling_price: item.price,
+            sale_type: 'transfer',
+            deposit_amount: 0,
+            cod_amount: 0,
+            installment_months: 0,
+            installment_amount: 0,
+            payment_status: 'paid',
+            customer_name: bulkBuyerName.trim() || null,
+            customer_phone: null,
+            installment_number: null,
+            is_approved: false,
+            installment_history: []
+          })
+          .eq('id', item.id);
+        if (error) throw error;
+      }
+      showToast(`✅ ${bulkSaleItems.length}대 대량 판매 완료 (Wholesale sale recorded)`, 'success');
+      setIsBulkSaleModalOpen(false);
+      setSelectedIds([]);
+      loadLedgerData();
+    } catch (err: any) {
+      showToast('대량 판매 처리 실패: ' + err.message, 'error');
+    } finally {
+      setProcessingBulkSale(false);
+    }
+  };
+
+  const handlePrintBulkReceipt = () => {
+    const printEl = document.getElementById('bulk-receipt-printable');
+    if (!printEl) return;
+    const printWindow = window.open('', '_blank', 'width=800,height=1000');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8"/>
+          <title>ใบเสร็จรับเงิน</title>
+          <style>
+            @page { size: A4; margin: 20mm 15mm; }
+            body { font-family: 'Sarabun', 'Tahoma', Arial, sans-serif; font-size: 13px; color: #111; margin: 0; padding: 0; }
+            .receipt { position: relative; width: 100%; }
+            .header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+            .company-info { font-size: 13px; line-height: 1.7; }
+            .company-info .bolder { font-weight: 800; font-size: 14px; }
+            .logo-img { width: 90px; height: 90px; object-fit: contain; border-radius: 8px; }
+            .receipt-title { text-align: center; font-size: 22px; font-weight: 900; margin: 12px 0 18px; letter-spacing: 1px; }
+            .date-row { text-align: right; font-size: 14px; margin-bottom: 10px; }
+            .buyer-row { font-size: 14px; margin-bottom: 18px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
+            th { background: #f0f0f0; border: 1px solid #bbb; padding: 8px 6px; text-align: center; font-size: 12.5px; font-weight: 700; }
+            td { border: 1px solid #bbb; padding: 7px 6px; text-align: center; font-size: 12.5px; }
+            td.left { text-align: left; }
+            td.right { text-align: right; }
+            .total-row td { font-weight: 800; background: #f9f9f9; }
+            .vat-section td { font-size: 12px; }
+            .sig-row { display: flex; justify-content: space-between; margin-top: 48px; }
+            .sig-box { width: 44%; font-size: 13px; line-height: 2; }
+            .stamp-wrap { position: relative; display: flex; justify-content: flex-end; margin-top: -60px; pointer-events: none; }
+            .stamp-wrap img { width: 180px; opacity: 0.82; }
+            .empty-rows td { color: #ccc; }
+          </style>
+        </head>
+        <body>
+          ${printEl.innerHTML}
+          <script>window.onload=function(){window.print();window.close();}<\/script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const handlePrintAndSellBulk = async () => {
+    handlePrintBulkReceipt();
+    await handleProcessBulkSale();
+  };
+
+  const handleOpenReceiptModal = () => {
+    if (selectedIds.length === 0) return;
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    setReceiptSaleDate(`${yyyy}-${mm}-${dd}`);
+    setReceiptBuyerName('');
+    setReceiptBuyerPhone('');
+    setReceiptBuyerAddress('');
+    setReceiptBuyerAddressCustom('');
+    setReceiptTaxIncluded(false);
+    const items = selectedIds.map(id => {
+      const dev = devices.find(d => d.id === id);
+      return {
+        id,
+        imei: dev?.imei || '',
+        model_name: dev?.model_name || '',
+        price: dev?.selling_price || 0,
+      };
+    }).filter(i => i.imei);
+    setReceiptItems(items);
+    setIsReceiptModalOpen(true);
+  };
+
+  const handlePrintReceiptOnly = () => {
+    const printEl = document.getElementById('receipt-only-printable');
+    if (!printEl) return;
+    const printWindow = window.open('', '_blank', 'width=800,height=1000');
+    if (!printWindow) return;
+    printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>ใบเสร็จรับเงิน</title><style>@page{size:A4;margin:20mm 15mm;}body{font-family:'Sarabun','Tahoma',Arial,sans-serif;font-size:13px;color:#111;margin:0;padding:0;}.receipt{position:relative;width:100%;}.header-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}.company-info{font-size:13px;line-height:1.7;}.company-info .bolder{font-weight:800;font-size:14px;}.logo-img{width:90px;height:90px;object-fit:contain;border-radius:8px;}.receipt-title{text-align:center;font-size:22px;font-weight:900;margin:12px 0 18px;letter-spacing:1px;}.date-row{text-align:right;font-size:14px;margin-bottom:10px;}.buyer-row{font-size:14px;margin-bottom:6px;}.buyer-detail{font-size:12px;margin-bottom:16px;color:#333;}table{width:100%;border-collapse:collapse;}th{background:#f0f0f0;border:1px solid #bbb;padding:8px 6px;text-align:center;font-size:12.5px;font-weight:700;}td{border:1px solid #bbb;padding:7px 6px;text-align:center;font-size:12.5px;}td.left{text-align:left;}td.right{text-align:right;}.total-row td{font-weight:800;background:#f9f9f9;}.sig-row{display:flex;justify-content:space-between;margin-top:48px;}.sig-box{width:44%;font-size:13px;line-height:2;}.stamp-wrap{display:flex;justify-content:flex-end;margin-top:-60px;pointer-events:none;}.stamp-wrap img{width:180px;opacity:0.82;}</style></head><body>${printEl.innerHTML}<script>window.onload=function(){window.print();window.close();}<\/script></body></html>`);
+    printWindow.document.close();
+  };
+
   const handleToggleInstallmentStatus = async (deviceId: string, sequence: number) => {
+
     const device = devices.find(d => d.id === deviceId);
     if (!device) return;
     
@@ -2418,55 +2692,59 @@ export default function StaffDashboard() {
   };
 
   // Re-verify back to inventory stock
-  const handleRestoreToStock = async (deviceId: string) => {
-    if (!confirm(t('toast_confirm_restore_selected', { count: 1 }))) return;
+  const handleOpenReturnModal = (ids: string[]) => {
+    setReturnDeviceIds(ids);
+    setReturnType('simple');
+    setReturnNotes('');
+    setIsReturnModalOpen(true);
+  };
+
+  const handleConfirmRestore = async () => {
+    if (returnDeviceIds.length === 0) return;
+    setProcessingReturn(true);
     try {
-      const { error } = await supabase
-        .from('sheets_inventory')
-        .update({
-          is_sold: false,
-          sale_date: null,
-          seller_name: null,
-          is_reserved: false,
-          reserved_by: null,
-          reserved_date: null
-        })
-        .eq('id', deviceId);
+      for (const deviceId of returnDeviceIds) {
+        const dev = devices.find(d => d.id === deviceId);
+        let finalNotes = dev?.notes || '';
+        if (returnType === 'defect') {
+          const noteText = `[하자반품] ${returnNotes.trim()}`;
+          finalNotes = finalNotes ? `${finalNotes} | ${noteText}` : noteText;
+        }
 
-      if (error) throw error;
+        const { error } = await supabase
+          .from('sheets_inventory')
+          .update({
+            is_sold: false,
+            sale_date: null,
+            seller_name: null,
+            is_reserved: false,
+            reserved_by: null,
+            reserved_date: null,
+            notes: finalNotes || null
+          })
+          .eq('id', deviceId);
 
-      showToast(t('toast_active_stock_success'), 'success');
+        if (error) throw error;
+      }
+
+      showToast(t('toast_restore_selected_success', { count: returnDeviceIds.length }) || '재고 복구 완료', 'success');
+      setSelectedIds([]);
+      setIsReturnModalOpen(false);
       loadLedgerData();
     } catch (err: any) {
-      showToast(t('toast_active_stock_failed') + err.message, 'error');
+      showToast('재고 복구 실패: ' + err.message, 'error');
+    } finally {
+      setProcessingReturn(false);
     }
   };
 
-  // Bulk Re-verify back to inventory stock
-  const handleBulkRestoreToStock = async () => {
+  const handleRestoreToStock = (deviceId: string) => {
+    handleOpenReturnModal([deviceId]);
+  };
+
+  const handleBulkRestoreToStock = () => {
     if (selectedIds.length === 0) return;
-    if (!confirm(t('toast_confirm_restore_selected', { count: selectedIds.length }))) return;
-    try {
-      const { error } = await supabase
-        .from('sheets_inventory')
-        .update({
-          is_sold: false,
-          sale_date: null,
-          seller_name: null,
-          is_reserved: false,
-          reserved_by: null,
-          reserved_date: null
-        })
-        .in('id', selectedIds);
-
-      if (error) throw error;
-
-      showToast(t('toast_restore_selected_success', { count: selectedIds.length }), 'success');
-      setSelectedIds([]);
-      loadLedgerData();
-    } catch (err: any) {
-      showToast(t('toast_active_stock_failed') + err.message, 'error');
-    }
+    handleOpenReturnModal(selectedIds);
   };
 
   // Bulk Approve Sales
@@ -3355,12 +3633,20 @@ export default function StaffDashboard() {
 
               <div style={{ display: 'flex', gap: '6px' }}>
                 {selectedIds.length > 0 && (
-                  <button 
-                    style={{ margin: 0, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: 'var(--red)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                    onClick={handleBulkDelete}
-                  >
-                    🗑️ {t('staff_btn_delete_selected')} ({selectedIds.length})
-                  </button>
+                  <>
+                    <button
+                      style={{ margin: 0, background: 'linear-gradient(135deg, #7c3aed, #5b21b6)', border: 'none', color: '#fff', padding: '6px 14px', fontSize: '11px', borderRadius: '6px', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(124,58,237,0.35)' }}
+                      onClick={handleOpenBulkSaleModal}
+                    >
+                      📦 대량 판매 ({selectedIds.length})
+                    </button>
+                    <button
+                      style={{ margin: 0, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: 'var(--red)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      onClick={handleBulkDelete}
+                    >
+                      🗑️ {t('staff_btn_delete_selected')} ({selectedIds.length})
+                    </button>
+                  </>
                 )}
                 <button 
                   style={{ margin: 0, background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.25)', color: 'var(--purple-l)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
@@ -4022,6 +4308,12 @@ export default function StaffDashboard() {
                       onClick={handleBulkApprove}
                     >
                       ✅ 일괄 승인 ({selectedIds.length})
+                    </button>
+                    <button
+                      style={{ margin: 0, background: 'linear-gradient(135deg, #0ea5e9, #0369a1)', border: 'none', color: '#fff', padding: '6px 14px', fontSize: '11px', borderRadius: '6px', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(14,165,233,0.35)' }}
+                      onClick={handleOpenReceiptModal}
+                    >
+                      🖨️ 영수증 출력 ({selectedIds.length})
                     </button>
                     <button 
                       style={{ margin: 0, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: 'var(--red)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
@@ -6688,42 +6980,155 @@ export default function StaffDashboard() {
 
               {saleType === 'exchange' && (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label">보상 기기명 (Trade-in Device)</label>
-                      <input
-                        type="text"
-                        placeholder="예: iPhone 11 64G"
-                        value={tradeInDeviceName}
-                        onChange={(e) => setTradeInDeviceName(e.target.value)}
-                        className="form-input"
-                        style={{ margin: 0 }}
-                      />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label">보상 기기 평가 금액 (Trade-in Value)</label>
-                      <input
-                        type="number"
-                        placeholder="5000"
-                        value={tradeInValue}
-                        onChange={(e) => setTradeInValue(e.target.value === '' ? '' : Number(e.target.value))}
-                        className="form-input"
-                        style={{ margin: 0 }}
-                      />
-                    </div>
+                  {/* Search and Select Returned Device */}
+                  <div className="form-group" style={{ marginBottom: '12px' }}>
+                    <label className="form-label">🔄 반납 기기 선택 (Select Returned Device) *</label>
+                    <input
+                      type="text"
+                      placeholder="기기명, IMEI, 스티커 번호로 검색..."
+                      value={exchangeSearchQuery}
+                      onChange={(e) => setExchangeSearchQuery(e.target.value)}
+                      className="form-input"
+                      style={{ margin: 0, marginBottom: '6px' }}
+                    />
+                    
+                    {/* List of matching sold devices */}
+                    {!exchangeReturnedDeviceId ? (
+                      <div style={{ maxHeight: '140px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--bg2)' }}>
+                        {filteredExchangeSoldDevices.length === 0 ? (
+                          <div style={{ padding: '10px', fontSize: '12px', color: 'var(--t3)', textAlign: 'center' }}>검색 결과가 없습니다.</div>
+                        ) : (
+                          filteredExchangeSoldDevices.map(d => (
+                            <div
+                              key={d.id}
+                              onClick={() => {
+                                setExchangeReturnedDeviceId(d.id);
+                                setExchangeSearchQuery('');
+                              }}
+                              style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontSize: '12px', transition: 'background 0.2s' }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg3)'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <span style={{ fontWeight: 700 }}>{d.model_name}</span>
+                              <span style={{ color: 'var(--t2)', fontSize: '11px', marginLeft: '6px' }}>({d.sticker || '스티커 없음'})</span>
+                              <br />
+                              <span style={{ fontFamily: 'monospace', fontSize: '10.5px', color: 'var(--t3)' }}>IMEI: {d.imei}</span>
+                              <span style={{ float: 'right', fontWeight: 800, color: 'var(--green)' }}>฿{(d.selling_price || 0).toLocaleString()}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    ) : (() => {
+                      const selectedReturnDev = devices.find(d => d.id === exchangeReturnedDeviceId);
+                      return (
+                        <div style={{ padding: '12px', background: 'rgba(124, 58, 237, 0.08)', border: '1px solid rgba(124, 58, 237, 0.2)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ fontSize: '12.5px' }}>
+                            <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--purple-l)', fontWeight: 700, display: 'block' }}>선택된 반납 기기</span>
+                            <span style={{ fontWeight: 700 }}>{selectedReturnDev?.model_name}</span>
+                            <span style={{ fontSize: '11px', color: 'var(--t2)', marginLeft: '6px' }}>({selectedReturnDev?.sticker || '스티커 없음'})</span>
+                            <span style={{ display: 'block', fontSize: '11px', fontFamily: 'monospace', color: 'var(--t3)', marginTop: '2px' }}>IMEI: {selectedReturnDev?.imei}</span>
+                            <span style={{ display: 'block', fontSize: '12px', color: 'var(--green)', fontWeight: 700, marginTop: '2px' }}>기존 판매가: ฿{(selectedReturnDev?.selling_price || 0).toLocaleString()}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setExchangeReturnedDeviceId('')}
+                            style={{ background: 'none', border: 'none', color: 'var(--red)', cursor: 'pointer', fontSize: '13px', fontWeight: 700 }}
+                          >
+                            변경
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px', marginBottom: '12px' }}>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label">추가 수금액 (Additional Cash/Transfer)</label>
-                      <input
-                        type="number"
-                        value={depositAmount}
-                        onChange={(e) => setDepositAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                        className="form-input"
-                        style={{ margin: 0 }}
-                      />
-                    </div>
-                  </div>
+
+                  {exchangeReturnedDeviceId && (
+                    <>
+                      {/* Settlement Mode Selection */}
+                      <div className="form-group" style={{ marginBottom: '12px' }}>
+                        <label className="form-label">💰 교환 정산 방식 (Settlement Mode)</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => { setExchangeMode('even'); setExchangeCashDiff(0); }}
+                            style={{
+                              padding: '8px 10px',
+                              borderRadius: '8px',
+                              border: exchangeMode === 'even' ? '2px solid var(--purple-l)' : '1px solid var(--border)',
+                              background: exchangeMode === 'even' ? 'rgba(124, 58, 237, 0.08)' : '#fff',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              fontSize: '11.5px',
+                              color: exchangeMode === 'even' ? 'var(--purple-l)' : 'var(--t2)'
+                            }}
+                          >
+                            단순 맞교환
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setExchangeMode('upgrade'); setExchangeCashDiff(0); }}
+                            style={{
+                              padding: '8px 10px',
+                              borderRadius: '8px',
+                              border: exchangeMode === 'upgrade' ? '2px solid var(--green)' : '1px solid var(--border)',
+                              background: exchangeMode === 'upgrade' ? 'rgba(16, 185, 129, 0.08)' : '#fff',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              fontSize: '11.5px',
+                              color: exchangeMode === 'upgrade' ? 'var(--green)' : 'var(--t2)'
+                            }}
+                          >
+                            추가 수금 (+)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setExchangeMode('downgrade'); setExchangeCashDiff(0); }}
+                            style={{
+                              padding: '8px 10px',
+                              borderRadius: '8px',
+                              border: exchangeMode === 'downgrade' ? '2px solid var(--red)' : '1px solid var(--border)',
+                              background: exchangeMode === 'downgrade' ? 'rgba(239, 68, 68, 0.08)' : '#fff',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              fontSize: '11.5px',
+                              color: exchangeMode === 'downgrade' ? 'var(--red)' : 'var(--t2)'
+                            }}
+                          >
+                            차액 환불 (-)
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Cash Difference Input */}
+                      {exchangeMode !== 'even' && (
+                        <div className="form-group" style={{ marginBottom: '12px' }}>
+                          <label className="form-label">
+                            {exchangeMode === 'upgrade' ? '추가 수금액 (Amount Received) *' : '환불 금액 (Amount Refunded) *'}
+                          </label>
+                          <input
+                            type="number"
+                            value={exchangeCashDiff}
+                            onChange={(e) => setExchangeCashDiff(e.target.value === '' ? '' : Number(e.target.value))}
+                            className="form-input"
+                            placeholder="금액 입력..."
+                            style={{ margin: 0 }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Exchange Reason Memo */}
+                      <div className="form-group" style={{ marginBottom: '12px' }}>
+                        <label className="form-label">📝 교환 사유 / 반품 메모 (Exchange Reason) *</label>
+                        <input
+                          type="text"
+                          value={exchangeMemo}
+                          onChange={(e) => setExchangeMemo(e.target.value)}
+                          className="form-input"
+                          placeholder="예: 화면 잔상으로 인한 교환, 단순 변심 교환 등..."
+                          style={{ margin: 0 }}
+                        />
+                      </div>
+                    </>
+                  )}
                 </>
               )}
 
@@ -6836,6 +7241,571 @@ export default function StaffDashboard() {
         <div className="toast show" style={{ zIndex: 9999 }}>
           <div className={`toast-content ${toast.type}`}>
             {toast.message}
+          </div>
+        </div>
+      )}
+      {/* ───────────── BULK SALE MODAL ───────────── */}
+      {isBulkSaleModalOpen && (() => {
+        const subtotal = bulkSaleItems.reduce((s, i) => s + i.price, 0);
+        const vatAmt = bulkTaxIncluded ? Math.round(subtotal * 0.07) : 0;
+        const grandTotal = subtotal + vatAmt;
+        const todayForReceipt = (() => {
+          const d = new Date(bulkSaleDate || new Date().toISOString().slice(0,10));
+          return { dd: String(d.getDate()).padStart(2,'0'), mm: String(d.getMonth()+1).padStart(2,'0'), yyyy: d.getFullYear() };
+        })();
+
+        return (
+          <div className="modal-bg open" style={{ zIndex: 3100 }}>
+            <div className="modal" style={{ maxWidth: '680px', width: '95vw', maxHeight: '90vh', overflowY: 'auto', borderRadius: '20px' }}>
+              {/* Header */}
+              <div className="modal-hd" style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '17px', fontWeight: 900 }}>📦 ขายส่ง / 대량 판매 ({bulkSaleItems.length}대)</span>
+                <button type="button" className="modal-close" onClick={() => setIsBulkSaleModalOpen(false)}>✕</button>
+              </div>
+
+              <div className="modal-body" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                {/* Top 2-col info */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontSize: '12px', fontWeight: 700 }}>👤 พนักงานขาย (판매자) *</label>
+                    <select value={bulkSellerName} onChange={e => setBulkSellerName(e.target.value)} className="form-input" style={{ margin: 0 }}>
+                      <option value="">-- เลือกพนักงาน --</option>
+                      {staffMembers.map(m => (<option key={m.id} value={m.name}>{m.name}</option>))}
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontSize: '12px', fontWeight: 700 }}>🏪 ชื่อผู้ซื้อ / 구매처</label>
+                    <input type="text" value={bulkBuyerName} onChange={e => setBulkBuyerName(e.target.value)} className="form-input" placeholder="ชื่อลูกค้าหรือชื่อร้าน..." style={{ margin: 0 }} />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontSize: '12px', fontWeight: 700 }}>📞 เบอร์โทร / 연락처</label>
+                    <input type="text" value={bulkBuyerPhone} onChange={e => setBulkBuyerPhone(e.target.value)} className="form-input" placeholder="0XX-XXX-XXXX" style={{ margin: 0 }} />
+                  </div>
+                  <div className="form-group" style={{ margin: 0, gridColumn: '1 / -1' }}>
+                    <label className="form-label" style={{ fontSize: '12px', fontWeight: 700 }}>📍 ที่อยู่ / 주소 (จังหวัด / 주 선택)</label>
+                    <select
+                      value={bulkBuyerAddress}
+                      onChange={e => setBulkBuyerAddress(e.target.value)}
+                      className="form-input"
+                      style={{ margin: 0, marginBottom: '6px' }}
+                    >
+                      <option value="">-- เลือกจังหวัด / 주 선택 --</option>
+                      <option value="กรุงเทพมหานคร">กรุงเทพมหานคร (방콕)</option>
+                      <option value="เชียงใหม่">เชียงใหม่ (치앙마이)</option>
+                      <option value="ขอนแก่น">ขอนแก่น (콘깬)</option>
+                      <option value="นครราชสีมา">นครราชสีมา (나คงราชสีมา)</option>
+                      <option value="อุดรธานี">อุดรธานี (우돈타니)</option>
+                      <option value="ภูเก็ต">ภูเก็ต (ภูเก็ต)</option>
+                      <option value="สงขลา">สงขลา (สงขลา)</option>
+                      <option value="ชลบุรี">ชลบุรี (ชลบุรี)</option>
+                      <option value="นนทบุรี">นนทบุรี (นนทบุรี)</option>
+                      <option value="ปทุมธานี">ปทุมธานี (ปทุมธานี)</option>
+                      <option value="สมุทรปราการ">สมุทรปราการ (สมุทรปราการ)</option>
+                      <option value="ระยอง">ระยอง (ระยอง)</option>
+                      <option value="__custom__">✏️ กรอกเอง (직접 입력)</option>
+                    </select>
+                    <input
+                      type="text"
+                      value={bulkBuyerAddressCustom}
+                      onChange={e => setBulkBuyerAddressCustom(e.target.value)}
+                      className="form-input"
+                      placeholder={
+                        (bulkBuyerAddress && bulkBuyerAddress !== '__custom__')
+                          ? 'รายละเอียดที่อยู่ (บ้านเลขที่, ถนน, ตำบล, อำเภอ)... / 상세 주소 입력'
+                          : 'กรอกที่อยู่ทั้งหมด... / 전체 주소 직접 입력'
+                      }
+                      style={{ margin: 0 }}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontSize: '12px', fontWeight: 700 }}>📅 วันที่ขาย (판매일)</label>
+                    <input type="date" value={bulkSaleDate} onChange={e => setBulkSaleDate(e.target.value)} className="form-input" style={{ margin: 0 }} />
+                  </div>
+                  <div className="form-group" style={{ margin: 0, display: 'flex', alignItems: 'center' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, marginTop: '22px' }}>
+                      <input type="checkbox" checked={bulkTaxIncluded} onChange={e => setBulkTaxIncluded(e.target.checked)} style={{ width: '18px', height: '18px', cursor: 'pointer' }} />
+                      <span>🧾 ใบกำกับภาษี 7% VAT<br/><span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--t2)' }}>세금계산서 발행 (7% 부가세)</span></span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Device list table */}
+                <div>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--t2)', marginBottom: '8px' }}>รายการสินค้า (기기 목록)</div>
+                  <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
+                      <thead>
+                        <tr style={{ background: '#f8fafc' }}>
+                          <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700, borderBottom: '1px solid var(--border)', width: '38%' }}>รุ่น / 모델</th>
+                          <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700, borderBottom: '1px solid var(--border)', width: '34%' }}>IMEI</th>
+                          <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, borderBottom: '1px solid var(--border)', width: '28%' }}>ราคา / 금액</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bulkSaleItems.map((item, idx) => (
+                          <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                            <td style={{ padding: '7px 10px', fontWeight: 700 }}>{item.model_name}</td>
+                            <td style={{ padding: '7px 10px', fontFamily: 'monospace', fontSize: '11.5px', color: 'var(--t2)' }}>{item.imei}</td>
+                            <td style={{ padding: '7px 10px', textAlign: 'right' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
+                                <span style={{ color: 'var(--t3)', fontSize: '11px' }}>฿</span>
+                                <input
+                                  type="number"
+                                  value={item.price}
+                                  onChange={e => {
+                                    const v = Number(e.target.value) || 0;
+                                    setBulkSaleItems(prev => prev.map((p, i) => i === idx ? { ...p, price: v } : p));
+                                  }}
+                                  style={{ width: '90px', textAlign: 'right', border: '1px solid var(--border)', borderRadius: '5px', padding: '3px 6px', fontSize: '12px', fontWeight: 700 }}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Totals */}
+                <div style={{ background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--t2)' }}>
+                    <span>ยอดรวม (소계)</span>
+                    <span style={{ fontWeight: 700 }}>฿{subtotal.toLocaleString()}</span>
+                  </div>
+                  {bulkTaxIncluded && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#d97706' }}>
+                      <span>VAT 7%</span>
+                      <span style={{ fontWeight: 700 }}>+฿{vatAmt.toLocaleString()}</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 900, color: 'var(--purple-l)', borderTop: '1px solid var(--border)', paddingTop: '8px', marginTop: '2px' }}>
+                    <span>ยอดรวมทั้งหมด (합계)</span>
+                    <span>฿{grandTotal.toLocaleString()}</span>
+                  </div>
+                </div>
+
+                {/* Buttons */}
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                  <button type="button" onClick={() => setIsBulkSaleModalOpen(false)} style={{ padding: '11px 20px', borderRadius: '8px', border: '1px solid var(--border)', background: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '13px' }}>
+                    ยกเลิก
+                  </button>
+                  <button type="button" onClick={handleProcessBulkSale} disabled={processingBulkSale || !bulkSellerName}
+                    style={{ padding: '11px 20px', borderRadius: '8px', border: 'none', background: '#f0fdf4', color: '#16a34a', fontWeight: 800, cursor: processingBulkSale ? 'not-allowed' : 'pointer', fontSize: '13px', opacity: !bulkSellerName ? 0.5 : 1 }}>
+                    {processingBulkSale ? '처리중...' : '✅ 출력없이 판매완료'}
+                  </button>
+                  <button type="button" onClick={handlePrintAndSellBulk} disabled={processingBulkSale || !bulkSellerName}
+                    style={{ padding: '11px 22px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #7c3aed, #5b21b6)', color: '#fff', fontWeight: 800, cursor: processingBulkSale ? 'not-allowed' : 'pointer', fontSize: '13px', boxShadow: '0 2px 10px rgba(124,58,237,0.4)', opacity: !bulkSellerName ? 0.5 : 1 }}>
+                    🖨️ 영수증 출력 후 판매완료
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Hidden Receipt printable content ── */}
+            <div id="bulk-receipt-printable" style={{ display: 'none' }}>
+              <div className="receipt">
+                <div className="header-row">
+                  <div className="company-info">
+                    <div className="bolder">บริษัท โฟน สวิทช์ฮับ จำกัด (0105568203279)</div>
+                    <div>(ร้าน ไอริช โมบาย)</div>
+                    <div>IRIS Mobile Thailand</div>
+                  </div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img className="logo-img" src="/iris_logo_official.png" alt="IRIS MOBILE" />
+                </div>
+                <div className="receipt-title">ใบเสร็จรับเงิน</div>
+                <div className="date-row">วันที่&nbsp;&nbsp;{todayForReceipt.dd}&nbsp;/&nbsp;{todayForReceipt.mm}&nbsp;/&nbsp;{todayForReceipt.yyyy}</div>
+                <div className="buyer-row">ชื่อผู้ซื้อ&nbsp;&nbsp;{bulkBuyerName || '........................................................................'}</div>
+                {(bulkBuyerPhone || bulkBuyerAddress) && (
+                  <div className="buyer-row" style={{ fontSize: '12px', marginBottom: '6px' }}>
+                    {bulkBuyerPhone && <span>โทร: {bulkBuyerPhone}&nbsp;&nbsp;&nbsp;</span>}
+                    {(bulkBuyerAddress || bulkBuyerAddressCustom) && <span>ที่อยู่: {bulkBuyerAddress === '__custom__' ? bulkBuyerAddressCustom : bulkBuyerAddress}</span>}
+                  </div>
+                )}
+                <table>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '20%' }}>รหัส (IMEI)</th>
+                      <th style={{ width: '35%' }}>รายการสินค้า</th>
+                      <th style={{ width: '10%' }}>จำนวนหน่วย</th>
+                      <th style={{ width: '20%' }}>ราคาต่อหน่วย</th>
+                      <th style={{ width: '15%' }}>หมายเหตุ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bulkSaleItems.map(item => (
+                      <tr key={item.id}>
+                        <td style={{ fontSize: '10px', fontFamily: 'monospace' }}>{item.imei}</td>
+                        <td className="left">{item.model_name}</td>
+                        <td>1</td>
+                        <td className="right">฿{item.price.toLocaleString()}</td>
+                        <td></td>
+                      </tr>
+                    ))}
+                    {Array.from({ length: Math.max(0, 10 - bulkSaleItems.length) }).map((_, i) => (
+                      <tr key={`ep-${i}`} className="empty-rows"><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>
+                    ))}
+                    {bulkTaxIncluded && (
+                      <>
+                        <tr className="vat-section total-row">
+                          <td colSpan={3} style={{ border: 'none', background: 'transparent' }}></td>
+                          <td style={{ textAlign: 'right', fontWeight: 700 }}>ราคาก่อน VAT</td>
+                          <td className="right">฿{subtotal.toLocaleString()}</td>
+                        </tr>
+                        <tr className="vat-section total-row">
+                          <td colSpan={3} style={{ border: 'none', background: 'transparent' }}></td>
+                          <td style={{ textAlign: 'right', fontWeight: 700 }}>ภาษีมูลค่าเพิ่ม 7%</td>
+                          <td className="right">฿{vatAmt.toLocaleString()}</td>
+                        </tr>
+                      </>
+                    )}
+                    <tr className="total-row">
+                      <td colSpan={3} style={{ border: 'none', background: 'transparent' }}></td>
+                      <td style={{ textAlign: 'right', fontWeight: 900 }}>จำนวนเงินรวมทั้งเงิน</td>
+                      <td className="right" style={{ fontWeight: 900 }}>฿{grandTotal.toLocaleString()}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div className="sig-row">
+                  <div className="sig-box">
+                    ลงชื่อ&nbsp;.......................................&nbsp;ลูกค้า<br/>
+                    (&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)
+                  </div>
+                  <div className="sig-box" style={{ textAlign: 'right', position: 'relative' }}>
+                    ลงชื่อ&nbsp;.......................................&nbsp;ผู้รับเงิน<br/>
+                    (&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)
+                    <div className="stamp-wrap">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/company_stamp_transparent.png" alt="Company Seal" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ───────────── RECEIPT-ONLY MODAL ───────────── */}
+      {isReceiptModalOpen && (() => {
+        const subtotal = receiptItems.reduce((s, i) => s + i.price, 0);
+        const vatAmt = receiptTaxIncluded ? Math.round(subtotal * 0.07) : 0;
+        const grandTotal = subtotal + vatAmt;
+        const todayForReceipt = (() => {
+          const d = new Date(receiptSaleDate || new Date().toISOString().slice(0,10));
+          return { dd: String(d.getDate()).padStart(2,'0'), mm: String(d.getMonth()+1).padStart(2,'0'), yyyy: d.getFullYear() };
+        })();
+
+        return (
+          <div className="modal-bg open" style={{ zIndex: 3100 }}>
+            <div className="modal" style={{ maxWidth: '680px', width: '95vw', maxHeight: '90vh', overflowY: 'auto', borderRadius: '20px' }}>
+              {/* Header */}
+              <div className="modal-hd" style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '17px', fontWeight: 900 }}>🖨️ 영수증 출력 ({receiptItems.length}대)</span>
+                <button type="button" className="modal-close" onClick={() => setIsReceiptModalOpen(false)}>✕</button>
+              </div>
+
+              <div className="modal-body" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                {/* Top 2-col info */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontSize: '12px', fontWeight: 700 }}>🏪 ชื่อผู้ซื้อ / 구매자 이름</label>
+                    <input type="text" value={receiptBuyerName} onChange={e => setReceiptBuyerName(e.target.value)} className="form-input" placeholder="ชื่อลูกค้าหรือชื่อร้าน..." style={{ margin: 0 }} />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontSize: '12px', fontWeight: 700 }}>📞 เบอร์โทร / 연락처</label>
+                    <input type="text" value={receiptBuyerPhone} onChange={e => setReceiptBuyerPhone(e.target.value)} className="form-input" placeholder="0XX-XXX-XXXX" style={{ margin: 0 }} />
+                  </div>
+                  <div className="form-group" style={{ margin: 0, gridColumn: '1 / -1' }}>
+                    <label className="form-label" style={{ fontSize: '12px', fontWeight: 700 }}>📍 ที่อยู่ / 주소 (จังหวัด / 주 선택)</label>
+                    <select
+                      value={receiptBuyerAddress}
+                      onChange={e => setReceiptBuyerAddress(e.target.value)}
+                      className="form-input"
+                      style={{ margin: 0, marginBottom: '6px' }}
+                    >
+                      <option value="">-- เลือกจังหวัด / 주 선택 --</option>
+                      <option value="กรุงเทพมหานคร">กรุงเทพมหานคร (방콕)</option>
+                      <option value="เชียงใหม่">เชียงใหม่ (치앙마이)</option>
+                      <option value="ขอนแก่น">ขอนแก่น (콘깬)</option>
+                      <option value="นครราชสีมา">นครราชสีมา (นครราชสีมา)</option>
+                      <option value="อุดรธานี">อุดรธานี (อุดรธานี)</option>
+                      <option value="ภูเก็ต">ภูเก็ต (ภูเก็ต)</option>
+                      <option value="สงขลา">สงขลา (สงขลา)</option>
+                      <option value="ชลบุรี">ชลบุรี (ชลบุรี)</option>
+                      <option value="นนทบุรี">นนทบุรี (นนทบุรี)</option>
+                      <option value="ปทุมธานี">ปทุมธานี (ปทุมธานี)</option>
+                      <option value="สมุทรปราการ">สมุทรปราการ (สมุทรปราการ)</option>
+                      <option value="ระยอง">ระยอง (ระยอง)</option>
+                      <option value="__custom__">✏️ กรอกเอง (직접 입력)</option>
+                    </select>
+                    <input
+                      type="text"
+                      value={receiptBuyerAddressCustom}
+                      onChange={e => setReceiptBuyerAddressCustom(e.target.value)}
+                      className="form-input"
+                      placeholder={
+                        (receiptBuyerAddress && receiptBuyerAddress !== '__custom__')
+                          ? 'รายละเอียดที่อยู่ (บ้านเลขที่, ถนน, ตำบล, อำเภอ)... / 상세 주소 입력'
+                          : 'กรอกที่อยู่ทั้งหมด... / 전체 주소 직접 입력'
+                      }
+                      style={{ margin: 0 }}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontSize: '12px', fontWeight: 700 }}>📅 วันที่ออกใบเสร็จ (발행일)</label>
+                    <input type="date" value={receiptSaleDate} onChange={e => setReceiptSaleDate(e.target.value)} className="form-input" style={{ margin: 0 }} />
+                  </div>
+                  <div className="form-group" style={{ margin: 0, display: 'flex', alignItems: 'center' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, marginTop: '22px' }}>
+                      <input type="checkbox" checked={receiptTaxIncluded} onChange={e => setReceiptTaxIncluded(e.target.checked)} style={{ width: '18px', height: '18px', cursor: 'pointer' }} />
+                      <span>🧾 ใบกำกับภาษี 7% VAT<br/><span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--t2)' }}>세금계산서 발행 (7% 부가세)</span></span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Device list table */}
+                <div>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--t2)', marginBottom: '8px' }}>รายการสินค้า (기기 목록)</div>
+                  <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
+                      <thead>
+                        <tr style={{ background: '#f8fafc' }}>
+                          <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700, borderBottom: '1px solid var(--border)', width: '38%' }}>รุ่น / 모델</th>
+                          <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700, borderBottom: '1px solid var(--border)', width: '34%' }}>IMEI</th>
+                          <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, borderBottom: '1px solid var(--border)', width: '28%' }}>ราคา / 금액</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {receiptItems.map((item, idx) => (
+                          <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                            <td style={{ padding: '7px 10px', fontWeight: 700 }}>{item.model_name}</td>
+                            <td style={{ padding: '7px 10px', fontFamily: 'monospace', fontSize: '11.5px', color: 'var(--t2)' }}>{item.imei}</td>
+                            <td style={{ padding: '7px 10px', textAlign: 'right' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
+                                <span style={{ color: 'var(--t3)', fontSize: '11px' }}>฿</span>
+                                <input
+                                  type="number"
+                                  value={item.price}
+                                  onChange={e => {
+                                    const v = Number(e.target.value) || 0;
+                                    setReceiptItems(prev => prev.map((p, i) => i === idx ? { ...p, price: v } : p));
+                                  }}
+                                  style={{ width: '90px', textAlign: 'right', border: '1px solid var(--border)', borderRadius: '5px', padding: '3px 6px', fontSize: '12px', fontWeight: 700 }}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Totals */}
+                <div style={{ background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--t2)' }}>
+                    <span>ยอดรวม (소계)</span>
+                    <span style={{ fontWeight: 700 }}>฿{subtotal.toLocaleString()}</span>
+                  </div>
+                  {receiptTaxIncluded && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#d97706' }}>
+                      <span>VAT 7%</span>
+                      <span style={{ fontWeight: 700 }}>+฿{vatAmt.toLocaleString()}</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 900, color: 'var(--purple-l)', borderTop: '1px solid var(--border)', paddingTop: '8px', marginTop: '2px' }}>
+                    <span>ยอดรวมทั้งหมด (합계)</span>
+                    <span>฿{grandTotal.toLocaleString()}</span>
+                  </div>
+                </div>
+
+                {/* Buttons */}
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                  <button type="button" onClick={() => setIsReceiptModalOpen(false)} style={{ padding: '11px 20px', borderRadius: '8px', border: '1px solid var(--border)', background: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '13px' }}>
+                    ยกเลิก (취소)
+                  </button>
+                  <button type="button" onClick={handlePrintReceiptOnly}
+                    style={{ padding: '11px 22px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #0ea5e9, #0369a1)', color: '#fff', fontWeight: 800, cursor: 'pointer', fontSize: '13px', boxShadow: '0 2px 10px rgba(14,165,233,0.4)' }}>
+                    🖨️ 영수증 출력 (Receipt Print)
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Hidden Receipt printable content ── */}
+            <div id="receipt-only-printable" style={{ display: 'none' }}>
+              <div className="receipt">
+                <div className="header-row">
+                  <div className="company-info">
+                    <div className="bolder">บริษัท โฟน สวิทช์ฮับ จำกัด (0105568203279)</div>
+                    <div>(ร้าน ไอริช โมบาย)</div>
+                    <div>IRIS Mobile Thailand</div>
+                  </div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img className="logo-img" src="/iris_logo_official.png" alt="IRIS MOBILE" />
+                </div>
+                <div className="receipt-title">ใบเสร็จรับเงิน</div>
+                <div className="date-row">วันที่&nbsp;&nbsp;{todayForReceipt.dd}&nbsp;/&nbsp;{todayForReceipt.mm}&nbsp;/&nbsp;{todayForReceipt.yyyy}</div>
+                <div className="buyer-row">ชื่อผู้ซื้อ&nbsp;&nbsp;{receiptBuyerName || '........................................................................'}</div>
+                {(receiptBuyerPhone || receiptBuyerAddress) && (
+                  <div className="buyer-row" style={{ fontSize: '12px', marginBottom: '6px' }}>
+                    {receiptBuyerPhone && <span>โทร: {receiptBuyerPhone}&nbsp;&nbsp;&nbsp;</span>}
+                    {(receiptBuyerAddress || receiptBuyerAddressCustom) && <span>ที่อยู่: {receiptBuyerAddress === '__custom__' ? receiptBuyerAddressCustom : receiptBuyerAddress}</span>}
+                  </div>
+                )}
+                <table>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '20%' }}>รหัส (IMEI)</th>
+                      <th style={{ width: '35%' }}>รายการสินค้า</th>
+                      <th style={{ width: '10%' }}>จำนวนหน่วย</th>
+                      <th style={{ width: '20%' }}>ราคาต่อหน่วย</th>
+                      <th style={{ width: '15%' }}>หมายเหตุ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {receiptItems.map(item => (
+                      <tr key={item.id}>
+                        <td style={{ fontSize: '10px', fontFamily: 'monospace' }}>{item.imei}</td>
+                        <td className="left">{item.model_name}</td>
+                        <td>1</td>
+                        <td className="right">฿{item.price.toLocaleString()}</td>
+                        <td></td>
+                      </tr>
+                    ))}
+                    {Array.from({ length: Math.max(0, 10 - receiptItems.length) }).map((_, i) => (
+                      <tr key={`ep-${i}`} className="empty-rows"><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>
+                    ))}
+                    {receiptTaxIncluded && (
+                      <>
+                        <tr className="vat-section total-row">
+                          <td colSpan={3} style={{ border: 'none', background: 'transparent' }}></td>
+                          <td style={{ textAlign: 'right', fontWeight: 700 }}>ราคาก่อน VAT</td>
+                          <td className="right">฿{subtotal.toLocaleString()}</td>
+                        </tr>
+                        <tr className="vat-section total-row">
+                          <td colSpan={3} style={{ border: 'none', background: 'transparent' }}></td>
+                          <td style={{ textAlign: 'right', fontWeight: 700 }}>ภาษีมูลค่าเพิ่ม 7%</td>
+                          <td className="right">฿{vatAmt.toLocaleString()}</td>
+                        </tr>
+                      </>
+                    )}
+                    <tr className="total-row">
+                      <td colSpan={3} style={{ border: 'none', background: 'transparent' }}></td>
+                      <td style={{ textAlign: 'right', fontWeight: 900 }}>จำนวนเงินรวมทั้งเงิน</td>
+                      <td className="right" style={{ fontWeight: 900 }}>฿{grandTotal.toLocaleString()}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div className="sig-row">
+                  <div className="sig-box">
+                    ลงชื่อ&nbsp;.......................................&nbsp;ลูกค้า<br/>
+                    (&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)
+                  </div>
+                  <div className="sig-box" style={{ textAlign: 'right', position: 'relative' }}>
+                    ลงชื่อ&nbsp;.......................................&nbsp;ผู้รับเงิน<br/>
+                    (&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)
+                    <div className="stamp-wrap">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/company_stamp_transparent.png" alt="Company Seal" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ───────────── RETURN / RESTORE MODAL ───────────── */}
+      {isReturnModalOpen && (
+        <div className="modal-bg open" style={{ display: 'flex', zIndex: 3100 }}>
+          <div className="modal animate-slide-up" style={{ maxWidth: '450px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-hd" style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '17px', fontWeight: 900 }}>🔄 재고 복구 및 반품 처리 ({returnDeviceIds.length}대)</span>
+              <button type="button" className="modal-close" onClick={() => setIsReturnModalOpen(false)}>✕</button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontSize: '13px', fontWeight: 700, marginBottom: '8px', display: 'block' }}>복구 방식 선택 (Select Restore Type)</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', background: 'var(--bg2)', padding: '12px 14px', borderRadius: '10px', border: returnType === 'simple' ? '2px solid var(--green)' : '1px solid var(--border)' }}>
+                    <input
+                      type="radio"
+                      name="returnType"
+                      checked={returnType === 'simple'}
+                      onChange={() => setReturnType('simple')}
+                      style={{ marginTop: '3px', cursor: 'pointer' }}
+                    />
+                    <div>
+                      <span style={{ fontSize: '13.5px', fontWeight: 700, color: returnType === 'simple' ? 'var(--green)' : 'var(--t1)' }}>단순 재고 복구 (Simple Restore)</span>
+                      <p style={{ margin: 0, fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>판매 내역을 취소하고 정상 재고 상태로 되돌립니다.</p>
+                    </div>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', background: 'var(--bg2)', padding: '12px 14px', borderRadius: '10px', border: returnType === 'defect' ? '2px solid var(--red)' : '1px solid var(--border)' }}>
+                    <input
+                      type="radio"
+                      name="returnType"
+                      checked={returnType === 'defect'}
+                      onChange={() => setReturnType('defect')}
+                      style={{ marginTop: '3px', cursor: 'pointer' }}
+                    />
+                    <div>
+                      <span style={{ fontSize: '13.5px', fontWeight: 700, color: returnType === 'defect' ? 'var(--red)' : 'var(--t1)' }}>하자 반품 처리 (Return due to Defect)</span>
+                      <p style={{ margin: 0, fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>하자로 인한 반품 처리를 하며, 기기 메모에 결함 내용을 남깁니다.</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {returnType === 'defect' && (
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontSize: '12px', fontWeight: 700, marginBottom: '6px' }}>🛠️ 하자 사유 / 반품 메모 (Defect Reason) *</label>
+                  <textarea
+                    value={returnNotes}
+                    onChange={(e) => setReturnNotes(e.target.value)}
+                    className="form-textarea"
+                    placeholder="반품 사유를 입력해 주세요 (예: 액정 터치 불량, 전원 불량)..."
+                    style={{ margin: 0, width: '100%', minHeight: '80px', fontSize: '12.5px', boxSizing: 'border-box' }}
+                  />
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  onClick={handleConfirmRestore}
+                  disabled={processingReturn || (returnType === 'defect' && !returnNotes.trim())}
+                  style={{
+                    flex: 1,
+                    padding: '12px 20px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: returnType === 'defect' ? 'linear-gradient(135deg, #ef4444, #b91c1c)' : 'linear-gradient(135deg, #10b981, #047857)',
+                    color: '#fff',
+                    fontWeight: 800,
+                    cursor: (processingReturn || (returnType === 'defect' && !returnNotes.trim())) ? 'not-allowed' : 'pointer',
+                    fontSize: '13px',
+                    opacity: (processingReturn || (returnType === 'defect' && !returnNotes.trim())) ? 0.5 : 1
+                  }}
+                >
+                  {processingReturn ? '처리중...' : '확인 (Confirm)'}
+                </button>
+                <button
+                  type="button"
+                  className="btn-sm btn-red"
+                  onClick={() => setIsReturnModalOpen(false)}
+                  style={{ padding: '12px 20px', borderRadius: '10px', margin: 0 }}
+                >
+                  {t('cancel')}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
