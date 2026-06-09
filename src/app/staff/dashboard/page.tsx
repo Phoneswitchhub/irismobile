@@ -95,6 +95,7 @@ export default function StaffDashboard() {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   });
+  const [showOverdueOnly, setShowOverdueOnly] = useState(false);
   const [codSelectedMonth, setCodSelectedMonth] = useState('all');
   const [custSearch, setCustSearch] = useState('');
   const [isDayFilterOpen, setIsDayFilterOpen] = useState(false);
