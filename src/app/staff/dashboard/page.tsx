@@ -269,7 +269,7 @@ export default function StaffDashboard() {
       return sum + margin;
     }, 0);
 
-    const totalUnpaidCODTHB = soldList.filter(d => d.sale_type === 'cod' && d.payment_status === 'unpaid').reduce((sum, d) => sum + Number(d.cod_amount || 0), 0);
+    const totalUnpaidCODTHB = soldList.filter(d => d.sale_type === 'cod' && d.payment_status === 'unpaid').reduce((sum, d) => sum + ((Number(d.selling_price) || 0) - (Number(d.deposit_amount) || 0)), 0);
     const totalUnpaidInstallmentTHB = soldList.filter(d => d.sale_type === 'installment' && d.payment_status !== 'paid').reduce((sum, d) => {
       const history = d.installment_history || [];
       const unpaidSum = history.filter((h: any) => h.status === 'unpaid').reduce((s, h) => s + (Number(h.amount) || 0), 0);
@@ -5041,8 +5041,8 @@ export default function StaffDashboard() {
             filteredCOD = filteredCOD.filter(d => getYearMonth(d.sale_date) === codSelectedMonth);
           }
 
-          const totalUnpaidCOD = codDevices.filter(d => d.payment_status === 'unpaid').reduce((sum, d) => sum + (d.cod_amount || 0), 0);
-          const totalPaidCOD = codDevices.filter(d => d.payment_status === 'paid').reduce((sum, d) => sum + (d.cod_amount || 0), 0);
+          const totalUnpaidCOD = filteredCOD.filter(d => d.payment_status === 'unpaid').reduce((sum, d) => sum + ((d.selling_price || 0) - (d.deposit_amount || 0)), 0);
+          const totalPaidCOD = filteredCOD.filter(d => d.payment_status === 'paid').reduce((sum, d) => sum + ((d.selling_price || 0) - (d.deposit_amount || 0)), 0);
           
           return (
             <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -5099,8 +5099,9 @@ export default function StaffDashboard() {
                         <th style={{ width: '15%' }}>기기 정보</th>
                         <th style={{ width: '12%' }}>IMEI</th>
                         <th style={{ width: '15%' }}>고객 정보</th>
-                        <th style={{ width: '15%', textAlign: 'right' }}>판매금액</th>
-                        <th style={{ width: '13%', textAlign: 'right' }}>COD 미수금</th>
+                        <th style={{ width: '12%', textAlign: 'right' }}>판매금액</th>
+                        <th style={{ width: '12%', textAlign: 'right' }}>인도금 (보증금)</th>
+                        <th style={{ width: '12%', textAlign: 'right' }}>COD 미수금</th>
                         <th style={{ width: '10%', textAlign: 'center' }}>상태</th>
                         <th style={{ width: '10%', textAlign: 'center' }}>작업</th>
                       </tr>
@@ -5108,7 +5109,7 @@ export default function StaffDashboard() {
                     <tbody>
                       {filteredCOD.length === 0 ? (
                         <tr>
-                          <td colSpan={8} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>COD 내역이 없습니다. (No COD records.)</td>
+                          <td colSpan={9} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>COD 내역이 없습니다. (No COD records.)</td>
                         </tr>
                       ) : (
                         sortDevices(filteredCOD).map(item => (
@@ -5121,8 +5122,9 @@ export default function StaffDashboard() {
                               <div style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '2px' }}>📞 {item.customer_phone || '미기입'}</div>
                             </td>
                             <td style={{ textAlign: 'right', fontWeight: 700 }}>฿{formatPrice(item.selling_price || 0)}</td>
+                            <td style={{ textAlign: 'right', color: 'var(--t2)', fontSize: '12px' }}>฿{formatPrice(item.deposit_amount || 0)}</td>
                             <td style={{ textAlign: 'right', fontWeight: 800, color: item.payment_status === 'unpaid' ? 'var(--red)' : 'var(--green)' }}>
-                              ฿{formatPrice(item.cod_amount || 0)}
+                              ฿{formatPrice((item.selling_price || 0) - (item.deposit_amount || 0))}
                             </td>
                             <td style={{ textAlign: 'center' }}>{getPaymentStatusBadge(item.payment_status)}</td>
                             <td style={{ textAlign: 'center' }}>
