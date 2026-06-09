@@ -5172,7 +5172,7 @@ export default function StaffDashboard() {
                                   type="button"
                                   className="btn-sm btn-green"
                                   onClick={() => handleConfirmPayment(item.id)}
-                                  style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 800, margin: 0, cursor: 'pointer' }}
+                                  style={{ height: '24px', padding: '0 8px', fontSize: '10.5px', fontWeight: 800, margin: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                 >
                                   입금 완료
                                 </button>
@@ -5181,7 +5181,7 @@ export default function StaffDashboard() {
                                   type="button"
                                   className="btn-sm btn-red"
                                   onClick={() => handleCancelPayment(item.id, 'cod')}
-                                  style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 800, margin: 0, cursor: 'pointer' }}
+                                  style={{ height: '24px', padding: '0 8px', fontSize: '10.5px', fontWeight: 800, margin: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                 >
                                   완납 취소
                                 </button>
