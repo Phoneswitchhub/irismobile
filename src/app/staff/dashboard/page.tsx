@@ -268,7 +268,13 @@ export default function StaffDashboard() {
       return sum + margin;
     }, 0);
 
-    const totalUnpaidCODTHB = soldList.filter(d => d.payment_status === 'unpaid').reduce((sum, d) => sum + Number(d.cod_amount || 0), 0);
+    const totalUnpaidCODTHB = soldList.filter(d => d.sale_type === 'cod' && d.payment_status === 'unpaid').reduce((sum, d) => sum + Number(d.cod_amount || 0), 0);
+    const totalUnpaidInstallmentTHB = soldList.filter(d => d.sale_type === 'installment' && d.payment_status !== 'paid').reduce((sum, d) => {
+      const history = d.installment_history || [];
+      const unpaidSum = history.filter((h: any) => h.status === 'unpaid').reduce((s, h) => s + (Number(h.amount) || 0), 0);
+      return sum + unpaidSum;
+    }, 0);
+    const actualCollectedTHB = totalSalesTHB - totalUnpaidCODTHB - totalUnpaidInstallmentTHB;
     const activeInstallmentCount = soldList.filter(d => d.payment_status === 'collecting').length;
     const unpaidList = soldList.filter(d => d.payment_status === 'unpaid' || d.payment_status === 'collecting');
     
@@ -277,6 +283,8 @@ export default function StaffDashboard() {
       totalCostKRW,
       totalMarginKRW,
       totalUnpaidCODTHB,
+      totalUnpaidInstallmentTHB,
+      actualCollectedTHB,
       activeInstallmentCount,
       unpaidList,
       soldList
@@ -4520,17 +4528,22 @@ export default function StaffDashboard() {
                               </div>
                             </td>
                             <td style={{ textAlign: 'center' }}>
-                              {!isFinished && (
+                              {!isFinished ? (
                                 <button
                                   className="btn-sm btn-green"
                                   onClick={() => handleFinalizeInstallment(item.id)}
-                                  style={{ padding: '4px 8px', fontSize: '10.5px', fontWeight: 800, margin: 0, whiteSpace: 'nowrap' }}
+                                  style={{ padding: '4px 8px', fontSize: '10.5px', fontWeight: 800, margin: 0, whiteSpace: 'nowrap', cursor: 'pointer' }}
                                 >
                                   완납 처리
                                 </button>
-                              )}
-                              {isFinished && (
-                                <span style={{ color: 'var(--green)', fontSize: '11px', fontWeight: 800 }}>✓ 완납완료</span>
+                              ) : (
+                                <button
+                                  className="btn-sm btn-red"
+                                  onClick={() => handleCancelPayment(item.id, 'installment')}
+                                  style={{ padding: '4px 8px', fontSize: '10.5px', fontWeight: 800, margin: 0, whiteSpace: 'nowrap', cursor: 'pointer' }}
+                                >
+                                  완납 취소
+                                </button>
                               )}
                             </td>
                           </tr>
@@ -4685,17 +4698,7 @@ export default function StaffDashboard() {
             </div>
 
             {/* Margins Summary Widgets */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-              {/* Total Margin Card */}
-              <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>💰</div>
-                <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>총 정산 마진 (Total Margin)</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--green)', marginTop: '4px' }}>₩{marginStats.totalMarginKRW.toLocaleString()}</div>
-                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>판매금액 환율 계산 후 마진액</div>
-                </div>
-              </div>
-
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
               {/* Total Sales Card */}
               <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
                 <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>📈</div>
@@ -4706,13 +4709,43 @@ export default function StaffDashboard() {
                 </div>
               </div>
 
-              {/* Total Cost Card */}
+              {/* COD Receivables Card */}
               <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(107, 114, 128, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>📉</div>
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>🚚</div>
                 <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>총 매입 원가 (Total Cost)</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--t1)', marginTop: '4px' }}>₩{marginStats.totalCostKRW.toLocaleString()}</div>
-                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>한국 매입 총 원가</div>
+                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>COD 미수금 (COD Receivables)</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--red)', marginTop: '4px' }}>฿{marginStats.totalUnpaidCODTHB.toLocaleString()}</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>정산 확인 대기 잔액</div>
+                </div>
+              </div>
+
+              {/* Installment Receivables Card */}
+              <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>💳</div>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>할부 미수금 (Inst. Receivables)</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#d97706', marginTop: '4px' }}>฿{marginStats.totalUnpaidInstallmentTHB.toLocaleString()}</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>미납 회차 전체 잔액</div>
+                </div>
+              </div>
+
+              {/* Actual Collected Cash Card */}
+              <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>💵</div>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>최종 실입금액 (Collected Cash)</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--green)', marginTop: '4px' }}>฿{marginStats.actualCollectedTHB.toLocaleString()}</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>판매가 - COD미수 - 할부미수</div>
+                </div>
+              </div>
+
+              {/* Total Margin Card */}
+              <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>💰</div>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>총 정산 마진 (Total Margin)</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--purple-l)', marginTop: '4px' }}>₩{marginStats.totalMarginKRW.toLocaleString()}</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>총 매입원가: ₩{marginStats.totalCostKRW.toLocaleString()}</div>
                 </div>
               </div>
             </div>
@@ -5049,7 +5082,14 @@ export default function StaffDashboard() {
                                   입금 완료
                                 </button>
                               ) : (
-                                <span style={{ color: 'var(--t3)', fontSize: '12px' }}>-</span>
+                                <button
+                                  type="button"
+                                  className="btn-sm btn-red"
+                                  onClick={() => handleCancelPayment(item.id, 'cod')}
+                                  style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 800, margin: 0, cursor: 'pointer' }}
+                                >
+                                  완납 취소
+                                </button>
                               )}
                             </td>
                           </tr>
