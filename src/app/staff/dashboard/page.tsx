@@ -1231,6 +1231,70 @@ export default function StaffDashboard() {
     return sortDevices(list);
   }, [devices, trashSearchQuery, sortDevices, normalizeModelName]);
 
+  // ── Global Search Helper calculation ──────────────────────────────
+  const currentSearchText = useMemo(() => {
+    if (activeTab === 'ledger' || activeTab === 'pending_intake') return searchQuery;
+    if (activeTab === 'sales') return soldSearchQuery;
+    if (activeTab === 'installment') return installmentSearchQuery;
+    if (activeTab === 'cod') return codSearchQuery;
+    if (activeTab === 'trash') return trashSearchQuery;
+    return '';
+  }, [activeTab, searchQuery, soldSearchQuery, installmentSearchQuery, codSearchQuery, trashSearchQuery]);
+
+  const globalSearchHelper = useMemo(() => {
+    const q = currentSearchText.trim().toLowerCase();
+    if (!q || q.length < 2) return null;
+
+    const allMatching = devices.filter(d => {
+      const modelMatch = d.model_name && normalizeModelName(d.model_name).includes(normalizeModelName(q));
+      const imeiMatch = d.imei && d.imei.includes(q);
+      const stickerMatch = d.sticker && d.sticker.toLowerCase().includes(q);
+      return modelMatch || imeiMatch || stickerMatch;
+    });
+
+    if (allMatching.length === 0) return null;
+
+    const matchesList: { device: DeviceItem; tab: 'ledger' | 'pending_intake' | 'sales' | 'trash'; isVisible: boolean }[] = [];
+
+    allMatching.forEach(d => {
+      let targetTab: 'ledger' | 'pending_intake' | 'sales' | 'trash' = 'ledger';
+      if (d.deleted_at) targetTab = 'trash';
+      else if (d.is_sold) targetTab = 'sales';
+      else if (d.stock_location === 'DHL') targetTab = 'pending_intake';
+
+      let isVisible = false;
+      if (activeTab === targetTab) {
+        if (activeTab === 'ledger') {
+          const matchLoc = locationFilter === 'all' || d.stock_location === locationFilter;
+          const matchCat = matchesCategory(d.model_name, categoryFilter);
+          if (matchLoc && matchCat) isVisible = true;
+        } else if (activeTab === 'pending_intake') {
+          const matchCat = matchesCategory(d.model_name, categoryFilter);
+          if (matchCat) isVisible = true;
+        } else if (activeTab === 'sales') {
+          const matchCat = matchesCategory(d.model_name, categoryFilter);
+          isVisible = matchCat;
+          if (soldSelectedMonth && soldSelectedMonth !== 'all' && d.sale_date) {
+            if (getYearMonth(d.sale_date) !== soldSelectedMonth) isVisible = false;
+          }
+        } else if (activeTab === 'trash') {
+          isVisible = true;
+        }
+      }
+
+      matchesList.push({ device: d, tab: targetTab, isVisible });
+    });
+
+    const otherTabMatches = matchesList.filter(m => m.tab !== activeTab);
+    const hiddenInCurrentTab = matchesList.filter(m => m.tab === activeTab && !m.isVisible);
+
+    return {
+      otherTabMatches,
+      hiddenInCurrentTab,
+      query: currentSearchText
+    };
+  }, [devices, activeTab, currentSearchText, locationFilter, categoryFilter, matchesCategory, getYearMonth, normalizeModelName]);
+
   // IMEI Auditor Results calculation
   const auditResults = useMemo(() => {
     if (!auditText.trim()) {
@@ -2915,6 +2979,19 @@ export default function StaffDashboard() {
     setHistoryMonthFilter('all');
   };
 
+  const handleGoToTabAndSearch = (tab: typeof activeTab, query: string) => {
+    setActiveTab(tab);
+    setSelectedIds([]);
+    setCategoryFilter('all');
+    setLocationFilter('all');
+    setSoldSelectedMonth('all');
+    if (tab === 'ledger' || tab === 'pending_intake') setSearchQuery(query);
+    else if (tab === 'sales') setSoldSearchQuery(query);
+    else if (tab === 'installment') setInstallmentSearchQuery(query);
+    else if (tab === 'cod') setCodSearchQuery(query);
+    else if (tab === 'trash') setTrashSearchQuery(query);
+  };
+
   // CSV Reader trigger for file upload selector
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -3163,6 +3240,98 @@ export default function StaffDashboard() {
             </div>
           </div>
         </header>
+
+        {/* Global Search Results Alert Banner */}
+        {globalSearchHelper && (globalSearchHelper.otherTabMatches.length > 0 || globalSearchHelper.hiddenInCurrentTab.length > 0) && (
+          <div 
+            className="animate-slide-up"
+            style={{
+              background: 'linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%)',
+              border: '1px solid #fde68a',
+              borderRadius: '12px',
+              padding: '12px 16px',
+              marginBottom: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              fontSize: '13px',
+              color: '#92400e',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+              zIndex: 10
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800 }}>
+              <span>🔍</span>
+              <span>{lang === 'ko' ? `검색어 "${globalSearchHelper.query}"에 대한 추가 검색 결과` : `Global search results for "${globalSearchHelper.query}"`}</span>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
+              {globalSearchHelper.hiddenInCurrentTab.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>⚠️</span>
+                  <span>
+                    {lang === 'ko' 
+                      ? `현재 탭에 ${globalSearchHelper.hiddenInCurrentTab.length}건이 있으나 필터(위치/기종)에 의해 가려졌습니다.`
+                      : `${globalSearchHelper.hiddenInCurrentTab.length} items match in this tab but are hidden by active filters.`
+                    }
+                  </span>
+                  <button
+                    onClick={() => {
+                      setLocationFilter('all');
+                      setCategoryFilter('all');
+                      setSoldSelectedMonth('all');
+                    }}
+                    style={{
+                      background: '#fff',
+                      border: '1px solid #fcd34d',
+                      borderRadius: '6px',
+                      padding: '2px 8px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      color: '#b45309',
+                      cursor: 'pointer',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {lang === 'ko' ? '필터 해제' : 'Clear Filters'}
+                  </button>
+                </div>
+              )}
+
+              {globalSearchHelper.otherTabMatches.map((m, idx) => {
+                const tabNameMap: Record<string, string> = {
+                  ledger: lang === 'ko' ? '사내 재고' : 'Inventory',
+                  pending_intake: lang === 'ko' ? '입고 대기' : 'Pending',
+                  sales: lang === 'ko' ? '판매 완료' : 'Sales',
+                  trash: lang === 'ko' ? '휴지통' : 'Trash'
+                };
+                return (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.6)', padding: '4px 8px', borderRadius: '8px', border: '1px solid rgba(251,191,36,0.3)' }}>
+                    <span>📍</span>
+                    <span style={{ fontWeight: 600 }}>[{tabNameMap[m.tab]}]</span>
+                    <span>{m.device.model_name} {m.device.sticker ? `(${m.device.sticker})` : ''}</span>
+                    <button
+                      onClick={() => handleGoToTabAndSearch(m.tab, globalSearchHelper.query)}
+                      style={{
+                        background: 'var(--purple)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '2px 8px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        boxShadow: '0 1px 2px rgba(124,58,237,0.2)'
+                      }}
+                    >
+                      {lang === 'ko' ? '이동' : 'Go to'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ==================== VIEW 1: OVERVIEW ==================== */}
         {activeTab === 'overview' && (
@@ -4688,8 +4857,8 @@ export default function StaffDashboard() {
                       <th style={{ width: '13%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
                         {t('staff_th_device_info')} {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
                       </th>
-                      <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('customer_name')}>
-                        {t('staff_th_installment_customer')} {sortField === 'customer_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('installment_number')}>
+                        {t('staff_th_installment_customer')} {sortField === 'installment_number' && (sortDirection === 'asc' ? '▲' : '▼')}
                       </th>
                       <th style={{ width: '14%', cursor: 'pointer' }} onClick={() => toggleSort('installment_amount')}>
                         {t('staff_th_installment_terms')} {sortField === 'installment_amount' && (sortDirection === 'asc' ? '▲' : '▼')}
