@@ -97,6 +97,7 @@ export default function StaffDashboard() {
   });
   const [showOverdueOnly, setShowOverdueOnly] = useState(false);
   const [codSelectedMonth, setCodSelectedMonth] = useState('all');
+  const [codSearchQuery, setCodSearchQuery] = useState('');
   const [custSearch, setCustSearch] = useState('');
   const [isDayFilterOpen, setIsDayFilterOpen] = useState(false);
 
@@ -5040,6 +5041,17 @@ export default function StaffDashboard() {
           if (codSelectedMonth !== 'all') {
             filteredCOD = filteredCOD.filter(d => getYearMonth(d.sale_date) === codSelectedMonth);
           }
+          if (codSearchQuery.trim()) {
+            const query = codSearchQuery.toLowerCase().trim();
+            filteredCOD = filteredCOD.filter(d => {
+              const custNameMatch = d.customer_name?.toLowerCase().includes(query);
+              const custPhoneMatch = d.customer_phone?.includes(query);
+              const stickerMatch = d.sticker?.toLowerCase().includes(query);
+              const imeiMatch = d.imei?.includes(query);
+              const modelMatch = normalizeModelName(d.model_name).includes(normalizeModelName(query));
+              return custNameMatch || custPhoneMatch || stickerMatch || imeiMatch || modelMatch;
+            });
+          }
 
           const totalUnpaidCOD = filteredCOD.filter(d => d.payment_status === 'unpaid').reduce((sum, d) => sum + ((d.selling_price || 0) - (d.deposit_amount || 0)), 0);
           const totalPaidCOD = filteredCOD.filter(d => d.payment_status === 'paid').reduce((sum, d) => sum + ((d.selling_price || 0) - (d.deposit_amount || 0)), 0);
@@ -5071,7 +5083,15 @@ export default function StaffDashboard() {
               {/* Filter controls */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '8px 12px' }}>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 700 }}>월별 필터:</span>
+                  <input
+                    type="text"
+                    placeholder="고객명, 연락처, 기기 검색..."
+                    value={codSearchQuery}
+                    onChange={(e) => setCodSearchQuery(e.target.value)}
+                    className="form-input"
+                    style={{ maxWidth: '240px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
+                  />
+                  <span style={{ fontSize: '13px', fontWeight: 700, marginLeft: '8px' }}>청구 월:</span>
                   <select
                     value={codSelectedMonth}
                     onChange={(e) => setCodSelectedMonth(e.target.value)}
@@ -5084,6 +5104,9 @@ export default function StaffDashboard() {
                     ))}
                   </select>
                 </div>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--purple-l)' }}>
+                  총 COD 거래 수: {codDevices.length}건 (검색됨: {filteredCOD.length}건)
+                </div>
               </div>
 
               {/* COD Table */}
@@ -5095,14 +5118,30 @@ export default function StaffDashboard() {
                   <table className="tbl" style={{ margin: 0 }}>
                     <thead>
                       <tr>
-                        <th style={{ width: '10%' }}>판매일</th>
-                        <th style={{ width: '15%' }}>기기 정보</th>
-                        <th style={{ width: '12%' }}>IMEI</th>
-                        <th style={{ width: '15%' }}>고객 정보</th>
-                        <th style={{ width: '12%', textAlign: 'right' }}>판매금액</th>
-                        <th style={{ width: '12%', textAlign: 'right' }}>인도금 (보증금)</th>
-                        <th style={{ width: '12%', textAlign: 'right' }}>COD 미수금</th>
-                        <th style={{ width: '10%', textAlign: 'center' }}>상태</th>
+                        <th style={{ width: '10%', cursor: 'pointer' }} onClick={() => toggleSort('sale_date')}>
+                          판매일 {sortField === 'sale_date' && (sortDirection === 'asc' ? '▲' : '▼')}
+                        </th>
+                        <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
+                          기기 정보 {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                        </th>
+                        <th style={{ width: '12%', cursor: 'pointer' }} onClick={() => toggleSort('imei')}>
+                          IMEI {sortField === 'imei' && (sortDirection === 'asc' ? '▲' : '▼')}
+                        </th>
+                        <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('customer_name')}>
+                          고객 정보 {sortField === 'customer_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                        </th>
+                        <th style={{ width: '12%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
+                          판매금액 {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
+                        </th>
+                        <th style={{ width: '12%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('deposit_amount')}>
+                          인도금 (보증금) {sortField === 'deposit_amount' && (sortDirection === 'asc' ? '▲' : '▼')}
+                        </th>
+                        <th style={{ width: '12%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('cod_amount')}>
+                          COD 미수금 {sortField === 'cod_amount' && (sortDirection === 'asc' ? '▲' : '▼')}
+                        </th>
+                        <th style={{ width: '10%', textAlign: 'center', cursor: 'pointer' }} onClick={() => toggleSort('payment_status')}>
+                          상태 {sortField === 'payment_status' && (sortDirection === 'asc' ? '▲' : '▼')}
+                        </th>
                         <th style={{ width: '10%', textAlign: 'center' }}>작업</th>
                       </tr>
                     </thead>
