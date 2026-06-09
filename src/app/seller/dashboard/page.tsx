@@ -40,6 +40,11 @@ export default function SellerDashboard() {
   const [myContracts, setMyContracts] = useState<any[]>([]);
   const [loadingContracts, setLoadingContracts] = useState(false);
 
+  // Partner stock states
+  const [partnerInventory, setPartnerInventory] = useState<any[]>([]);
+  const [partnerSharedStock, setPartnerSharedStock] = useState<any[]>([]);
+  const [loadingPartnerData, setLoadingPartnerData] = useState(false);
+
   // Profile Form States
   const [profName, setProfName] = useState('');
   const [profStore, setProfStore] = useState('');
@@ -231,6 +236,62 @@ export default function SellerDashboard() {
     }
   }, [sellerProfile]);
 
+  const loadPartnerData = useCallback(async () => {
+    if (!sellerProfile || !sellerProfile.store_name) return;
+    setLoadingPartnerData(true);
+    try {
+      const { data: invData } = await supabase
+        .from('sheets_inventory')
+        .select('*')
+        .eq('stock_location', sellerProfile.store_name)
+        .eq('is_sold', false)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+
+      setPartnerInventory(invData || []);
+
+      const { data: sharedData } = await supabase
+        .from('sheets_inventory')
+        .select('*')
+        .eq('is_sold', false)
+        .is('deleted_at', null)
+        .like('notes', '%[협력사공개]%')
+        .order('created_at', { ascending: false });
+
+      setPartnerSharedStock(sharedData || []);
+    } catch (e) {
+      console.error('Failed to load partner data:', e);
+    } finally {
+      setLoadingPartnerData(false);
+    }
+  }, [sellerProfile]);
+
+  const handleRequestPartnerDevice = async (device: any) => {
+    if (!sellerProfile || !sellerProfile.store_name) return;
+    try {
+      if (device.notes && device.notes.includes('[이관신청:')) {
+        showToast('이미 신청된 기기입니다.', 'error');
+        return;
+      }
+
+      const currentNotes = device.notes || '';
+      const requestTag = `[이관신청: ${sellerProfile.store_name}, ${sellerProfile.id}]`;
+      const newNotes = currentNotes ? `${currentNotes} ${requestTag}` : requestTag;
+
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .update({ notes: newNotes })
+        .eq('id', device.id);
+
+      if (error) throw error;
+
+      showToast('이관 신청이 완료되었습니다.', 'success');
+      await loadPartnerData();
+    } catch (e: any) {
+      showToast('신청 실패: ' + e.message, 'error');
+    }
+  };
+
   const loadChatRooms = useCallback(async () => {
     if (!sellerProfile) return;
     try {
@@ -291,14 +352,19 @@ export default function SellerDashboard() {
 
   const refreshAllData = useCallback(async () => {
     if (!sellerProfile) return;
-    await Promise.all([
+    const promises: Promise<any>[] = [
       loadStats(),
       loadOrders(),
-      loadProducts(),
-      loadChatRooms(),
-      loadMyContracts()
-    ]);
-  }, [sellerProfile, loadStats, loadOrders, loadProducts, loadChatRooms, loadMyContracts]);
+      loadChatRooms()
+    ];
+    if (sellerProfile.store_type === 'direct') {
+      promises.push(loadProducts());
+      promises.push(loadMyContracts());
+    } else {
+      promises.push(loadPartnerData());
+    }
+    await Promise.all(promises);
+  }, [sellerProfile, loadStats, loadOrders, loadProducts, loadChatRooms, loadMyContracts, loadPartnerData]);
 
   useEffect(() => {
     if (sellerProfile) {
@@ -312,6 +378,13 @@ export default function SellerDashboard() {
       loadMyContracts();
     }
   }, [activeTab, sellerProfile, loadMyContracts]);
+
+  // Load partner data when tab becomes active
+  useEffect(() => {
+    if (sellerProfile && (activeTab === 'partner_inventory' || activeTab === 'partner_request')) {
+      loadPartnerData();
+    }
+  }, [activeTab, sellerProfile, loadPartnerData]);
 
   // Periodically refresh chat rooms badge
   useEffect(() => {
@@ -1031,7 +1104,7 @@ export default function SellerDashboard() {
       )}
 
       {/* ==================== VIEW 2: PRODUCTS ==================== */}
-      {activeTab === 'products' && (
+      {activeTab === 'products' && sellerProfile?.store_type === 'direct' && (
         <div className="view-section active animate-slide-up">
           <div className="main-hd">
             <h1>📱 {t('my_products_management') || '내 상품 관리'}</h1>
@@ -1097,6 +1170,134 @@ export default function SellerDashboard() {
                 })
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== VIEW 2-B: PARTNER INVENTORY (Franchise/Partner only) ==================== */}
+      {activeTab === 'partner_inventory' && sellerProfile?.store_type !== 'direct' && (
+        <div className="view-section active animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="main-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h1>🏪 우리 매장 보유 재고</h1>
+              <p style={{ color: 'var(--t2)', fontSize: '12px', marginTop: '4px' }}>
+                현재 매장 보관 위치({sellerProfile?.store_name})에 이관되어 보관 중인 제품 목록입니다.
+              </p>
+            </div>
+            <span className="badge bg-purple" style={{ padding: '6px 12px', fontSize: '12px' }}>보유 재고: {partnerInventory.length}대</span>
+          </div>
+
+          <div className="main-body" style={{ textAlign: 'left' }}>
+            {loadingPartnerData ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--t3)' }}>
+                <span className="spinner" style={{ marginRight: '8px' }}></span> 로딩 중...
+              </div>
+            ) : partnerInventory.length === 0 ? (
+              <div className="card" style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--t2)', border: '1px dashed var(--border)', borderRadius: '16px', background: 'var(--card)' }}>
+                <div style={{ fontSize: '48px', marginBottom: '12px', textAlign: 'center' }}>🏪</div>
+                <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '15px' }}>현재 매장에 보유 중인 재고가 없습니다.</div>
+                <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--t3)', marginTop: '6px' }}>[기기 신청] 탭에서 필요한 기기를 신청하여 이관받으실 수 있습니다.</div>
+              </div>
+            ) : (
+              <div className="products-grid">
+                {partnerInventory.map((item) => (
+                  <div key={item.id} className="product-card">
+                    <div className="p-img" style={{ fontSize: '44px' }}>
+                      📱
+                    </div>
+                    <div className="p-info" style={{ padding: '14px' }}>
+                      <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--t1)' }}>{item.model_name}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--t3)', fontFamily: 'monospace', marginTop: '4px' }}>Sticker: {item.sticker || '없음'}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--t3)', fontFamily: 'monospace' }}>IMEI: {item.imei}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '4px' }}>색상: {item.color || '지정 없음'} | 배터리: {item.battery_pct || '100'}%</div>
+                      {item.notes && <div style={{ fontSize: '10.5px', color: 'var(--purple-l)', background: 'rgba(139,92,246,0.05)', border: '1px dashed rgba(139,92,246,0.15)', padding: '6px 8px', borderRadius: '6px', marginTop: '8px', whiteSpace: 'normal', lineHeight: 1.3 }}>📝 {item.notes}</div>}
+                      <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--gold)', marginTop: '10px' }}>
+                        ฿{item.selling_price ? item.selling_price.toLocaleString() : 0}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ==================== VIEW 2-C: PARTNER REQUESTS (Franchise/Partner only) ==================== */}
+      {activeTab === 'partner_request' && sellerProfile?.store_type !== 'direct' && (
+        <div className="view-section active animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="main-hd">
+            <div>
+              <h1>📥 본사 기기 이관 신청</h1>
+              <p style={{ color: 'var(--t2)', fontSize: '12px', marginTop: '4px' }}>
+                본사에서 파트너 지점용으로 공유해 둔 기기 목록입니다. 필요한 제품을 선택해 이관을 신청하세요.
+              </p>
+            </div>
+          </div>
+
+          <div className="main-body" style={{ textAlign: 'left' }}>
+            {loadingPartnerData ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--t3)' }}>
+                <span className="spinner" style={{ marginRight: '8px' }}></span> 로딩 중...
+              </div>
+            ) : partnerSharedStock.length === 0 ? (
+              <div className="card" style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--t2)', border: '1px dashed var(--border)', borderRadius: '16px', background: 'var(--card)' }}>
+                <div style={{ fontSize: '48px', marginBottom: '12px', textAlign: 'center' }}>📥</div>
+                <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '15px' }}>본사에서 공유 중인 기기가 없습니다.</div>
+                <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--t3)', marginTop: '6px' }}>필요하신 기종이 있는 경우 본사 담당자에게 기기 공유를 요청해 주세요.</div>
+              </div>
+            ) : (
+              <div className="products-grid">
+                {partnerSharedStock.map((item) => {
+                  const isRequestedByMe = item.notes && item.notes.includes(`[이관신청: ${sellerProfile.store_name}`);
+                  const isRequestedByOther = item.notes && item.notes.includes('[이관신청:') && !isRequestedByMe;
+
+                  return (
+                    <div key={item.id} className="product-card" style={{ opacity: isRequestedByOther ? 0.45 : 1 }}>
+                      <div className="p-img" style={{ fontSize: '44px' }}>
+                        📱
+                      </div>
+                      <div className="p-info" style={{ padding: '14px' }}>
+                        <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--t1)' }}>{item.model_name}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--t3)', fontFamily: 'monospace', marginTop: '4px' }}>Sticker: {item.sticker || '없음'}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--t3)', fontFamily: 'monospace' }}>IMEI: {item.imei}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '4px' }}>색상: {item.color || '지정 없음'} | 배터리: {item.battery_pct || '100'}%</div>
+                        <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--gold)', marginTop: '8px' }}>
+                          ฿{item.selling_price ? item.selling_price.toLocaleString() : 0}
+                        </div>
+                        <div style={{ marginTop: '12px' }}>
+                          {isRequestedByMe ? (
+                            <button 
+                              className="btn-sm" 
+                              disabled 
+                              style={{ width: '100%', padding: '8px', fontSize: '12px', background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: '8px', cursor: 'default', fontWeight: 700 }}
+                            >
+                              ⏳ 신청 완료 (승인 대기)
+                            </button>
+                          ) : isRequestedByOther ? (
+                            <button 
+                              className="btn-sm" 
+                              disabled 
+                              style={{ width: '100%', padding: '8px', fontSize: '12px', background: '#f1f5f9', color: '#94a3b8', border: '1px solid #e2e8f0', borderRadius: '8px', cursor: 'not-allowed', fontWeight: 700 }}
+                            >
+                              🔒 다른 대리점에서 신청 중
+                            </button>
+                          ) : (
+                            <button 
+                              className="btn-sm btn-purple" 
+                              onClick={() => handleRequestPartnerDevice(item)}
+                              style={{ width: '100%', padding: '8px', fontSize: '12px', borderRadius: '8px', fontWeight: 700 }}
+                            >
+                              🔌 이관 신청하기
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1581,10 +1782,25 @@ export default function SellerDashboard() {
           <span className="tab-item-icon">📊</span>
           <span>{t('tab_overview')}</span>
         </div>
-        <div className={`tab-item ${activeTab === 'products' ? 'active' : ''}`} onClick={() => { handleCloseActiveChatPanel(); setActiveTab('products'); }}>
-          <span className="tab-item-icon">📱</span>
-          <span>{t('tab_my_products')}</span>
-        </div>
+        
+        {sellerProfile?.store_type === 'direct' ? (
+          <div className={`tab-item ${activeTab === 'products' ? 'active' : ''}`} onClick={() => { handleCloseActiveChatPanel(); setActiveTab('products'); }}>
+            <span className="tab-item-icon">📱</span>
+            <span>{t('tab_my_products')}</span>
+          </div>
+        ) : (
+          <>
+            <div className={`tab-item ${activeTab === 'partner_inventory' ? 'active' : ''}`} onClick={() => { handleCloseActiveChatPanel(); setActiveTab('partner_inventory'); }}>
+              <span className="tab-item-icon">🏪</span>
+              <span>우리 매장 재고</span>
+            </div>
+            <div className={`tab-item ${activeTab === 'partner_request' ? 'active' : ''}`} onClick={() => { handleCloseActiveChatPanel(); setActiveTab('partner_request'); }}>
+              <span className="tab-item-icon">📥</span>
+              <span>기기 신청</span>
+            </div>
+          </>
+        )}
+
         <div className={`tab-item ${activeTab === 'chats' ? 'active' : ''}`} onClick={() => setActiveTab('chats')}>
           <span className="tab-item-icon" style={{ position: 'relative' }}>
             💬
@@ -1594,14 +1810,19 @@ export default function SellerDashboard() {
           </span>
           <span>{t('tab_customer_chat')}</span>
         </div>
+        
         <div className={`tab-item ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => { handleCloseActiveChatPanel(); setActiveTab('orders'); }}>
           <span className="tab-item-icon">📦</span>
           <span>{t('tab_orders_history')}</span>
         </div>
-        <div className={`tab-item ${activeTab === 'contracts' ? 'active' : ''}`} onClick={() => { handleCloseActiveChatPanel(); setActiveTab('contracts'); }}>
-          <span className="tab-item-icon">✍️</span>
-          <span>{t('tab_contracts')}</span>
-        </div>
+        
+        {sellerProfile?.store_type === 'direct' && (
+          <div className={`tab-item ${activeTab === 'contracts' ? 'active' : ''}`} onClick={() => { handleCloseActiveChatPanel(); setActiveTab('contracts'); }}>
+            <span className="tab-item-icon">✍️</span>
+            <span>{t('tab_contracts')}</span>
+          </div>
+        )}
+        
         <div className={`tab-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => { handleCloseActiveChatPanel(); setActiveTab('profile'); }}>
           <span className="tab-item-icon">👤</span>
           <span>{t('tab_store_profile')}</span>

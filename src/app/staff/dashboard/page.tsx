@@ -51,8 +51,8 @@ export default function StaffDashboard() {
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [redirectCountdown, setRedirectCountdown] = useState(3);
 
-  // Active Tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake' | 'history_log' | 'cod' | 'customers'
-  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake' | 'history_log' | 'cod' | 'customers'>('overview');
+  // Active Tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake' | 'history_log' | 'cod' | 'customers' | 'partner_transfer'
+  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake' | 'history_log' | 'cod' | 'customers' | 'partner_transfer'>('overview');
 
   // Sorting States
   const [sortField, setSortField] = useState<string>('created_at');
@@ -1112,7 +1112,6 @@ export default function StaffDashboard() {
         pendingModelMap[d.model_name] = (pendingModelMap[d.model_name] || 0) + 1;
       }
     });
-
     const soldModelMap: Record<string, number> = {};
     soldList.forEach(d => {
       if (d.model_name) {
@@ -1137,13 +1136,14 @@ export default function StaffDashboard() {
 
   // Filtered lists
   const filteredActiveDevices = useMemo(() => {
+    const isSearchActive = searchQuery.trim() !== '';
     const list = devices.filter(d => {
       if (d.deleted_at || d.is_sold || d.stock_location === 'DHL') return false;
       const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchLoc = locationFilter === 'all' || d.stock_location === locationFilter;
-      const matchCat = matchesCategory(d.model_name, categoryFilter);
+      const matchLoc = isSearchActive || locationFilter === 'all' || d.stock_location === locationFilter;
+      const matchCat = isSearchActive || matchesCategory(d.model_name, categoryFilter);
       return matchSearch && matchLoc && matchCat;
     });
 
@@ -1160,12 +1160,13 @@ export default function StaffDashboard() {
 
   // Filtered list for Pending Intake
   const filteredPendingDevices = useMemo(() => {
+    const isSearchActive = searchQuery.trim() !== '';
     const list = devices.filter(d => {
       if (d.deleted_at || d.is_sold || d.stock_location !== 'DHL') return false;
       const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchCat = matchesCategory(d.model_name, categoryFilter);
+      const matchCat = isSearchActive || matchesCategory(d.model_name, categoryFilter);
       return matchSearch && matchCat;
     });
     return sortDevices(list);
@@ -1185,10 +1186,12 @@ export default function StaffDashboard() {
       return null;
     };
 
+    const isSearchActive = soldSearchQuery.trim() !== '';
+
     const list = devices.filter(d => {
       if (d.deleted_at || !d.is_sold) return false;
 
-      if (soldSelectedMonth !== 'all') {
+      if (!isSearchActive && soldSelectedMonth !== 'all') {
         const ym = getYearMonth(d.sale_date);
         if (ym !== soldSelectedMonth) return false;
       }
@@ -1196,10 +1199,10 @@ export default function StaffDashboard() {
       const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(soldSearchQuery)) || 
                           (d.imei && d.imei.includes(soldSearchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(soldSearchQuery.toLowerCase()));
-      const matchCat = matchesCategory(d.model_name, categoryFilter);
+      const matchCat = isSearchActive || matchesCategory(d.model_name, categoryFilter);
 
       let matchDay = true;
-      if (soldSelectedDays.length > 0) {
+      if (!isSearchActive && soldSelectedDays.length > 0) {
         const day = getSaleDay(d.sale_date);
         matchDay = day !== null && soldSelectedDays.includes(day);
       }
@@ -2218,6 +2221,31 @@ export default function StaffDashboard() {
     }
   };
 
+  const handleTogglePartnerVisible = async (item: DeviceItem) => {
+    try {
+      const isShared = item.notes && item.notes.includes('[협력사공개]');
+      let newNotes = item.notes || '';
+
+      if (isShared) {
+        newNotes = newNotes.replace(/\s*\[협력사공개\]/g, '').trim();
+      } else {
+        newNotes = newNotes ? `${newNotes} [협력사공개]` : '[협력사공개]';
+      }
+
+      const { error } = await supabase
+        .from('sheets_inventory')
+        .update({ notes: newNotes })
+        .eq('id', item.id);
+
+      if (error) throw error;
+
+      showToast(isShared ? '협력사 공유가 취소되었습니다.' : '협력사 공유가 설정되었습니다.', 'success');
+      await loadLedgerData();
+    } catch (err: any) {
+      showToast('공유 상태 변경 실패: ' + err.message, 'error');
+    }
+  };
+
   // Inline Cell Save Handler
   const handleInlineSave = async (
     id: string, 
@@ -2967,7 +2995,7 @@ export default function StaffDashboard() {
   };
 
   // Tab Change Handler
-  const handleTabChange = (tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake' | 'history_log' | 'cod' | 'customers') => {
+  const handleTabChange = (tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake' | 'history_log' | 'cod' | 'customers' | 'partner_transfer') => {
     setActiveTab(tab);
     setSelectedIds([]);
     setCategoryFilter('all');
@@ -2990,6 +3018,158 @@ export default function StaffDashboard() {
     else if (tab === 'installment') setInstallmentSearchQuery(query);
     else if (tab === 'cod') setCodSearchQuery(query);
     else if (tab === 'trash') setTrashSearchQuery(query);
+  };
+
+  const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>, currentTab: string) => {
+    if (e.key === 'Enter') {
+      const q = (e.target as HTMLInputElement).value.trim();
+      if (!q) return;
+
+      const qNorm = normalizeModelName(q);
+
+      // Find matches in the master devices array
+      const allMatching = devices.filter(d => {
+        const modelMatch = d.model_name && normalizeModelName(d.model_name).includes(qNorm);
+        const imeiMatch = d.imei && d.imei.includes(q);
+        const stickerMatch = d.sticker && d.sticker.toLowerCase().includes(q.toLowerCase());
+        return modelMatch || imeiMatch || stickerMatch;
+      });
+
+      if (allMatching.length === 0) {
+        showToast(lang === 'ko' ? `"${q}"에 대한 검색 결과가 없습니다.` : `No results found for "${q}".`, 'info');
+        return;
+      }
+
+      // Determine where the matching items are
+      // Order of priority: active stock (ledger), sales, pending_intake, trash
+      const activeMatch = allMatching.find(d => !d.deleted_at && !d.is_sold && d.stock_location !== 'DHL');
+      const soldMatch = allMatching.find(d => !d.deleted_at && d.is_sold);
+      const pendingMatch = allMatching.find(d => !d.deleted_at && !d.is_sold && d.stock_location === 'DHL');
+      const trashMatch = allMatching.find(d => d.deleted_at);
+
+      if (currentTab === 'ledger') {
+        if (activeMatch) {
+          setLocationFilter('all');
+          setCategoryFilter('all');
+          setSearchQuery(q);
+          showToast(lang === 'ko' ? '검색 필터를 초기화하여 기기를 표시합니다.' : 'Cleared filters to show device.', 'success');
+        } else if (soldMatch) {
+          handleGoToTabAndSearch('sales', q);
+          showToast(lang === 'ko' ? '판매완료된 기기입니다. 판매완료 탭으로 이동했습니다.' : 'Sold device found. Switched to Sales tab.', 'info');
+        } else if (pendingMatch) {
+          handleGoToTabAndSearch('pending_intake', q);
+          showToast(lang === 'ko' ? '입고 대기 상태의 기기입니다. 입고대기 탭으로 이동했습니다.' : 'Pending device found. Switched to Pending tab.', 'info');
+        } else if (trashMatch) {
+          handleGoToTabAndSearch('trash', q);
+          showToast(lang === 'ko' ? '삭제된 기기입니다. 휴지통 탭으로 이동했습니다.' : 'Deleted device found. Switched to Trash tab.', 'info');
+        }
+      } else if (currentTab === 'sales') {
+        if (soldMatch) {
+          setSoldSelectedMonth('all');
+          setCategoryFilter('all');
+          setSoldSearchQuery(q);
+          showToast(lang === 'ko' ? '검색 필터를 초기화하여 기기를 표시합니다.' : 'Cleared filters to show device.', 'success');
+        } else if (activeMatch) {
+          handleGoToTabAndSearch('ledger', q);
+          showToast(lang === 'ko' ? '판매되지 않은 사내재고 기기입니다. 사내재고 탭으로 이동했습니다.' : 'Active stock found. Switched to Inventory tab.', 'info');
+        } else if (pendingMatch) {
+          handleGoToTabAndSearch('pending_intake', q);
+          showToast(lang === 'ko' ? '입고 대기 상태의 기기입니다. 입고대기 탭으로 이동했습니다.' : 'Pending device found. Switched to Pending tab.', 'info');
+        } else if (trashMatch) {
+          handleGoToTabAndSearch('trash', q);
+          showToast(lang === 'ko' ? '삭제된 기기입니다. 휴지통 탭으로 이동했습니다.' : 'Deleted device found. Switched to Trash tab.', 'info');
+        }
+      } else if (currentTab === 'pending_intake') {
+        if (pendingMatch) {
+          setCategoryFilter('all');
+          setSearchQuery(q);
+          showToast(lang === 'ko' ? '검색 필터를 초기화하여 기기를 표시합니다.' : 'Cleared filters to show device.', 'success');
+        } else if (activeMatch) {
+          handleGoToTabAndSearch('ledger', q);
+          showToast(lang === 'ko' ? '입고 완료된 사내재고 기기입니다. 사내재고 탭으로 이동했습니다.' : 'Active stock found. Switched to Inventory tab.', 'info');
+        } else if (soldMatch) {
+          handleGoToTabAndSearch('sales', q);
+          showToast(lang === 'ko' ? '판매완료된 기기입니다. 판매완료 탭으로 이동했습니다.' : 'Sold device found. Switched to Sales tab.', 'info');
+        } else if (trashMatch) {
+          handleGoToTabAndSearch('trash', q);
+          showToast(lang === 'ko' ? '삭제된 기기입니다. 휴지통 탭으로 이동했습니다.' : 'Deleted device found. Switched to Trash tab.', 'info');
+        }
+      } else if (currentTab === 'trash') {
+        if (trashMatch) {
+          setTrashSearchQuery(q);
+        } else if (activeMatch) {
+          handleGoToTabAndSearch('ledger', q);
+          showToast(lang === 'ko' ? '사내재고 탭으로 이동했습니다.' : 'Moved to Inventory tab.', 'info');
+        } else if (soldMatch) {
+          handleGoToTabAndSearch('sales', q);
+          showToast(lang === 'ko' ? '판매완료 탭으로 이동했습니다.' : 'Moved to Sales tab.', 'info');
+        } else if (pendingMatch) {
+          handleGoToTabAndSearch('pending_intake', q);
+          showToast(lang === 'ko' ? '입고대기 탭으로 이동했습니다.' : 'Moved to Pending tab.', 'info');
+        }
+      } else if (currentTab === 'installment') {
+        const installmentDevices = devices.filter(d => !d.deleted_at && d.is_sold && d.sale_type === 'installment');
+        const matchingInst = installmentDevices.filter(d => {
+          const custNameMatch = d.customer_name?.toLowerCase().includes(q.toLowerCase());
+          const custPhoneMatch = d.customer_phone?.includes(q);
+          const stickerMatch = d.sticker?.toLowerCase().includes(q.toLowerCase());
+          const imeiMatch = d.imei?.includes(q);
+          const modelMatch = normalizeModelName(d.model_name).includes(qNorm);
+          return custNameMatch || custPhoneMatch || stickerMatch || imeiMatch || modelMatch;
+        });
+
+        if (matchingInst.length > 0) {
+          setInstSelectedMonth('all');
+          setShowOverdueOnly(false);
+          setInstallmentSearchQuery(q);
+          showToast(lang === 'ko' ? '검색 필터를 초기화하여 할부 계약을 표시합니다.' : 'Cleared filters to show installment contract.', 'success');
+        } else {
+          if (activeMatch) {
+            handleGoToTabAndSearch('ledger', q);
+            showToast(lang === 'ko' ? '사내재고 기기입니다. 사내재고 탭으로 이동했습니다.' : 'Active stock found. Switched to Inventory tab.', 'info');
+          } else if (soldMatch) {
+            handleGoToTabAndSearch('sales', q);
+            showToast(lang === 'ko' ? '판매완료된 기기입니다. 판매완료 탭으로 이동했습니다.' : 'Sold device found. Switched to Sales tab.', 'info');
+          } else if (pendingMatch) {
+            handleGoToTabAndSearch('pending_intake', q);
+            showToast(lang === 'ko' ? '입고 대기 상태의 기기입니다. 입고대기 탭으로 이동했습니다.' : 'Pending device found. Switched to Pending tab.', 'info');
+          } else if (trashMatch) {
+            handleGoToTabAndSearch('trash', q);
+            showToast(lang === 'ko' ? '삭제된 기기입니다. 휴지통 탭으로 이동했습니다.' : 'Deleted device found. Switched to Trash tab.', 'info');
+          }
+        }
+      } else if (currentTab === 'cod') {
+        const codDevices = devices.filter(d => !d.deleted_at && d.is_sold && d.sale_type === 'cod');
+        const matchingCOD = codDevices.filter(d => {
+          const custNameMatch = d.customer_name?.toLowerCase().includes(q.toLowerCase());
+          const custPhoneMatch = d.customer_phone?.includes(q);
+          const stickerMatch = d.sticker?.toLowerCase().includes(q.toLowerCase());
+          const imeiMatch = d.imei?.includes(q);
+          const modelMatch = normalizeModelName(d.model_name).includes(qNorm);
+          return custNameMatch || custPhoneMatch || stickerMatch || imeiMatch || modelMatch;
+        });
+
+        if (matchingCOD.length > 0) {
+          setCodSelectedMonth('all');
+          setCodSearchQuery(q);
+          showToast(lang === 'ko' ? '검색 필터를 초기화하여 COD 계약을 표시합니다.' : 'Cleared filters to show COD contract.', 'success');
+        } else {
+          if (activeMatch) {
+            handleGoToTabAndSearch('ledger', q);
+            showToast(lang === 'ko' ? '사내재고 기기입니다. 사내재고 탭으로 이동했습니다.' : 'Active stock found. Switched to Inventory tab.', 'info');
+          } else if (soldMatch) {
+            handleGoToTabAndSearch('sales', q);
+            showToast(lang === 'ko' ? '판매완료된 기기입니다. 판매완료 탭으로 이동했습니다.' : 'Sold device found. Switched to Sales tab.', 'info');
+          } else if (pendingMatch) {
+            handleGoToTabAndSearch('pending_intake', q);
+            showToast(lang === 'ko' ? '입고 대기 상태의 기기입니다. 입고대기 탭으로 이동했습니다.' : 'Pending device found. Switched to Pending tab.', 'info');
+          } else if (trashMatch) {
+            handleGoToTabAndSearch('trash', q);
+            showToast(lang === 'ko' ? '삭제된 기기입니다. 휴지통 탭으로 이동했습니다.' : 'Deleted device found. Switched to Trash tab.', 'info');
+          }
+        }
+      }
+    }
   };
 
   // CSV Reader trigger for file upload selector
@@ -3094,6 +3274,18 @@ export default function StaffDashboard() {
                 onClick={() => handleTabChange('cod')}
               >
                 <span className="ico">💵</span> {t('staff_menu_cod')}
+              </button>
+
+              <button 
+                className={`sb-link ${activeTab === 'partner_transfer' ? 'active' : ''}`}
+                onClick={() => handleTabChange('partner_transfer')}
+              >
+                <span className="ico">🔌</span> 협력사 이관 요청 {(() => {
+                  const reqCount = devices.filter(d => !d.deleted_at && d.notes && d.notes.includes('[이관신청:')).length;
+                  return reqCount > 0 ? (
+                    <span style={{ background: 'var(--red)', color: '#fff', fontSize: '9.5px', fontWeight: 800, padding: '2px 6px', borderRadius: '10px', marginLeft: '6px' }}>{reqCount}</span>
+                  ) : null;
+                })()}
               </button>
             </>
           )}
@@ -3604,6 +3796,7 @@ export default function StaffDashboard() {
                   placeholder="모델명, IMEI 검색..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => handleSearchKeyPress(e, 'pending_intake')}
                   className="form-input"
                   style={{ maxWidth: '220px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                 />
@@ -3783,6 +3976,7 @@ export default function StaffDashboard() {
                   placeholder={t('staff_search_placeholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => handleSearchKeyPress(e, 'ledger')}
                   className="form-input"
                   style={{ maxWidth: '220px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                 />
@@ -4269,6 +4463,34 @@ export default function StaffDashboard() {
                                 📌
                               </button>
                             )}
+                            {(() => {
+                              const isShared = item.notes && item.notes.includes('[협력사공개]');
+                              return (
+                                <button
+                                  style={{
+                                    width: '28px',
+                                    height: '28px',
+                                    minWidth: '28px',
+                                    padding: 0,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: '6px',
+                                    fontSize: '12px',
+                                    background: isShared ? 'var(--purple-l)' : 'transparent',
+                                    color: isShared ? '#ffffff' : '#94a3b8',
+                                    border: isShared ? '1px solid var(--purple)' : '1px solid #cbd5e1',
+                                    cursor: 'pointer',
+                                    boxShadow: isShared ? '0 2px 4px rgba(124,58,237,0.3)' : 'none',
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onClick={() => handleTogglePartnerVisible(item)}
+                                  title={isShared ? '협력사 공유 해제 (Currently shared)' : '협력사 공유 설정 (Not shared)'}
+                                >
+                                  👥
+                                </button>
+                              );
+                            })()}
                             <button
                               className="btn-blue"
                               style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
@@ -4309,6 +4531,7 @@ export default function StaffDashboard() {
                   placeholder={t('staff_search_sold_placeholder')}
                   value={soldSearchQuery}
                   onChange={(e) => setSoldSearchQuery(e.target.value)}
+                  onKeyDown={(e) => handleSearchKeyPress(e, 'sales')}
                   className="form-input"
                   style={{ maxWidth: '220px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                 />
@@ -4751,13 +4974,13 @@ export default function StaffDashboard() {
             const history = d.installment_history || [];
 
             // 1. Month filter: show only contracts that have a payment due in the selected month
-            if (instSelectedMonth !== 'all') {
+            if (!installmentSearchQuery && instSelectedMonth !== 'all') {
               const hasDue = history.some((h: any) => isDueInSelectedMonth(h.due_date));
               if (!hasDue) return false;
             }
 
             // 2. Overdue filter: show only contracts that have an unpaid installment past today's date
-            if (showOverdueOnly) {
+            if (!installmentSearchQuery && showOverdueOnly) {
               const hasOverdue = history.some((h: any) => checkIsOverdue(h.due_date, h.status));
               if (!hasOverdue) return false;
             }
@@ -4815,6 +5038,7 @@ export default function StaffDashboard() {
                     placeholder={t('staff_search_cod_placeholder')}
                     value={installmentSearchQuery}
                     onChange={(e) => setInstallmentSearchQuery(e.target.value)}
+                    onKeyDown={(e) => handleSearchKeyPress(e, 'installment')}
                     className="form-input"
                     style={{ maxWidth: '240px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                   />
@@ -5515,7 +5739,7 @@ export default function StaffDashboard() {
           const codDevices = devices.filter(d => !d.deleted_at && d.is_sold && d.sale_type === 'cod');
           
           let filteredCOD = codDevices;
-          if (codSelectedMonth !== 'all') {
+          if (!codSearchQuery.trim() && codSelectedMonth !== 'all') {
             filteredCOD = filteredCOD.filter(d => getYearMonth(d.sale_date) === codSelectedMonth);
           }
           if (codSearchQuery.trim()) {
@@ -5565,6 +5789,7 @@ export default function StaffDashboard() {
                     placeholder={t('staff_search_cod_placeholder')}
                     value={codSearchQuery}
                     onChange={(e) => setCodSearchQuery(e.target.value)}
+                    onKeyDown={(e) => handleSearchKeyPress(e, 'cod')}
                     className="form-input"
                     style={{ maxWidth: '240px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                   />
@@ -5681,7 +5906,7 @@ export default function StaffDashboard() {
           const customerDevices = devices.filter(d => !d.deleted_at && d.is_sold);
 
           let filteredCustomers = customerDevices;
-          if (selectedCustomerMonth) {
+          if (!custSearch.trim() && selectedCustomerMonth) {
             filteredCustomers = filteredCustomers.filter(d => getYearMonth(d.sale_date) === selectedCustomerMonth);
           }
 
@@ -5933,6 +6158,7 @@ export default function StaffDashboard() {
                   placeholder={t('staff_trash_search_placeholder') || t('staff_search_placeholder')}
                   value={trashSearchQuery}
                   onChange={(e) => setTrashSearchQuery(e.target.value)}
+                  onKeyDown={(e) => handleSearchKeyPress(e, 'trash')}
                   className="form-input"
                   style={{ maxWidth: '220px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
                 />
