@@ -4216,6 +4216,27 @@ export default function StaffDashboard() {
           const filterMonth = targetMonthNum;
           const currMonth = now.getMonth() + 1;
           
+          const parseDueDate = (dueDate: string) => {
+            if (!dueDate) return null;
+            const pts = dueDate.split('.').map(x => x.trim()).filter(Boolean);
+            if (pts.length >= 3) {
+              const y = 2000 + Number(pts[0]);
+              const m = Number(pts[1]) - 1; // 0-indexed month
+              const d = Number(pts[2]);
+              return new Date(y, m, d);
+            }
+            return null;
+          };
+
+          const checkIsOverdue = (dueDate: string, status: string) => {
+            if (status !== 'unpaid') return false;
+            const dueDateObj = parseDueDate(dueDate);
+            if (!dueDateObj) return false;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            return dueDateObj < today;
+          };
+
           const isDueInSelectedMonth = (dueDate: string) => {
             if (!dueDate) return false;
             const pts = dueDate.split('.').map(x => x.trim()).filter(Boolean);
@@ -4247,13 +4268,20 @@ export default function StaffDashboard() {
           
           const remainingThisMonth = expectedThisMonth - collectedThisMonth;
 
-          // Filter installments based on search query and month filter
+          // Filter installments based on search query, month filter, and overdue filter
           const filteredInstallments = installmentDevices.filter(d => {
-            // Month filter: show only contracts that have a payment due in the selected month
+            const history = d.installment_history || [];
+
+            // 1. Month filter: show only contracts that have a payment due in the selected month
             if (instSelectedMonth !== 'all') {
-              const history = d.installment_history || [];
               const hasDue = history.some((h: any) => isDueInSelectedMonth(h.due_date));
               if (!hasDue) return false;
+            }
+
+            // 2. Overdue filter: show only contracts that have an unpaid installment past today's date
+            if (showOverdueOnly) {
+              const hasOverdue = history.some((h: any) => checkIsOverdue(h.due_date, h.status));
+              if (!hasOverdue) return false;
             }
 
             const custNameMatch = d.customer_name?.toLowerCase().includes(installmentSearchQuery.toLowerCase());
@@ -4324,6 +4352,16 @@ export default function StaffDashboard() {
                       <option key={month} value={month}>{month}</option>
                     ))}
                   </select>
+
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 700, marginLeft: '12px', cursor: 'pointer', userSelect: 'none' }}>
+                    <input
+                      type="checkbox"
+                      checked={showOverdueOnly}
+                      onChange={(e) => setShowOverdueOnly(e.target.checked)}
+                      style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                    />
+                    <span style={{ color: 'var(--red)' }}>⚠️ 연체 고객만 보기 (Overdue Only)</span>
+                  </label>
                 </div>
                 <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--purple-l)' }}>
                   총 할부 거래 수: {installmentDevices.length}건 (검색됨: {filteredInstallments.length}건)
@@ -4367,6 +4405,7 @@ export default function StaffDashboard() {
                         const paidTotal = history.filter((h: any) => h.status === 'paid').reduce((s: number, h: any) => s + (Number(h.amount) || 0), 0);
                         const totalInstPrice = (item.installment_months || 0) * (item.installment_amount || 0);
                         const isFinished = item.payment_status === 'paid';
+                        const hasOverdue = history.some((h: any) => checkIsOverdue(h.due_date, h.status));
                         
                         return (
                           <tr key={item.id} style={{ background: isFinished ? '#f4f4f5' : '#fff', opacity: isFinished ? 0.65 : 1 }}>
@@ -4449,14 +4488,27 @@ export default function StaffDashboard() {
                                 />
                               ) : (
                                 <div 
-                                  style={{ fontWeight: 700, color: 'var(--t1)', cursor: 'pointer', fontSize: '11.5px' }}
+                                  style={{ fontWeight: 700, color: 'var(--t1)', cursor: 'pointer', fontSize: '11.5px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}
                                   onClick={() => {
                                     setEditingCell({ id: item.id, field: 'customer_name' });
                                     setEditCellValue(item.customer_name || '');
                                   }}
                                   title="클릭하여 수정"
                                 >
-                                  👤 {item.customer_name || '미기입'}
+                                  <span>👤 {item.customer_name || '미기입'}</span>
+                                  {hasOverdue && (
+                                    <span style={{ 
+                                      background: 'var(--red)', 
+                                      color: '#fff', 
+                                      padding: '1px 5px', 
+                                      borderRadius: '4px', 
+                                      fontSize: '9px', 
+                                      fontWeight: 'bold', 
+                                      display: 'inline-block'
+                                    }}>
+                                      연체
+                                    </span>
+                                  )}
                                 </div>
                               )}
 
@@ -4503,6 +4555,7 @@ export default function StaffDashboard() {
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
                                 {history.map((inst: any, idx: number) => {
                                   const isPaid = inst.status === 'paid';
+                                  const isOverdue = checkIsOverdue(inst.due_date, inst.status);
                                   return (
                                     <button
                                       key={idx}
@@ -4513,16 +4566,16 @@ export default function StaffDashboard() {
                                         borderRadius: '6px',
                                         fontSize: '10px',
                                         fontWeight: 700,
-                                        background: isPaid ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                        background: isPaid ? 'rgba(16, 185, 129, 0.1)' : isOverdue ? 'rgba(239, 68, 68, 0.25)' : 'rgba(239, 68, 68, 0.05)',
                                         color: isPaid ? 'var(--green)' : 'var(--red)',
-                                        border: `1px solid ${isPaid ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}`,
+                                        border: `1px solid ${isPaid ? 'rgba(16, 185, 129, 0.25)' : isOverdue ? 'var(--red)' : 'rgba(239, 68, 68, 0.15)'}`,
                                         cursor: 'pointer',
                                         textAlign: 'center',
                                         boxSizing: 'border-box'
                                       }}
-                                      title={`예정일: ${inst.due_date}${inst.paid_date ? ` (수금일: ${inst.paid_date})` : ''}`}
+                                      title={`예정일: ${inst.due_date}${inst.paid_date ? ` (수금일: ${inst.paid_date})` : ''}${isOverdue ? ' [연체됨]' : ''}`}
                                     >
-                                      {inst.sequence}회차 ({inst.due_date.split('.').slice(1,2).join('.') + '월'}): ฿{formatPrice(inst.amount)} {isPaid ? '🟢' : '🔴'}
+                                      {inst.sequence}회차 ({inst.due_date.split('.').slice(1,2).join('.') + '월'}): ฿{formatPrice(inst.amount)} {isPaid ? '🟢' : isOverdue ? '⚠️' : '🔴'}
                                     </button>
                                   );
                                 })}
