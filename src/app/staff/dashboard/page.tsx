@@ -2715,14 +2715,14 @@ export default function StaffDashboard() {
                 className={`sb-link ${activeTab === 'installment' ? 'active' : ''}`}
                 onClick={() => handleTabChange('installment')}
               >
-                <span className="ico">💳</span> 할부 수금 관리
+                <span className="ico">💳</span> {t('staff_menu_installment')}
               </button>
 
               <button 
                 className={`sb-link ${activeTab === 'cod' ? 'active' : ''}`}
                 onClick={() => handleTabChange('cod')}
               >
-                <span className="ico">💵</span> COD 수금 관리
+                <span className="ico">💵</span> {t('staff_menu_cod')}
               </button>
             </>
           )}
@@ -2731,7 +2731,7 @@ export default function StaffDashboard() {
             className={`sb-link ${activeTab === 'customers' ? 'active' : ''}`}
             onClick={() => handleTabChange('customers')}
           >
-            <span className="ico">👤</span> 고객 관리
+            <span className="ico">👤</span> {t('staff_menu_customers')}
           </button>
 
           <button 
@@ -2746,7 +2746,7 @@ export default function StaffDashboard() {
               className={`sb-link ${activeTab === 'margin' ? 'active' : ''}`}
               onClick={() => handleTabChange('margin')}
             >
-              <span className="ico">📈</span> 마진 및 정산관리
+              <span className="ico">📈</span> {t('staff_menu_margin')}
             </button>
           )}
 
@@ -2754,7 +2754,7 @@ export default function StaffDashboard() {
             className={`sb-link ${activeTab === 'trash' ? 'active' : ''}`}
             onClick={() => handleTabChange('trash')}
           >
-            <span className="ico">🗑️</span> 휴지통
+            <span className="ico">🗑️</span> {t('staff_menu_trash')}
           </button>
 
           <div className="sb-sec-lbl">Shortcuts</div>
@@ -2794,14 +2794,14 @@ export default function StaffDashboard() {
               {activeTab === 'overview' && `📊 ${t('staff_menu_overview') || '경영 개요'}`}
               {activeTab === 'ledger' && `📱 ${t('staff_menu_inventory') || '사내 재고 관리'}`}
               {activeTab === 'sales' && `💸 ${t('staff_menu_sales') || '판매 완료 처리'}`}
-              {activeTab === 'pending_intake' && `📥 입고 대기 목록`}
-              {activeTab === 'history_log' && `📋 재고/판매 로그`}
-              {activeTab === 'installment' && `💳 할부 수금 관리`}
-              {activeTab === 'cod' && `💵 COD 수금 관리`}
-              {activeTab === 'customers' && `👤 고객 관리`}
-              {activeTab === 'settings' && `⚙️ ${t('staff_menu_settings') || '기준 정보 관리'}`}
-              {activeTab === 'margin' && `📈 마진 및 정산관리`}
-              {activeTab === 'trash' && `🗑️ 휴지통`}
+              {activeTab === 'pending_intake' && `📥 ${t('staff_menu_pending_intake')}`}
+              {activeTab === 'history_log' && `📋 ${t('staff_menu_history_log')}`}
+              {activeTab === 'installment' && `💳 ${t('staff_menu_installment')}`}
+              {activeTab === 'cod' && `💵 ${t('staff_menu_cod')}`}
+              {activeTab === 'customers' && `👤 ${t('staff_menu_customers')}`}
+              {activeTab === 'settings' && `⚙️ ${t('staff_menu_settings')}`}
+              {activeTab === 'margin' && `📈 ${t('staff_menu_margin')}`}
+              {activeTab === 'trash' && `🗑️ ${t('staff_menu_trash')}`}
             </h1>
             <p style={{ color: 'var(--t2)', fontSize: '12px', marginTop: '4px' }}>
               Company Ledger & Stock Intake Management System.
@@ -4375,29 +4375,29 @@ export default function StaffDashboard() {
                   <thead>
                     <tr>
                       <th style={{ width: '8%', cursor: 'pointer' }} onClick={() => toggleSort('sale_date')}>
-                        구매일 {sortField === 'sale_date' && (sortDirection === 'asc' ? '▲' : '▼')}
+                        {t('staff_th_purchase_date')} {sortField === 'sale_date' && (sortDirection === 'asc' ? '▲' : '▼')}
                       </th>
                       <th style={{ width: '13%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
-                        기기 정보 {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                        {t('staff_th_device_info')} {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
                       </th>
                       <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('customer_name')}>
-                        할부번호 / 고객정보 {sortField === 'customer_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                        {t('staff_th_installment_customer')} {sortField === 'customer_name' && (sortDirection === 'asc' ? '▲' : '▼')}
                       </th>
                       <th style={{ width: '14%', cursor: 'pointer' }} onClick={() => toggleSort('installment_amount')}>
-                        할부 조건 (계약 금액) {sortField === 'installment_amount' && (sortDirection === 'asc' ? '▲' : '▼')}
+                        {t('staff_th_installment_terms')} {sortField === 'installment_amount' && (sortDirection === 'asc' ? '▲' : '▼')}
                       </th>
                       <th style={{ width: '10%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
-                        수납액 / 할부총액 {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
+                        {t('staff_th_payment_vs_total')} {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
                       </th>
-                      <th style={{ width: '34%' }}>회차별 수금 관리 (클릭 시 수납 처리)</th>
-                      <th style={{ width: '6%', textAlign: 'center' }}>조작</th>
+                      <th style={{ width: '34%' }}>{t('staff_th_installment_rounds')}</th>
+                      <th style={{ width: '6%', textAlign: 'center' }}>{t('staff_th_actions2')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredInstallments.length === 0 ? (
                       <tr>
                         <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
-                          할부 거래 내역이 없습니다. (No installments found.)
+                          {t('staff_no_installments')}
                         </td>
                       </tr>
                     ) : (
@@ -5112,26 +5112,26 @@ export default function StaffDashboard() {
               {/* COD Table */}
               <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>📦</span> COD 수납 대장 (COD Collections)
+                  <span>📦</span> {t('staff_cod_ledger_title')}
                 </h4>
                 <div className="tbl-wrap" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
                   <table className="tbl" style={{ margin: 0 }}>
                     <thead>
                       <tr>
                         <th style={{ width: '10%', cursor: 'pointer' }} onClick={() => toggleSort('sale_date')}>
-                          판매일 {sortField === 'sale_date' && (sortDirection === 'asc' ? '▲' : '▼')}
+                          {t('staff_cod_sale_date_header')} {sortField === 'sale_date' && (sortDirection === 'asc' ? '▲' : '▼')}
                         </th>
                         <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
-                          기기 정보 {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                          {t('staff_th_device_info')} {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
                         </th>
                         <th style={{ width: '12%', cursor: 'pointer' }} onClick={() => toggleSort('imei')}>
                           IMEI {sortField === 'imei' && (sortDirection === 'asc' ? '▲' : '▼')}
                         </th>
                         <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('customer_name')}>
-                          고객 정보 {sortField === 'customer_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                          {t('staff_cod_customer_info_header')} {sortField === 'customer_name' && (sortDirection === 'asc' ? '▲' : '▼')}
                         </th>
                         <th style={{ width: '12%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
-                          판매금액 {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
+                          {t('staff_cod_sale_amount_header')} {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
                         </th>
                         <th style={{ width: '12%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('deposit_amount')}>
                           {t('staff_th_deposit')} {sortField === 'deposit_amount' && (sortDirection === 'asc' ? '▲' : '▼')}
@@ -5140,15 +5140,15 @@ export default function StaffDashboard() {
                           {t('staff_th_cod_unpaid')} {sortField === 'cod_amount' && (sortDirection === 'asc' ? '▲' : '▼')}
                         </th>
                         <th style={{ width: '10%', textAlign: 'center', cursor: 'pointer' }} onClick={() => toggleSort('payment_status')}>
-                          상태 {sortField === 'payment_status' && (sortDirection === 'asc' ? '▲' : '▼')}
+                          {t('staff_cod_status_header')} {sortField === 'payment_status' && (sortDirection === 'asc' ? '▲' : '▼')}
                         </th>
-                        <th style={{ width: '10%', textAlign: 'center' }}>작업</th>
+                        <th style={{ width: '10%', textAlign: 'center' }}>{t('staff_cod_actions_header')}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredCOD.length === 0 ? (
                         <tr>
-                          <td colSpan={9} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>COD 내역이 없습니다. (No COD records.)</td>
+                          <td colSpan={9} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>{t('staff_no_cod_records')}</td>
                         </tr>
                       ) : (
                         sortDevices(filteredCOD).map(item => (
@@ -5157,8 +5157,8 @@ export default function StaffDashboard() {
                             <td style={{ fontWeight: 700 }}>{item.model_name}</td>
                             <td className="font-mono" style={{ fontSize: '11px' }}>{item.imei}</td>
                             <td>
-                              <div style={{ fontWeight: 700 }}>👤 {item.customer_name || '미기입'}</div>
-                              <div style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '2px' }}>📞 {item.customer_phone || '미기입'}</div>
+                              <div style={{ fontWeight: 700 }}>👤 {item.customer_name || t('unfilled')}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '2px' }}>📞 {item.customer_phone || t('unfilled')}</div>
                             </td>
                             <td style={{ textAlign: 'right', fontWeight: 700 }}>฿{formatPrice(item.selling_price || 0)}</td>
                             <td style={{ textAlign: 'right', color: 'var(--t2)', fontSize: '12px' }}>฿{formatPrice(item.deposit_amount || 0)}</td>
@@ -5174,7 +5174,7 @@ export default function StaffDashboard() {
                                   onClick={() => handleConfirmPayment(item.id)}
                                   style={{ height: '24px', padding: '0 8px', fontSize: '10.5px', fontWeight: 800, margin: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                 >
-                                  입금 완료
+                                  {t('staff_btn_confirm_payment')}
                                 </button>
                               ) : (
                                 <button
@@ -5183,7 +5183,7 @@ export default function StaffDashboard() {
                                   onClick={() => handleCancelPayment(item.id, 'cod')}
                                   style={{ height: '24px', padding: '0 8px', fontSize: '10.5px', fontWeight: 800, margin: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                 >
-                                  완납 취소
+                                  {t('staff_btn_cancel_payment')}
                                 </button>
                               )}
                             </td>
@@ -5839,16 +5839,16 @@ export default function StaffDashboard() {
                   </label>
                   
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--t2)' }}>📍 실사 위치:</span>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--t2)' }}>{t('staff_audit_location_label')}</span>
                     <select
                       value={auditLocationFilter}
                       onChange={(e) => setAuditLocationFilter(e.target.value)}
                       className="form-input"
                       style={{ margin: 0, padding: '4px 8px', fontSize: '12.5px', minWidth: '150px', height: '32px' }}
                     >
-                      <option value="all">전체 위치 비교</option>
+                      <option value="all">{t('staff_audit_all_locations')}</option>
                       {locations.map(loc => (
-                        <option key={loc.id} value={loc.name}>{loc.name} 재고만 비교</option>
+                        <option key={loc.id} value={loc.name}>{t('staff_audit_location_only').replace('{name}', loc.name)}</option>
                       ))}
                     </select>
                   </div>
@@ -5882,7 +5882,7 @@ export default function StaffDashboard() {
                         transition: 'all 0.2s'
                       }}
                     >
-                      ❌ 미등록 기기 ({auditResults.notInInventory.length})
+                      {t('staff_audit_tab_not_in_db')} ({auditResults.notInInventory.length})
                     </button>
                     <button
                       type="button"
@@ -5899,7 +5899,7 @@ export default function StaffDashboard() {
                         transition: 'all 0.2s'
                       }}
                     >
-                      ⚠️ 재고 누락 의심 ({auditResults.missingFromPasted.length})
+                      {t('staff_audit_tab_missing')} ({auditResults.missingFromPasted.length})
                     </button>
                     <button
                       type="button"
@@ -5916,7 +5916,7 @@ export default function StaffDashboard() {
                         transition: 'all 0.2s'
                       }}
                     >
-                      ✅ 일치 재고 ({auditResults.matchedDevices.length})
+                      {t('staff_audit_tab_matched')} ({auditResults.matchedDevices.length})
                     </button>
                   </div>
 
@@ -5928,7 +5928,7 @@ export default function StaffDashboard() {
                       <div>
                         {auditResults.notInInventory.length === 0 ? (
                           <div style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)', fontSize: '13px' }}>
-                            입력하신 모든 IMEI가 현재 사내 재고에 등록되어 있습니다.
+                            {t('staff_audit_all_found')}
                           </div>
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -5940,18 +5940,18 @@ export default function StaffDashboard() {
                                 onClick={() => {
                                   const textToCopy = auditResults.notInInventory.map(item => item.imei).join('\n');
                                   navigator.clipboard.writeText(textToCopy);
-                                  alert('미등록 기기 IMEI 리스트가 클립보드에 복사되었습니다.');
+                                  alert(t('staff_audit_copied_unregistered'));
                                 }}
                               >
-                                📋 IMEI 목록 복사
+                                {t('staff_audit_copy_imei')}
                               </button>
                             </div>
                             <table className="tbl" style={{ width: '100%' }}>
                               <thead>
                                 <tr>
                                   <th style={{ width: '40%' }}>IMEI</th>
-                                  <th style={{ width: '25%', textAlign: 'center' }}>상태</th>
-                                  <th style={{ width: '35%' }}>DB 정보</th>
+                                  <th style={{ width: '25%', textAlign: 'center' }}>{t('staff_th_status')}</th>
+                                  <th style={{ width: '35%' }}>{t('staff_th_db_info')}</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -5987,7 +5987,7 @@ export default function StaffDashboard() {
                       <div>
                         {auditResults.missingFromPasted.length === 0 ? (
                           <div style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)', fontSize: '13px' }}>
-                            현재 사내 재고에 등록된 모든 기기가 입력하신 리스트에 포함되어 있습니다.
+                            {t('staff_audit_all_present')}
                           </div>
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -5999,17 +5999,17 @@ export default function StaffDashboard() {
                                 onClick={() => {
                                   const textToCopy = auditResults.missingFromPasted.map(item => item.imei).filter(Boolean).join('\n');
                                   navigator.clipboard.writeText(textToCopy);
-                                  alert('누락 의심 기기 IMEI 리스트가 클립보드에 복사되었습니다.');
+                                  alert(t('staff_audit_copied_missing'));
                                 }}
                               >
-                                📋 IMEI 목록 복사
+                                {t('staff_audit_copy_imei')}
                               </button>
                             </div>
                             <table className="tbl" style={{ width: '100%' }}>
                               <thead>
                                 <tr>
-                                  <th style={{ width: '25%' }}>스티커 번호</th>
-                                  <th style={{ width: '35%' }}>모델명</th>
+                                  <th style={{ width: '25%' }}>{t('staff_th_sticker')}</th>
+                                  <th style={{ width: '35%' }}>{t('staff_th_model')}</th>
                                   <th style={{ width: '40%' }}>IMEI</th>
                                 </tr>
                               </thead>
@@ -6033,14 +6033,14 @@ export default function StaffDashboard() {
                       <div>
                         {auditResults.matchedDevices.length === 0 ? (
                           <div style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)', fontSize: '13px' }}>
-                            입력하신 리스트와 일치하는 사내 재고 기기가 없습니다.
+                            {t('staff_audit_no_match')}
                           </div>
                         ) : (
                           <table className="tbl" style={{ width: '100%' }}>
                             <thead>
                               <tr>
-                                <th style={{ width: '25%' }}>스티커 번호</th>
-                                <th style={{ width: '35%' }}>모델명</th>
+                                <th style={{ width: '25%' }}>{t('staff_th_sticker')}</th>
+                                <th style={{ width: '35%' }}>{t('staff_th_model')}</th>
                                 <th style={{ width: '40%' }}>IMEI</th>
                               </tr>
                             </thead>
@@ -6189,16 +6189,16 @@ export default function StaffDashboard() {
                     <div>
                       {stat.soldList.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)', fontSize: '13px' }}>
-                          당일 판매 완료된 기기가 없습니다.
+                          {t('staff_no_sales_today')}
                         </div>
                       ) : (
                         <table className="tbl" style={{ width: '100%' }}>
                           <thead>
                             <tr>
-                              <th style={{ width: '25%' }}>스티커 번호</th>
-                              <th style={{ width: '30%' }}>모델명</th>
-                              <th style={{ width: '20%', textAlign: 'right' }}>판매가</th>
-                              <th style={{ width: '25%' }}>판매원</th>
+                              <th style={{ width: '25%' }}>{t('staff_th_sticker')}</th>
+                              <th style={{ width: '30%' }}>{t('staff_th_model')}</th>
+                              <th style={{ width: '20%', textAlign: 'right' }}>{t('staff_th_sale_price')}</th>
+                              <th style={{ width: '25%' }}>{t('staff_th_seller')}</th>
                             </tr>
                           </thead>
                           <tbody>
