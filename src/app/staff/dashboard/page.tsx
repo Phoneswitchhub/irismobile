@@ -83,6 +83,10 @@ export default function StaffDashboard() {
   const [locationFilter, setLocationFilter] = useState('all');
   const [selectedStatsLocation, setSelectedStatsLocation] = useState('all');
   const [soldSelectedDays, setSoldSelectedDays] = useState<number[]>([]);
+  const [soldSelectedMonth, setSoldSelectedMonth] = useState(() => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  });
   const [isDayFilterOpen, setIsDayFilterOpen] = useState(false);
 
   // Intake Modals (Manual & CSV Upload)
@@ -276,6 +280,22 @@ export default function StaffDashboard() {
     return Array.from(months).sort((a, b) => b.localeCompare(a));
   }, [marginStats.soldList, getYearMonth]);
 
+  const soldMonths = useMemo(() => {
+    const months = new Set<string>();
+    devices.forEach(d => {
+      if (d.is_sold && !d.deleted_at) {
+        const ym = getYearMonth(d.sale_date);
+        if (ym && ym !== 'Unknown') {
+          months.add(ym);
+        }
+      }
+    });
+    const today = new Date();
+    const currentYM = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    months.add(currentYM);
+    return Array.from(months).sort((a, b) => b.localeCompare(a));
+  }, [devices, getYearMonth]);
+
   useEffect(() => {
     if (customerMonths.length > 0 && !selectedCustomerMonth) {
       setSelectedCustomerMonth(customerMonths[0]);
@@ -349,7 +369,7 @@ export default function StaffDashboard() {
   const [editingDevice, setEditingDevice] = useState<DeviceItem | null>(null);
 
   // Inline Edit States
-  const [editingCell, setEditingCell] = useState<{ id: string; field: 'sticker' | 'site_date' | 'model_name' | 'imei' | 'color' | 'battery_pct' | 'purchase_cost_krw' | 'selling_price' | 'stock_location' | 'notes' | 'customer_name' | 'customer_phone' | 'installment_number' } | null>(null);
+  const [editingCell, setEditingCell] = useState<{ id: string; field: 'sticker' | 'site_date' | 'model_name' | 'imei' | 'color' | 'battery_pct' | 'purchase_cost_krw' | 'selling_price' | 'stock_location' | 'notes' | 'customer_name' | 'customer_phone' | 'installment_number' | 'seller_name' } | null>(null);
   const [editCellValue, setEditCellValue] = useState<string>('');
 
   // Toast Alerts
@@ -933,6 +953,12 @@ export default function StaffDashboard() {
 
     return devices.filter(d => {
       if (d.deleted_at || !d.is_sold) return false;
+
+      if (soldSelectedMonth !== 'all') {
+        const ym = getYearMonth(d.sale_date);
+        if (ym !== soldSelectedMonth) return false;
+      }
+
       const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(soldSearchQuery)) || 
                           (d.imei && d.imei.includes(soldSearchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(soldSearchQuery.toLowerCase()));
@@ -945,7 +971,7 @@ export default function StaffDashboard() {
 
       return matchSearch && matchDay;
     }).length;
-  }, [devices, soldSearchQuery, soldSelectedDays, normalizeModelName]);
+  }, [devices, soldSearchQuery, soldSelectedDays, soldSelectedMonth, normalizeModelName, getYearMonth]);
 
   // Extract unique models present in current tab's scope (active vs sold vs pending) based on active search/location filters
   const uniqueModels = useMemo(() => {
@@ -968,6 +994,12 @@ export default function StaffDashboard() {
 
     const soldList = devices.filter(d => {
       if (d.deleted_at || !d.is_sold) return false;
+
+      if (soldSelectedMonth !== 'all') {
+        const ym = getYearMonth(d.sale_date);
+        if (ym !== soldSelectedMonth) return false;
+      }
+
       const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(soldSearchQuery)) || 
                           (d.imei && d.imei.includes(soldSearchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(soldSearchQuery.toLowerCase()));
@@ -1016,7 +1048,7 @@ export default function StaffDashboard() {
       pending: Object.entries(pendingModelMap).sort(sortFn),
       sold: Object.entries(soldModelMap).sort(sortFn)
     };
-  }, [devices, searchQuery, soldSearchQuery, locationFilter, normalizeModelName, soldSelectedDays]);
+  }, [devices, searchQuery, soldSearchQuery, locationFilter, normalizeModelName, soldSelectedDays, soldSelectedMonth, getYearMonth]);
 
   // Helper to check category
   const matchesCategory = useCallback((modelName: string, filter: string) => {
@@ -1076,6 +1108,12 @@ export default function StaffDashboard() {
 
     const list = devices.filter(d => {
       if (d.deleted_at || !d.is_sold) return false;
+
+      if (soldSelectedMonth !== 'all') {
+        const ym = getYearMonth(d.sale_date);
+        if (ym !== soldSelectedMonth) return false;
+      }
+
       const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(soldSearchQuery)) || 
                           (d.imei && d.imei.includes(soldSearchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(soldSearchQuery.toLowerCase()));
@@ -1090,7 +1128,7 @@ export default function StaffDashboard() {
       return matchSearch && matchCat && matchDay;
     });
     return sortDevices(list);
-  }, [devices, soldSearchQuery, categoryFilter, soldSelectedDays, matchesCategory, sortDevices, normalizeModelName]);
+  }, [devices, soldSearchQuery, categoryFilter, soldSelectedDays, soldSelectedMonth, matchesCategory, sortDevices, normalizeModelName, getYearMonth]);
 
   const filteredTrashDevices = useMemo(() => {
     const list = devices.filter(d => {
@@ -2013,7 +2051,7 @@ export default function StaffDashboard() {
   // Inline Cell Save Handler
   const handleInlineSave = async (
     id: string, 
-    field: 'sticker' | 'site_date' | 'model_name' | 'imei' | 'color' | 'battery_pct' | 'purchase_cost_krw' | 'selling_price' | 'stock_location' | 'notes' | 'customer_name' | 'customer_phone' | 'installment_number', 
+    field: 'sticker' | 'site_date' | 'model_name' | 'imei' | 'color' | 'battery_pct' | 'purchase_cost_krw' | 'selling_price' | 'stock_location' | 'notes' | 'customer_name' | 'customer_phone' | 'installment_number' | 'seller_name', 
     value: string
   ) => {
     try {
@@ -3763,6 +3801,18 @@ export default function StaffDashboard() {
                 />
 
                 <select
+                  value={soldSelectedMonth}
+                  onChange={(e) => setSoldSelectedMonth(e.target.value)}
+                  className="form-input"
+                  style={{ maxWidth: '180px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
+                >
+                  <option value="all">{lang === 'ko' ? '전체 월 (All Months)' : 'All Months'}</option>
+                  {soldMonths.map(month => (
+                    <option key={month} value={month}>{month}</option>
+                  ))}
+                </select>
+
+                <select
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value)}
                   className="form-input"
@@ -4049,7 +4099,38 @@ export default function StaffDashboard() {
                             )}
                           </div>
                         </td>
-                        <td style={{ fontWeight: 700 }}>{item.seller_name || '-'}</td>
+                         <td style={{ fontWeight: 700 }}>
+                          {staffProfile?.role === 'admin' ? (
+                            editingCell?.id === item.id && editingCell?.field === 'seller_name' ? (
+                              <input
+                                type="text"
+                                value={editCellValue}
+                                onChange={(e) => setEditCellValue(e.target.value)}
+                                onBlur={() => handleInlineSave(item.id, 'seller_name', editCellValue)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleInlineSave(item.id, 'seller_name', editCellValue);
+                                  if (e.key === 'Escape') setEditingCell(null);
+                                }}
+                                autoFocus
+                                className="form-input"
+                                style={{ margin: 0, padding: '2px 4px', fontSize: '12px', height: '26px', width: '100px', display: 'inline-block' }}
+                              />
+                            ) : (
+                              <span
+                                style={{ cursor: 'pointer', textDecoration: 'underline dotted var(--border)' }}
+                                onClick={() => {
+                                  setEditingCell({ id: item.id, field: 'seller_name' });
+                                  setEditCellValue(item.seller_name || '');
+                                }}
+                                title="클릭하여 수정"
+                              >
+                                {item.seller_name || '미지정'}
+                              </span>
+                            )
+                          ) : (
+                            item.seller_name || '-'
+                          )}
+                        </td>
                         <td style={{ fontSize: '11px', color: 'var(--t2)' }}>{item.notes || '-'}</td>
                         <td style={{ textAlign: 'center' }}>
                           <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
@@ -4895,7 +4976,38 @@ export default function StaffDashboard() {
                                 </button>
                               )}
                             </td>
-                            <td>{item.seller_name || '-'}</td>
+                            <td>
+                              {staffProfile?.role === 'admin' ? (
+                                editingCell?.id === item.id && editingCell?.field === 'seller_name' ? (
+                                  <input
+                                    type="text"
+                                    value={editCellValue}
+                                    onChange={(e) => setEditCellValue(e.target.value)}
+                                    onBlur={() => handleInlineSave(item.id, 'seller_name', editCellValue)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleInlineSave(item.id, 'seller_name', editCellValue);
+                                      if (e.key === 'Escape') setEditingCell(null);
+                                    }}
+                                    autoFocus
+                                    className="form-input"
+                                    style={{ margin: 0, padding: '2px 4px', fontSize: '12px', height: '26px', width: '100px', display: 'inline-block' }}
+                                  />
+                                ) : (
+                                  <span
+                                    style={{ cursor: 'pointer', textDecoration: 'underline dotted var(--border)', fontWeight: 600 }}
+                                    onClick={() => {
+                                      setEditingCell({ id: item.id, field: 'seller_name' });
+                                      setEditCellValue(item.seller_name || '');
+                                    }}
+                                    title="클릭하여 수정"
+                                  >
+                                    {item.seller_name || '미지정'}
+                                  </span>
+                                )
+                              ) : (
+                                item.seller_name || '-'
+                              )}
+                            </td>
                             <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--green)' }}>
                               ฿{formatPrice(price)}<br/>
                               <span style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: 'normal' }}>(-₩{formatPrice(cost)})</span>
