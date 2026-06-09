@@ -231,21 +231,39 @@ export default function StaffDashboard() {
   const marginStats = useMemo(() => {
     // Only approved sold items are counted in margins!
     const soldList = devices.filter(d => !d.deleted_at && d.is_sold && d.is_approved);
-    const totalPaidTHB = soldList.filter(d => d.payment_status === 'paid' || !d.payment_status).reduce((sum, d) => sum + Number(d.selling_price || 0), 0);
-    const totalPaidCostKRW = soldList.filter(d => d.payment_status === 'paid' || !d.payment_status).reduce((sum, d) => sum + Number(d.purchase_cost_krw || 0), 0);
+    
+    // totalSalesTHB: Sum of selling_price for all approved sold items
+    const totalSalesTHB = soldList.reduce((sum, d) => sum + Number(d.selling_price || 0), 0);
+    
+    // totalCostKRW: Sum of purchase_cost_krw for all approved sold items (bypassed if selling_price is 0)
+    const totalCostKRW = soldList.reduce((sum, d) => {
+      const price = Number(d.selling_price || 0);
+      const cost = price === 0 ? 0 : Number(d.purchase_cost_krw || 0);
+      return sum + cost;
+    }, 0);
+    
+    // totalMarginKRW: Sum of margin (selling_price * exchangeRate - cost) in KRW (0 if selling_price is 0)
+    const totalMarginKRW = soldList.reduce((sum, d) => {
+      const price = Number(d.selling_price || 0);
+      const cost = price === 0 ? 0 : Number(d.purchase_cost_krw || 0);
+      const margin = price === 0 ? 0 : (Math.round(price * exchangeRate) - cost);
+      return sum + margin;
+    }, 0);
+
     const totalUnpaidCODTHB = soldList.filter(d => d.payment_status === 'unpaid').reduce((sum, d) => sum + Number(d.cod_amount || 0), 0);
     const activeInstallmentCount = soldList.filter(d => d.payment_status === 'collecting').length;
     const unpaidList = soldList.filter(d => d.payment_status === 'unpaid' || d.payment_status === 'collecting');
     
     return {
-      totalPaidTHB,
-      totalPaidCostKRW,
+      totalSalesTHB,
+      totalCostKRW,
+      totalMarginKRW,
       totalUnpaidCODTHB,
       activeInstallmentCount,
       unpaidList,
       soldList
     };
-  }, [devices]);
+  }, [devices, exchangeRate]);
 
   const customerMonths = useMemo(() => {
     const months = new Set<string>();
@@ -1409,19 +1427,19 @@ export default function StaffDashboard() {
 
       // Fallbacks
       if (siteDateIdx === -1) siteDateIdx = 0;
-      if (saleDateIdx === -1) saleDateIdx = 1;
-      if (stickerIdx === -1) stickerIdx = 3;
-      if (modelIdx === -1) modelIdx = 4;
-      if (imeiIdx === -1) imeiIdx = 5;
-      if (colorIdx === -1) colorIdx = 6;
-      if (isSoldIdx === -1) isSoldIdx = 7;
-      if (locationIdx === -1) locationIdx = 8;
-      if (batteryIdx === -1) batteryIdx = 9;
-      if (sellerIdx === -1) sellerIdx = 10;
-      if (notesIdx === -1) notesIdx = 11;
-      if (sellingPriceIdx === -1) sellingPriceIdx = 15;
-      if (marketPriceIdx === -1) marketPriceIdx = 16;
-      if (purchaseCostIdx === -1) purchaseCostIdx = 18;
+      if (stickerIdx === -1) stickerIdx = 1;
+      if (modelIdx === -1) modelIdx = 2;
+      if (imeiIdx === -1) imeiIdx = 3;
+      if (colorIdx === -1) colorIdx = 4;
+      if (isSoldIdx === -1) isSoldIdx = 5;
+      if (locationIdx === -1) locationIdx = 6;
+      if (batteryIdx === -1) batteryIdx = 7;
+      if (purchaseCostIdx === -1) purchaseCostIdx = 8;
+      if (saleDateIdx === -1) saleDateIdx = 99;
+      if (sellerIdx === -1) sellerIdx = 99;
+      if (notesIdx === -1) notesIdx = 99;
+      if (sellingPriceIdx === -1) sellingPriceIdx = 99;
+      if (marketPriceIdx === -1) marketPriceIdx = 99;
 
       // Fetch existing DB records to prevent overwriting sold status or reviving deleted items
       const { data: existingDB } = await supabase
@@ -1741,19 +1759,19 @@ export default function StaffDashboard() {
 
       // Fallbacks
       if (siteDateIdx === -1) siteDateIdx = 0;
-      if (saleDateIdx === -1) saleDateIdx = 1;
-      if (stickerIdx === -1) stickerIdx = 3;
-      if (modelIdx === -1) modelIdx = 4;
-      if (imeiIdx === -1) imeiIdx = 5;
-      if (colorIdx === -1) colorIdx = 6;
-      if (isSoldIdx === -1) isSoldIdx = 7;
-      if (locationIdx === -1) locationIdx = 8;
-      if (batteryIdx === -1) batteryIdx = 9;
-      if (sellerIdx === -1) sellerIdx = 10;
-      if (notesIdx === -1) notesIdx = 11;
-      if (sellingPriceIdx === -1) sellingPriceIdx = 15;
-      if (marketPriceIdx === -1) marketPriceIdx = 16;
-      if (purchaseCostIdx === -1) purchaseCostIdx = 18;
+      if (stickerIdx === -1) stickerIdx = 1;
+      if (modelIdx === -1) modelIdx = 2;
+      if (imeiIdx === -1) imeiIdx = 3;
+      if (colorIdx === -1) colorIdx = 4;
+      if (isSoldIdx === -1) isSoldIdx = 5;
+      if (locationIdx === -1) locationIdx = 6;
+      if (batteryIdx === -1) batteryIdx = 7;
+      if (purchaseCostIdx === -1) purchaseCostIdx = 8;
+      if (saleDateIdx === -1) saleDateIdx = 99;
+      if (sellerIdx === -1) sellerIdx = 99;
+      if (notesIdx === -1) notesIdx = 99;
+      if (sellingPriceIdx === -1) sellingPriceIdx = 99;
+      if (marketPriceIdx === -1) marketPriceIdx = 99;
 
       // Fetch existing DB records to prevent overwriting sold status or reviving deleted items
       const { data: existingDB } = await supabase
@@ -3601,11 +3619,16 @@ export default function StaffDashboard() {
                             <>฿{formatPrice(item.selling_price)}</>
                           )}
                         </td>
-                        {(staffProfile?.role === 'admin' || staffProfile?.role === 'manager') && (
-                          <td style={{ textAlign: 'right', fontWeight: 700, color: (Math.round((item.selling_price || 0) * exchangeRate) - (item.purchase_cost_krw || 0)) >= 0 ? 'var(--green)' : '#e11d48' }}>
-                            ₩{formatPrice(Math.round((item.selling_price || 0) * exchangeRate) - (item.purchase_cost_krw || 0))}
-                          </td>
-                        )}
+                        {(staffProfile?.role === 'admin' || staffProfile?.role === 'manager') && (() => {
+                          const price = item.selling_price || 0;
+                          const cost = price === 0 ? 0 : (item.purchase_cost_krw || 0);
+                          const margin = price === 0 ? 0 : (Math.round(price * exchangeRate) - cost);
+                          return (
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: margin >= 0 ? 'var(--green)' : '#e11d48' }}>
+                              ₩{formatPrice(margin)}
+                            </td>
+                          );
+                        })()}
                         <td
                           style={{ cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }}
                           onClick={() => {
@@ -4500,13 +4523,13 @@ export default function StaffDashboard() {
             
             {/* Margins Summary Widgets */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-              {/* Paid Margin Card */}
+              {/* Total Margin Card */}
               <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
                 <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>💰</div>
                 <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>수납 완료 마진 (Paid Margin)</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--green)', marginTop: '4px' }}>฿{marginStats.totalPaidTHB.toLocaleString()}</div>
-                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>원가: ₩{marginStats.totalPaidCostKRW.toLocaleString()}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>총 정산 마진 (Total Margin)</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--green)', marginTop: '4px' }}>₩{marginStats.totalMarginKRW.toLocaleString()}</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>판매가: ฿{marginStats.totalSalesTHB.toLocaleString()} | 원가: ₩{marginStats.totalCostKRW.toLocaleString()}</div>
                 </div>
               </div>
 
@@ -4548,8 +4571,8 @@ export default function StaffDashboard() {
                 const key = `${ym}_${seller}`;
                 
                 const sales = Number(item.selling_price) || 0;
-                const cost = Number(item.purchase_cost_krw) || 0;
-                const marginKRW = Math.round(sales * exchangeRate) - cost;
+                const cost = sales === 0 ? 0 : (Number(item.purchase_cost_krw) || 0);
+                const marginKRW = sales === 0 ? 0 : (Math.round(sales * exchangeRate) - cost);
                 
                 if (!sellerStatsMap[key]) {
                   sellerStatsMap[key] = {
@@ -4612,6 +4635,25 @@ export default function StaffDashboard() {
                           ))
                         )}
                       </tbody>
+                      {sellerStatsList.length > 0 && (() => {
+                        const totalQty = sellerStatsList.reduce((sum, r) => sum + r.qty, 0);
+                        const totalSales = sellerStatsList.reduce((sum, r) => sum + r.totalSalesTHB, 0);
+                        const totalCost = sellerStatsList.reduce((sum, r) => sum + r.totalCostKRW, 0);
+                        const totalMargin = sellerStatsList.reduce((sum, r) => sum + r.estimatedMarginKRW, 0);
+                        return (
+                          <tfoot>
+                            <tr style={{ background: '#f8fafc', borderTop: '2px solid var(--border)', fontWeight: 800 }}>
+                              <td style={{ fontWeight: 800 }} colSpan={2}>합계 (Total)</td>
+                              <td style={{ textAlign: 'center', fontWeight: 800 }}>{totalQty}대</td>
+                              <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--green)' }}>฿{totalSales.toLocaleString()}</td>
+                              <td style={{ textAlign: 'right', color: '#64748b' }}>₩{totalCost.toLocaleString()}</td>
+                              <td style={{ textAlign: 'right', fontWeight: 900, color: totalMargin >= 0 ? 'var(--green)' : '#e11d48' }}>
+                                ₩{totalMargin.toLocaleString()}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        );
+                      })()}
                     </table>
                   </div>
                 </div>
@@ -4794,8 +4836,8 @@ export default function StaffDashboard() {
                       </tr>
                     ) : (
                       sortDevices(marginStats.soldList).map(item => {
-                        const cost = item.purchase_cost_krw || 0;
                         const price = item.selling_price || 0;
+                        const cost = price === 0 ? 0 : (item.purchase_cost_krw || 0);
                         return (
                           <tr key={item.id}>
                             <td>{item.sale_date || '-'}</td>
