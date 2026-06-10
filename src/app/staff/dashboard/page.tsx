@@ -100,6 +100,10 @@ export default function StaffDashboard() {
   const [showOverdueOnly, setShowOverdueOnly] = useState(false);
   const [showMonthPaidOnly, setShowMonthPaidOnly] = useState(false);
   const [showFullyPaidOnly, setShowFullyPaidOnly] = useState(false);
+  const [isInstallmentPrintModalOpen, setIsInstallmentPrintModalOpen] = useState(false);
+  const [instPrintStartDay, setInstPrintStartDay] = useState(1);
+  const [instPrintEndDay, setInstPrintEndDay] = useState(31);
+  const [isGlobalSearchHelperCollapsed, setIsGlobalSearchHelperCollapsed] = useState(false);
   const [codSelectedMonth, setCodSelectedMonth] = useState('all');
   const [codSearchQuery, setCodSearchQuery] = useState('');
   const [custSearch, setCustSearch] = useState('');
@@ -1209,17 +1213,16 @@ export default function StaffDashboard() {
 
   // Filtered lists
   const filteredActiveDevices = useMemo(() => {
-    const isSearchActive = searchQuery.trim() !== '';
     const list = devices.filter(d => {
       if (d.deleted_at || d.is_sold || d.stock_location === 'DHL') return false;
       const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchLoc = isSearchActive || locationFilter === 'all' || d.stock_location === locationFilter;
-      const matchCat = isSearchActive || matchesCategory(d.model_name, categoryFilter);
+      const matchLoc = locationFilter === 'all' || d.stock_location === locationFilter;
+      const matchCat = matchesCategory(d.model_name, categoryFilter);
       
       const isShared = !!(d.notes && d.notes.includes('[협력사공개]'));
-      const matchShare = isSearchActive || partnerShareFilter === 'all' || 
+      const matchShare = partnerShareFilter === 'all' || 
                          (partnerShareFilter === 'shared' && isShared) || 
                          (partnerShareFilter === 'unshared' && !isShared);
       
@@ -1239,13 +1242,12 @@ export default function StaffDashboard() {
 
   // Filtered list for Pending Intake
   const filteredPendingDevices = useMemo(() => {
-    const isSearchActive = searchQuery.trim() !== '';
     const list = devices.filter(d => {
       if (d.deleted_at || d.is_sold || d.stock_location !== 'DHL') return false;
       const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchCat = isSearchActive || matchesCategory(d.model_name, categoryFilter);
+      const matchCat = matchesCategory(d.model_name, categoryFilter);
       return matchSearch && matchCat;
     });
     return sortDevices(list);
@@ -1265,12 +1267,10 @@ export default function StaffDashboard() {
       return null;
     };
 
-    const isSearchActive = soldSearchQuery.trim() !== '';
-
     const list = devices.filter(d => {
       if (d.deleted_at || !d.is_sold) return false;
 
-      if (!isSearchActive && soldSelectedMonth !== 'all') {
+      if (soldSelectedMonth !== 'all') {
         const ym = getYearMonth(d.sale_date);
         if (ym !== soldSelectedMonth) return false;
       }
@@ -1278,10 +1278,10 @@ export default function StaffDashboard() {
       const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(soldSearchQuery)) || 
                           (d.imei && d.imei.includes(soldSearchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(soldSearchQuery.toLowerCase()));
-      const matchCat = isSearchActive || matchesCategory(d.model_name, categoryFilter);
+      const matchCat = matchesCategory(d.model_name, categoryFilter);
 
       let matchDay = true;
-      if (!isSearchActive && soldSelectedDays.length > 0) {
+      if (soldSelectedDays.length > 0) {
         const day = getSaleDay(d.sale_date);
         matchDay = day !== null && soldSelectedDays.includes(day);
       }
@@ -2909,6 +2909,174 @@ export default function StaffDashboard() {
     }, 150);
   };
 
+  const handlePrintInstallmentList = (startDay: number, endDay: number) => {
+    const installmentDevices = devices.filter(d => !d.deleted_at && d.is_sold && d.sale_type === 'installment');
+    
+    const now = new Date();
+    const targetYearNum = instSelectedMonth !== 'all' ? Number(instSelectedMonth.split('-')[0]) : now.getFullYear();
+    const targetMonthNum = instSelectedMonth !== 'all' ? Number(instSelectedMonth.split('-')[1]) : (now.getMonth() + 1);
+    const filterYear = targetYearNum % 100;
+    const filterMonth = targetMonthNum;
+
+    const isDueInSelectedMonth = (dueDate: string) => {
+      if (!dueDate) return false;
+      const pts = dueDate.split('.').map(x => x.trim()).filter(Boolean);
+      if (pts.length >= 2) {
+        return Number(pts[0]) === filterYear && Number(pts[1]) === filterMonth;
+      }
+      return false;
+    };
+
+    const getDueDay = (dueDate: string) => {
+      if (!dueDate) return 0;
+      const pts = dueDate.split('.').map(x => x.trim()).filter(Boolean);
+      return pts.length >= 3 ? Number(pts[2]) : 0;
+    };
+
+    const checkIsOverdue = (dueDate: string, status: string) => {
+      if (status !== 'unpaid') return false;
+      const pts = dueDate.split('.').map(x => x.trim()).filter(Boolean);
+      if (pts.length >= 3) {
+        const y = 2000 + Number(pts[0]);
+        const m = Number(pts[1]) - 1; // 0-indexed month
+        const d = Number(pts[2]);
+        const dueDateObj = new Date(y, m, d);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return dueDateObj < today;
+      }
+      return false;
+    };
+
+    // Filter installments based on search query, month filter, and overdue filter
+    const filteredInstallments = installmentDevices.filter(d => {
+      const history = d.installment_history || [];
+
+      // 1. Month filter: show only contracts that have a payment due in the selected month
+      if (!installmentSearchQuery && instSelectedMonth !== 'all') {
+        const hasDue = history.some((h: any) => isDueInSelectedMonth(h.due_date));
+        if (!hasDue) return false;
+      }
+
+      // 2. Overdue filter: show only contracts that have an unpaid installment past today's date
+      if (!installmentSearchQuery && showOverdueOnly) {
+        const hasOverdue = history.some((h: any) => checkIsOverdue(h.due_date, h.status));
+        if (!hasOverdue) return false;
+      }
+
+      // 3. Paid-in-month filter
+      if (!installmentSearchQuery && showMonthPaidOnly) {
+        const isFinished = d.payment_status === 'paid';
+        const isMonthPaid = history.some((h: any) => isDueInSelectedMonth(h.due_date) && h.status === 'paid');
+        const isRowGray = isFinished || (instSelectedMonth !== 'all' && isMonthPaid);
+        if (!isRowGray) return false;
+      }
+
+      // 4. Fully-paid filter
+      if (!installmentSearchQuery && showFullyPaidOnly) {
+        const isFinished = d.payment_status === 'paid';
+        if (!isFinished) return false;
+      }
+
+      const custNameMatch = d.customer_name?.toLowerCase().includes(installmentSearchQuery.toLowerCase());
+      const custPhoneMatch = d.customer_phone?.includes(installmentSearchQuery);
+      const stickerMatch = d.sticker?.toLowerCase().includes(installmentSearchQuery.toLowerCase());
+      const imeiMatch = d.imei?.includes(installmentSearchQuery);
+      const modelMatch = normalizeModelName(d.model_name).includes(normalizeModelName(installmentSearchQuery));
+      return !installmentSearchQuery || custNameMatch || custPhoneMatch || stickerMatch || imeiMatch || modelMatch;
+    });
+
+    if (filteredInstallments.length === 0) return;
+    
+    const printItems = filteredInstallments.map(d => {
+      const history = d.installment_history || [];
+      const round = history.find((h: any) => isDueInSelectedMonth(h.due_date));
+      if (!round) return null;
+      
+      const day = getDueDay(round.due_date);
+      return {
+        device: d,
+        round,
+        day,
+        totalRounds: history.length,
+        unpaidRounds: history.filter((h: any) => h.status === 'unpaid').length
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .filter(item => item.day >= startDay && item.day <= endDay)
+    .sort((a, b) => a.day - b.day);
+    
+    if (printItems.length === 0) {
+      alert(lang === 'ko' ? '선택한 날짜 범위에 해당하는 내역이 없습니다.' : 'ไม่มีรายการในช่วงวันที่เลือก');
+      return;
+    }
+    
+    const rowsHtml = printItems.map(item => {
+      const isPaid = item.round.status === 'paid';
+      const rowStyle = isPaid 
+        ? 'style="text-decoration: line-through; color: #155724; background-color: #d4edda; -webkit-print-color-adjust: exact; print-color-adjust: exact;"' 
+        : 'style="color: #721c24; background-color: #f8d7da; -webkit-print-color-adjust: exact; print-color-adjust: exact;"';
+      
+      const statusText = isPaid 
+        ? (lang === 'ko' ? '완납' : 'ชำระแล้ว') 
+        : (lang === 'ko' ? '미납' : 'ค้างชำระ');
+      
+      const dayText = lang === 'ko' ? `${item.day}일` : `วันที่ ${item.day}`;
+      const roundText = lang === 'ko' 
+        ? `${item.round.sequence} / ${item.totalRounds} 회차 (잔여: ${item.unpaidRounds})` 
+        : `งวดที่ ${item.round.sequence} / ${item.totalRounds} (คงเหลือ: ${item.unpaidRounds})`;
+
+      return `
+        <tr ${rowStyle}>
+          <td>${dayText}</td>
+          <td>${item.device.installment_number || '-'}</td>
+          <td>${item.device.customer_name || '-'}</td>
+          <td>${item.device.customer_phone || '-'}</td>
+          <td>${roundText}</td>
+          <td class="price">฿${(Number(item.round.amount) || 0).toLocaleString()}</td>
+          <td style="font-weight: bold; ${isPaid ? 'color: #155724;' : 'color: #721c24;'}">${statusText}</td>
+        </tr>
+      `;
+    }).join('');
+    
+    const titleText = lang === 'ko' 
+      ? `할부 수금 관리 대장 (${instSelectedMonth})` 
+      : `สมุดคุมยอดผ่อนชำระ (${instSelectedMonth})`;
+    
+    const subtitleText = lang === 'ko'
+      ? `${startDay}일부터 ${endDay}일까지 청구 리스트 (총 ${printItems.length}건)`
+      : `รายการเรียกเก็บเงินวันที่ ${startDay} ถึง ${endDay} (ทั้งหมด ${printItems.length} รายการ)`;
+      
+    const thDate = lang === 'ko' ? '청구일' : 'วันที่';
+    const thContract = lang === 'ko' ? '계약번호' : 'เลขที่สัญญา';
+    const thName = lang === 'ko' ? '고객명' : 'ชื่อลูกค้า';
+    const thPhone = lang === 'ko' ? '연락처' : 'เบอร์โทร';
+    const thRounds = lang === 'ko' ? '회차 정보' : 'ข้อมูลรอบชำระ';
+    const thPrice = lang === 'ko' ? '청구 금액' : 'ยอดเรียกเก็บ';
+    const thStatus = lang === 'ko' ? '납부 상태' : 'สถานะ';
+    
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+    
+    const doc = iframe.contentWindow?.document;
+    if (!doc) return;
+    
+    doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${titleText}</title><style>@page{size:A4;margin:8mm 6mm;}body{font-family:'Sarabun','Tahoma',Arial,sans-serif;font-size:10px;color:#111;margin:0;padding:0;}.title{text-align:center;font-size:15px;font-weight:900;margin:2px 0;}.subtitle{text-align:center;font-size:11px;color:#555;margin-bottom:10px;}table{width:100%;border-collapse:collapse;}th{background:#6366f1;color:#fff;border:1px solid #777;padding:5px 3px;text-align:center;font-size:10.5px;font-weight:700;}td{border:1px solid #aaa;padding:4px 3px;text-align:center;font-size:10px;line-height:1.2;}.price{text-align:right;font-weight:700;}</style></head><body><div class="title">${titleText}</div><div class="subtitle">${subtitleText}</div><table><thead><tr><th style="width:10%;">${thDate}</th><th style="width:15%;">${thContract}</th><th style="width:20%;">${thName}</th><th style="width:15%;">${thPhone}</th><th style="width:20%;">${thRounds}</th><th style="width:12%;">${thPrice}</th><th style="width:8%;">${thStatus}</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`);
+    doc.close();
+    
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      document.body.removeChild(iframe);
+    }, 150);
+  };
+
   const handleToggleInstallmentStatus = async (deviceId: string, sequence: number) => {
 
     const device = devices.find(d => d.id === deviceId);
@@ -3244,6 +3412,9 @@ export default function StaffDashboard() {
     setShowOverdueOnly(false);
     setShowMonthPaidOnly(false);
     setShowFullyPaidOnly(false);
+    setIsInstallmentPrintModalOpen(false);
+    setInstPrintStartDay(1);
+    setInstPrintEndDay(31);
     setTrashSearchQuery('');
     setHistorySearchQuery('');
     setHistoryMonthFilter('all');
@@ -3687,87 +3858,113 @@ export default function StaffDashboard() {
               background: 'linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%)',
               border: '1px solid #fde68a',
               borderRadius: '12px',
-              padding: '12px 16px',
+              padding: '10px 16px',
               marginBottom: '16px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '8px',
+              gap: isGlobalSearchHelperCollapsed ? '0px' : '8px',
               fontSize: '13px',
               color: '#92400e',
               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
               zIndex: 10
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800 }}>
-              <span>🔍</span>
-              <span>{lang === 'ko' ? `검색어 "${globalSearchHelper.query}"에 대한 추가 검색 결과` : `Global search results for "${globalSearchHelper.query}"`}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800 }}>
+                <span>🔍</span>
+                <span>{lang === 'ko' ? `검색어 "${globalSearchHelper.query}"에 대한 추가 검색 결과` : `Global search results for "${globalSearchHelper.query}"`}</span>
+              </div>
+              <button
+                onClick={() => setIsGlobalSearchHelperCollapsed(prev => !prev)}
+                style={{
+                  background: 'rgba(180, 83, 9, 0.08)',
+                  border: '1px solid rgba(180, 83, 9, 0.2)',
+                  borderRadius: '6px',
+                  padding: '2px 8px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  color: '#b45309',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  margin: 0,
+                  transition: 'all 0.2s'
+                }}
+              >
+                {isGlobalSearchHelperCollapsed 
+                  ? (lang === 'ko' ? '펼치기 ▽' : 'ขยาย ▽') 
+                  : (lang === 'ko' ? '접기 △' : 'ย่อ △')}
+              </button>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
-              {globalSearchHelper.hiddenInCurrentTab.length > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span>⚠️</span>
-                  <span>
-                    {lang === 'ko' 
-                      ? `현재 탭에 ${globalSearchHelper.hiddenInCurrentTab.length}건이 있으나 필터(위치/기종)에 의해 가려졌습니다.`
-                      : `${globalSearchHelper.hiddenInCurrentTab.length} items match in this tab but are hidden by active filters.`
-                    }
-                  </span>
-                  <button
-                    onClick={() => {
-                      setLocationFilter('all');
-                      setCategoryFilter('all');
-                      setSoldSelectedMonth('all');
-                    }}
-                    style={{
-                      background: '#fff',
-                      border: '1px solid #fcd34d',
-                      borderRadius: '6px',
-                      padding: '2px 8px',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      color: '#b45309',
-                      cursor: 'pointer',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    {lang === 'ko' ? '필터 해제' : 'Clear Filters'}
-                  </button>
-                </div>
-              )}
-
-              {globalSearchHelper.otherTabMatches.map((m, idx) => {
-                const tabNameMap: Record<string, string> = {
-                  ledger: lang === 'ko' ? '사내 재고' : 'Inventory',
-                  pending_intake: lang === 'ko' ? '입고 대기' : 'Pending',
-                  sales: lang === 'ko' ? '판매 완료' : 'Sales',
-                  trash: lang === 'ko' ? '휴지통' : 'Trash'
-                };
-                return (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.6)', padding: '4px 8px', borderRadius: '8px', border: '1px solid rgba(251,191,36,0.3)' }}>
-                    <span>📍</span>
-                    <span style={{ fontWeight: 600 }}>[{tabNameMap[m.tab]}]</span>
-                    <span>{m.device.model_name} {m.device.sticker ? `(${m.device.sticker})` : ''}</span>
+            {!isGlobalSearchHelperCollapsed && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', marginTop: '4px' }}>
+                {globalSearchHelper.hiddenInCurrentTab.length > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>⚠️</span>
+                    <span>
+                      {lang === 'ko' 
+                        ? `현재 탭에 ${globalSearchHelper.hiddenInCurrentTab.length}건이 있으나 필터(위치/기종)에 의해 가려졌습니다.`
+                        : `${globalSearchHelper.hiddenInCurrentTab.length} items match in this tab but are hidden by active filters.`
+                      }
+                    </span>
                     <button
-                      onClick={() => handleGoToTabAndSearch(m.tab, globalSearchHelper.query)}
+                      onClick={() => {
+                        setLocationFilter('all');
+                        setCategoryFilter('all');
+                        setSoldSelectedMonth('all');
+                      }}
                       style={{
-                        background: 'var(--purple)',
-                        color: '#fff',
-                        border: 'none',
+                        background: '#fff',
+                        border: '1px solid #fcd34d',
                         borderRadius: '6px',
                         padding: '2px 8px',
                         fontSize: '11px',
                         fontWeight: 700,
+                        color: '#b45309',
                         cursor: 'pointer',
-                        boxShadow: '0 1px 2px rgba(124,58,237,0.2)'
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                        transition: 'all 0.2s'
                       }}
                     >
-                      {lang === 'ko' ? '이동' : 'Go to'}
+                      {lang === 'ko' ? '필터 해제' : 'Clear Filters'}
                     </button>
                   </div>
-                );
-              })}
-            </div>
+                )}
+
+                {globalSearchHelper.otherTabMatches.map((m, idx) => {
+                  const tabNameMap: Record<string, string> = {
+                    ledger: lang === 'ko' ? '사내 재고' : 'Inventory',
+                    pending_intake: lang === 'ko' ? '입고 대기' : 'Pending',
+                    sales: lang === 'ko' ? '판매 완료' : 'Sales',
+                    trash: lang === 'ko' ? '휴지통' : 'Trash'
+                  };
+                  return (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.6)', padding: '4px 8px', borderRadius: '8px', border: '1px solid rgba(251,191,36,0.3)' }}>
+                      <span>📍</span>
+                      <span style={{ fontWeight: 600 }}>[{tabNameMap[m.tab]}]</span>
+                      <span>{m.device.model_name} {m.device.sticker ? `(${m.device.sticker})` : ''}</span>
+                      <button
+                        onClick={() => handleGoToTabAndSearch(m.tab, globalSearchHelper.query)}
+                        style={{
+                          background: 'var(--purple)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '2px 8px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          boxShadow: '0 1px 2px rgba(124,58,237,0.2)'
+                        }}
+                      >
+                        {lang === 'ko' ? '이동' : 'Go to'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -5280,6 +5477,7 @@ export default function StaffDashboard() {
             return !installmentSearchQuery || custNameMatch || custPhoneMatch || stickerMatch || imeiMatch || modelMatch;
           });
 
+
           return (
             <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               
@@ -5390,8 +5588,32 @@ export default function StaffDashboard() {
                     <span style={{ color: 'var(--purple-l)' }}>🔒 {lang === 'ko' ? '전체 완납 고객만 보기' : 'แสดงเฉพาะผู้ที่ชำระครบทั้งหมดแล้ว'}</span>
                   </label>
                 </div>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--purple-l)' }}>
-                  {t('staff_total_installment_count', { total: installmentDevices.length, searched: filteredInstallments.length })}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--purple-l)' }}>
+                    {t('staff_total_installment_count', { total: installmentDevices.length, searched: filteredInstallments.length })}
+                  </span>
+                  {instSelectedMonth !== 'all' && (
+                    <button
+                      type="button"
+                      style={{
+                        margin: 0,
+                        background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+                        border: 'none',
+                        color: '#fff',
+                        padding: '6px 14px',
+                        fontSize: '11.5px',
+                        borderRadius: '6px',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        boxShadow: '0 2px 8px rgba(139,92,246,0.35)',
+                        transition: 'all 0.2s'
+                      }}
+                      onClick={() => setIsInstallmentPrintModalOpen(true)}
+                    >
+                      🖨️ {lang === 'ko' ? '할부수금 대장 인쇄' : 'พิมพ์สมุดรับงวด'}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -6817,6 +7039,92 @@ export default function StaffDashboard() {
         )}
 
       </main>
+
+      {/* INSTALLMENT PRINT RANGE SELECTION MODAL */}
+      {isInstallmentPrintModalOpen && (
+        <div 
+          className="modal-bg open" 
+          style={{ display: 'flex', zIndex: 3000 }} 
+          onClick={() => setIsInstallmentPrintModalOpen(false)}
+        >
+          <div 
+            className="modal animate-slide-up" 
+            style={{ maxWidth: '400px', width: '90%', background: '#fff', borderRadius: '16px', overflow: 'hidden' }} 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-hd" style={{ borderBottom: '1px solid var(--border)', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="modal-title" style={{ fontSize: '16px', fontWeight: 800 }}>
+                🖨️ {lang === 'ko' ? '인쇄 날짜 범위 선택' : 'เลือกช่วงวันที่สำหรับพิมพ์'}
+              </span>
+              <button 
+                type="button" 
+                className="modal-x" 
+                onClick={() => setIsInstallmentPrintModalOpen(false)} 
+                style={{ border: 'none', background: 'none', fontSize: '18px', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="modal-body" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <p style={{ margin: 0, fontSize: '13px', color: 'var(--t2)', lineHeight: 1.4 }}>
+                {lang === 'ko' 
+                  ? `선택한 달(${instSelectedMonth})의 지정된 날짜 범위 내에 청구일이 포함된 할부 내역만 필터링하여 인쇄합니다.` 
+                  : `กรองพิมพ์เฉพาะรายการผ่อนชำระที่มีวันครบกำหนดชำระอยู่ในช่วงวันที่ที่กำหนดของเดือน ${instSelectedMonth}`}
+              </p>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--t2)', marginBottom: '6px' }}>
+                    {lang === 'ko' ? '시작일 (1~31)' : 'วันเริ่มต้น (1~31)'}
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={31}
+                    value={instPrintStartDay}
+                    onChange={(e) => setInstPrintStartDay(Math.max(1, Math.min(31, parseInt(e.target.value, 10) || 1)))}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '14px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--t2)', marginBottom: '6px' }}>
+                    {lang === 'ko' ? '종료일 (1~31)' : 'วันสิ้นสุด (1~31)'}
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={31}
+                    value={instPrintEndDay}
+                    onChange={(e) => setInstPrintEndDay(Math.max(1, Math.min(31, parseInt(e.target.value, 10) || 1)))}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '14px' }}
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="modal-ft" style={{ borderTop: '1px solid var(--border)', padding: '16px 20px', background: 'var(--bg-d)', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => setIsInstallmentPrintModalOpen(false)}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
+              >
+                {lang === 'ko' ? '취소' : 'ยกเลิก'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsInstallmentPrintModalOpen(false);
+                  handlePrintInstallmentList(instPrintStartDay, instPrintEndDay);
+                }}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: 'var(--purple)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 4px rgba(139,92,246,0.2)' }}
+              >
+                {lang === 'ko' ? '인쇄하기' : 'พิมพ์'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* BULK INTAKE MODAL */}
       {isCSVModalOpen && (
