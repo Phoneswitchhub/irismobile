@@ -99,6 +99,7 @@ export default function StaffDashboard() {
   });
   const [showOverdueOnly, setShowOverdueOnly] = useState(false);
   const [showMonthPaidOnly, setShowMonthPaidOnly] = useState(false);
+  const [showFullyPaidOnly, setShowFullyPaidOnly] = useState(false);
   const [codSelectedMonth, setCodSelectedMonth] = useState('all');
   const [codSearchQuery, setCodSearchQuery] = useState('');
   const [custSearch, setCustSearch] = useState('');
@@ -3227,6 +3228,7 @@ export default function StaffDashboard() {
     setInstallmentSearchQuery('');
     setShowOverdueOnly(false);
     setShowMonthPaidOnly(false);
+    setShowFullyPaidOnly(false);
     setTrashSearchQuery('');
     setHistorySearchQuery('');
     setHistoryMonthFilter('all');
@@ -5249,6 +5251,12 @@ export default function StaffDashboard() {
               if (!isRowGray) return false;
             }
 
+            // 4. Fully-paid filter
+            if (!installmentSearchQuery && showFullyPaidOnly) {
+              const isFinished = d.payment_status === 'paid';
+              if (!isFinished) return false;
+            }
+
             const custNameMatch = d.customer_name?.toLowerCase().includes(installmentSearchQuery.toLowerCase());
             const custPhoneMatch = d.customer_phone?.includes(installmentSearchQuery);
             const stickerMatch = d.sticker?.toLowerCase().includes(installmentSearchQuery.toLowerCase());
@@ -5325,7 +5333,10 @@ export default function StaffDashboard() {
                       checked={showOverdueOnly}
                       onChange={(e) => {
                         setShowOverdueOnly(e.target.checked);
-                        if (e.target.checked) setShowMonthPaidOnly(false);
+                        if (e.target.checked) {
+                          setShowMonthPaidOnly(false);
+                          setShowFullyPaidOnly(false);
+                        }
                       }}
                       style={{ cursor: 'pointer', width: '16px', height: '16px' }}
                     />
@@ -5338,11 +5349,30 @@ export default function StaffDashboard() {
                       checked={showMonthPaidOnly}
                       onChange={(e) => {
                         setShowMonthPaidOnly(e.target.checked);
-                        if (e.target.checked) setShowOverdueOnly(false);
+                        if (e.target.checked) {
+                          setShowOverdueOnly(false);
+                          setShowFullyPaidOnly(false);
+                        }
                       }}
                       style={{ cursor: 'pointer', width: '16px', height: '16px' }}
                     />
                     <span style={{ color: 'var(--green)' }}>🟢 {lang === 'ko' ? '당월 완납 고객만 보기' : 'แสดงเฉพาะผู้ที่ชำระงวดเดือนนี้แล้ว'}</span>
+                  </label>
+
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 700, marginLeft: '12px', cursor: 'pointer', userSelect: 'none' }}>
+                    <input
+                      type="checkbox"
+                      checked={showFullyPaidOnly}
+                      onChange={(e) => {
+                        setShowFullyPaidOnly(e.target.checked);
+                        if (e.target.checked) {
+                          setShowOverdueOnly(false);
+                          setShowMonthPaidOnly(false);
+                        }
+                      }}
+                      style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                    />
+                    <span style={{ color: 'var(--purple-l)' }}>🔒 {lang === 'ko' ? '전체 완납 고객만 보기' : 'แสดงเฉพาะผู้ที่ชำระครบทั้งหมดแล้ว'}</span>
                   </label>
                 </div>
                 <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--purple-l)' }}>
