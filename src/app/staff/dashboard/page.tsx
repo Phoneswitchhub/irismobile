@@ -2868,9 +2868,6 @@ export default function StaffDashboard() {
     const selectedDevices = devices.filter(d => selectedIds.includes(d.id));
     const sortedDevices = [...selectedDevices].sort((a, b) => (a.model_name || '').localeCompare(b.model_name || ''));
     
-    const printWindow = window.open('', '_blank', 'width=900,height=1000');
-    if (!printWindow) return;
-    
     const rowsHtml = sortedDevices.map(item => `
       <tr>
         <td>${item.sticker || '-'}</td>
@@ -2890,8 +2887,26 @@ export default function StaffDashboard() {
     const thBattery = lang === 'ko' ? '배터리 (Battery)' : 'แบตเตอรี่ (Battery)';
     const thPrice = lang === 'ko' ? '판매가 (Price)' : 'ราคาขาย (Price)';
     
-    printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${titleText}</title><style>@page{size:A4;margin:10mm 8mm;}body{font-family:'Sarabun','Tahoma',Arial,sans-serif;font-size:11px;color:#111;margin:0;padding:0;}.title{text-align:center;font-size:18px;font-weight:900;margin:10px 0 15px;letter-spacing:0.5px;}table{width:100%;border-collapse:collapse;}th{background:#2e7d32;color:#fff;border:1px solid #999;padding:6px 4px;text-align:center;font-size:11.5px;font-weight:700;}td{border:1px solid #aaa;padding:5px 4px;text-align:center;font-size:11px;}td.left{text-align:left;font-weight:700;}td.price{text-align:right;font-weight:900;color:#1b5e20;}.imei{font-family:monospace;font-size:10.5px;}</style></head><body><div class="title">${titleText} (${sortedDevices.length} pcs)</div><table><thead><tr><th style="width:15%;">${thSticker}</th><th style="width:32%;">${thModel}</th><th style="width:20%;">${thImei}</th><th style="width:12%;">${thColor}</th><th style="width:10%;">${thBattery}</th><th style="width:11%;">${thPrice}</th></tr></thead><tbody>${rowsHtml}</tbody></table><script>window.onload=function(){window.print();window.close();}<\/script></body></html>`);
-    printWindow.document.close();
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+    
+    const doc = iframe.contentWindow?.document;
+    if (!doc) return;
+    
+    doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${titleText}</title><style>@page{size:A4;margin:3mm 5mm;}body{font-family:'Sarabun','Tahoma',Arial,sans-serif;font-size:9.5px;color:#111;margin:0;padding:0;}.title{text-align:center;font-size:13px;font-weight:900;margin:2px 0 5px;letter-spacing:0.5px;}table{width:100%;border-collapse:collapse;}th{background:#2e7d32;color:#fff;border:1px solid #777;padding:4px 3px;text-align:center;font-size:10px;font-weight:700;}td{border:1px solid #999;padding:3px 3px;text-align:center;font-size:9.5px;line-height:1.15;}td.left{text-align:left;font-weight:700;}td.price{text-align:right;font-weight:900;color:#1b5e20;}.imei{font-family:monospace;font-size:9px;}</style></head><body><div class="title">${titleText} (${sortedDevices.length} pcs)</div><table><thead><tr><th style="width:15%;">${thSticker}</th><th style="width:32%;">${thModel}</th><th style="width:20%;">${thImei}</th><th style="width:12%;">${thColor}</th><th style="width:10%;">${thBattery}</th><th style="width:11%;">${thPrice}</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`);
+    doc.close();
+    
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      document.body.removeChild(iframe);
+    }, 150);
   };
 
   const handleToggleInstallmentStatus = async (deviceId: string, sequence: number) => {
