@@ -50,7 +50,127 @@ export default function StaffDashboard() {
   const [staffProfile, setStaffProfile] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [redirectCountdown, setRedirectCountdown] = useState(3);
-  const hideMargin = staffProfile?.role !== 'admin';
+  // Role-based Permissions State
+  const [rolePermissions, setRolePermissions] = useState<any>({
+    admin: { 
+      can_view_margin: true, 
+      can_view_margin_detail: true, 
+      can_edit_price: true, 
+      can_edit_cost: true, 
+      can_edit_battery: true,
+      can_edit_core_device_fields: true,
+      can_approve_sale: true,
+      can_edit_customer_info: true
+    },
+    manager: { 
+      can_view_margin: true, 
+      can_view_margin_detail: false, 
+      can_edit_price: true, 
+      can_edit_cost: true, 
+      can_edit_battery: true,
+      can_edit_core_device_fields: false,
+      can_approve_sale: false,
+      can_edit_customer_info: false
+    },
+    staff: { 
+      can_view_margin: false, 
+      can_view_margin_detail: false, 
+      can_edit_price: false, 
+      can_edit_cost: false, 
+      can_edit_battery: false,
+      can_edit_core_device_fields: false,
+      can_approve_sale: false,
+      can_edit_customer_info: false
+    }
+  });
+
+  const currentUserRole = staffProfile?.role || 'staff';
+  const currentPermissions = rolePermissions[currentUserRole] || {
+    can_view_margin: false,
+    can_view_margin_detail: false,
+    can_edit_price: false,
+    can_edit_cost: false,
+    can_edit_battery: false,
+    can_edit_core_device_fields: false,
+    can_approve_sale: false,
+    can_edit_customer_info: false
+  };
+
+  const hideMargin = currentUserRole !== 'admin' && !currentPermissions.can_view_margin_detail;
+
+  const loadRolePermissions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('settings_role_permissions')
+        .select('*');
+      
+      if (error) {
+        console.warn('settings_role_permissions table not found, using default permissions.', error.message);
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        setRolePermissions((prev: any) => {
+          const newPerms = { ...prev };
+          data.forEach((row: any) => {
+            if (newPerms[row.role]) {
+              newPerms[row.role] = {
+                can_view_margin: !!row.can_view_margin,
+                can_view_margin_detail: !!row.can_view_margin_detail,
+                can_edit_price: !!row.can_edit_price,
+                can_edit_cost: !!row.can_edit_cost,
+                can_edit_battery: !!row.can_edit_battery,
+                can_edit_core_device_fields: !!row.can_edit_core_device_fields,
+                can_approve_sale: !!row.can_approve_sale,
+                can_edit_customer_info: !!row.can_edit_customer_info
+              };
+            }
+          });
+          return newPerms;
+        });
+      }
+    } catch (e) {
+      console.error('Error loading role permissions:', e);
+    }
+  };
+
+  const handleTogglePermission = async (role: string, field: string) => {
+    if (role === 'admin') return;
+    
+    const updatedRolePerms = {
+      ...rolePermissions[role],
+      [field]: !rolePermissions[role][field]
+    };
+    
+    setRolePermissions((prev: any) => ({
+      ...prev,
+      [role]: updatedRolePerms
+    }));
+    
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('role_permissions', JSON.stringify({
+        ...rolePermissions,
+        [role]: updatedRolePerms
+      }));
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('settings_role_permissions')
+        .upsert({
+          role,
+          ...updatedRolePerms
+        }, { onConflict: 'role' });
+      
+      if (error) {
+        console.warn('Upsert settings_role_permissions failed, table may not exist:', error.message);
+      } else {
+        showToast(t('toast_inline_save_success') || '권한이 변경되었습니다.', 'success');
+      }
+    } catch (e) {
+      console.error('Error saving permission:', e);
+    }
+  };
 
   // Active Tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake' | 'history_log' | 'cod' | 'customers' | 'partner_transfer'
   const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake' | 'history_log' | 'cod' | 'customers' | 'partner_transfer'>('overview');
@@ -574,6 +694,7 @@ export default function StaffDashboard() {
       }
     };
     checkStaffAuth();
+    loadRolePermissions();
   }, []);
 
   // Redirect unauthorized users
@@ -2712,6 +2833,10 @@ export default function StaffDashboard() {
   };
 
   const handleApproveSale = async (deviceId: string) => {
+    if (!currentPermissions.can_approve_sale) {
+      showToast('권한이 없습니다. (No permission.)', 'error');
+      return;
+    }
     if (!confirm('해당 판매 건을 승인하시겠습니까?\n승인 시 최종 마진 장부에 반영됩니다.\n(Do you want to approve this sale? It will be entered into the margin ledger.)')) return;
     try {
       const { error } = await supabase
@@ -3744,7 +3869,7 @@ export default function StaffDashboard() {
             <span className="ico">⚙️</span> {t('staff_menu_settings') || '기준 정보 관리'}
           </button>
 
-          {(staffProfile?.role === 'admin' || staffProfile?.role === 'manager') && (
+          {currentPermissions.can_view_margin && (
             <button 
               className={`sb-link ${activeTab === 'margin' ? 'active' : ''}`}
               onClick={() => handleTabChange('margin')}
@@ -4624,9 +4749,9 @@ export default function StaffDashboard() {
                           />
                         </td>
                         <td 
-                          style={{ fontWeight: 700, color: 'var(--purple-l)', cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }}
+                          style={{ fontWeight: 700, color: 'var(--purple-l)', cursor: currentPermissions.can_edit_core_device_fields ? 'pointer' : 'default' }}
                           onClick={() => {
-                            if (staffProfile?.role !== 'admin') return;
+                            if (!currentPermissions.can_edit_core_device_fields) return;
                             if (editingCell?.id !== item.id || editingCell?.field !== 'sticker') {
                               setEditingCell({ id: item.id, field: 'sticker' });
                               setEditCellValue(item.sticker || '');
@@ -4652,9 +4777,9 @@ export default function StaffDashboard() {
                           )}
                         </td>
                         <td 
-                          style={{ color: 'var(--t2)', cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }}
+                          style={{ color: 'var(--t2)', cursor: currentPermissions.can_edit_core_device_fields ? 'pointer' : 'default' }}
                           onClick={() => {
-                            if (staffProfile?.role !== 'admin') return;
+                            if (!currentPermissions.can_edit_core_device_fields) return;
                             if (editingCell?.id !== item.id || editingCell?.field !== 'site_date') {
                               setEditingCell({ id: item.id, field: 'site_date' });
                               setEditCellValue(item.site_date || '');
@@ -4680,9 +4805,9 @@ export default function StaffDashboard() {
                           )}
                         </td>
                         <td 
-                          style={{ fontWeight: 700, wordBreak: 'break-all', cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }}
+                          style={{ fontWeight: 700, wordBreak: 'break-all', cursor: currentPermissions.can_edit_core_device_fields ? 'pointer' : 'default' }}
                           onClick={() => {
-                            if (staffProfile?.role !== 'admin') return;
+                            if (!currentPermissions.can_edit_core_device_fields) return;
                             if (editingCell?.id !== item.id || editingCell?.field !== 'model_name') {
                               setEditingCell({ id: item.id, field: 'model_name' });
                               setEditCellValue(item.model_name || '');
@@ -4717,9 +4842,9 @@ export default function StaffDashboard() {
                         </td>
                         <td 
                           className="font-mono" 
-                          style={{ fontSize: '11px', wordBreak: 'break-all', cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }}
+                          style={{ fontSize: '11px', wordBreak: 'break-all', cursor: currentPermissions.can_edit_core_device_fields ? 'pointer' : 'default' }}
                           onClick={() => {
-                            if (staffProfile?.role !== 'admin') return;
+                            if (!currentPermissions.can_edit_core_device_fields) return;
                             if (editingCell?.id !== item.id || editingCell?.field !== 'imei') {
                               setEditingCell({ id: item.id, field: 'imei' });
                               setEditCellValue(item.imei || '');
@@ -4745,9 +4870,9 @@ export default function StaffDashboard() {
                           )}
                         </td>
                         <td 
-                          style={{ cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }}
+                          style={{ cursor: currentPermissions.can_edit_core_device_fields ? 'pointer' : 'default' }}
                           onClick={() => {
-                            if (staffProfile?.role !== 'admin') return;
+                            if (!currentPermissions.can_edit_core_device_fields) return;
                             if (editingCell?.id !== item.id || editingCell?.field !== 'color') {
                               setEditingCell({ id: item.id, field: 'color' });
                               setEditCellValue(item.color || '');
@@ -4773,9 +4898,9 @@ export default function StaffDashboard() {
                           )}
                         </td>
                         <td 
-                          style={{ textAlign: 'center', cursor: (staffProfile?.role === 'admin' || staffProfile?.role === 'manager') ? 'pointer' : 'default' }}
+                          style={{ textAlign: 'center', cursor: currentPermissions.can_edit_battery ? 'pointer' : 'default' }}
                           onClick={() => {
-                            if (staffProfile?.role !== 'admin' && staffProfile?.role !== 'manager') return;
+                            if (!currentPermissions.can_edit_battery) return;
                             if (editingCell?.id !== item.id || editingCell?.field !== 'battery_pct') {
                               setEditingCell({ id: item.id, field: 'battery_pct' });
                               setEditCellValue(item.battery_pct || '');
@@ -4803,9 +4928,9 @@ export default function StaffDashboard() {
                           )}
                         </td>
                         <td 
-                          style={{ textAlign: 'right', fontWeight: 700, color: '#e11d48', cursor: (staffProfile?.role === 'admin' || staffProfile?.role === 'manager') ? 'pointer' : 'default' }}
+                          style={{ textAlign: 'right', fontWeight: 700, color: '#e11d48', cursor: currentPermissions.can_edit_cost ? 'pointer' : 'default' }}
                           onClick={() => {
-                            if (staffProfile?.role !== 'admin' && staffProfile?.role !== 'manager') return;
+                            if (!currentPermissions.can_edit_cost) return;
                             if (editingCell?.id !== item.id || editingCell?.field !== 'purchase_cost_krw') {
                               setEditingCell({ id: item.id, field: 'purchase_cost_krw' });
                               setEditCellValue(item.purchase_cost_krw ? item.purchase_cost_krw.toString() : '0');
@@ -4831,9 +4956,9 @@ export default function StaffDashboard() {
                           )}
                         </td>
                         <td 
-                          style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)', cursor: (staffProfile?.role === 'admin' || staffProfile?.role === 'manager') ? 'pointer' : 'default' }}
+                          style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)', cursor: currentPermissions.can_edit_price ? 'pointer' : 'default' }}
                           onClick={() => {
-                            if (staffProfile?.role !== 'admin' && staffProfile?.role !== 'manager') return;
+                            if (!currentPermissions.can_edit_price) return;
                             if (editingCell?.id !== item.id || editingCell?.field !== 'selling_price') {
                               setEditingCell({ id: item.id, field: 'selling_price' });
                               setEditCellValue(item.selling_price ? item.selling_price.toString() : '0');
@@ -4869,9 +4994,9 @@ export default function StaffDashboard() {
                           );
                         })()}
                         <td
-                          style={{ cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }}
+                          style={{ cursor: currentPermissions.can_edit_core_device_fields ? 'pointer' : 'default' }}
                           onClick={() => {
-                            if (staffProfile?.role !== 'admin') return;
+                            if (!currentPermissions.can_edit_core_device_fields) return;
                             if (editingCell?.id !== item.id || editingCell?.field !== 'stock_location') {
                               setEditingCell({ id: item.id, field: 'stock_location' });
                               setEditCellValue(item.stock_location || '');
@@ -5375,7 +5500,7 @@ export default function StaffDashboard() {
                         <td style={{ fontSize: '11px', color: 'var(--t2)' }}>{item.notes || '-'}</td>
                         <td style={{ textAlign: 'center' }}>
                           <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                            {!item.is_approved && staffProfile?.role === 'admin' && (
+                            {!item.is_approved && currentPermissions.can_approve_sale && (
                               <button
                                 className="btn-green"
                                 style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', background: '#ecfdf5', color: '#10b981', borderColor: '#d1fae5', cursor: 'pointer' }}
@@ -6006,11 +6131,123 @@ export default function StaffDashboard() {
 
             </div>
 
+            {/* Staff Role Permissions Card */}
+            {staffProfile?.role === 'admin' && (
+              <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '24px' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: 800, borderBottom: '1px solid var(--border)', paddingBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>🛡️</span> 등급별 권한 관리 (Staff Role Permissions)
+                </h3>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--t2)', lineHeight: 1.4 }}>
+                  각 스태프 권한 등급별(Admin, Manager, Staff)로 재고 수정 및 마진 정산 접근 권한을 개별 통제할 수 있습니다.
+                  <br />
+                  <span style={{ fontSize: '12px', color: 'var(--purple-l)', fontWeight: 700 }}>
+                    💡 팁: 브라우저에 즉시 저장되어 적용되며, 다른 PC/환경과 실시간 동기화하려면 아래의 SQL 명령을 Supabase 대시보드 SQL Editor에 실행해 주세요.
+                  </span>
+                </p>
+
+                <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: '12px' }}>
+                  <table className="tbl" style={{ margin: 0 }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: '150px' }}>권한 등급 (Role)</th>
+                        <th style={{ textAlign: 'center' }}>📈 마진 탭 조회</th>
+                        <th style={{ textAlign: 'center' }}>💰 마진/원가 상세 조회</th>
+                        <th style={{ textAlign: 'center' }}>🏷️ 소매판매가 수정</th>
+                        <th style={{ textAlign: 'center' }}>₩ 매입원가 수정</th>
+                        <th style={{ textAlign: 'center' }}>🔋 배터리 수치 수정</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {['admin', 'manager', 'staff'].map((role) => {
+                        const isSystemAdmin = role === 'admin';
+                        const perms = rolePermissions[role] || {};
+                        return (
+                          <tr key={role}>
+                            <td style={{ fontWeight: 800, textTransform: 'uppercase', color: isSystemAdmin ? 'var(--purple-l)' : 'var(--t1)' }}>
+                              {role === 'admin' ? '👑 Admin' : role === 'manager' ? '👤 Manager' : '💼 Staff'}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <input 
+                                type="checkbox"
+                                checked={perms.can_view_margin || false}
+                                disabled={isSystemAdmin}
+                                onChange={() => handleTogglePermission(role, 'can_view_margin')}
+                                style={{ transform: 'scale(1.2)', cursor: isSystemAdmin ? 'default' : 'pointer' }}
+                              />
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <input 
+                                type="checkbox"
+                                checked={perms.can_view_margin_detail || false}
+                                disabled={isSystemAdmin}
+                                onChange={() => handleTogglePermission(role, 'can_view_margin_detail')}
+                                style={{ transform: 'scale(1.2)', cursor: isSystemAdmin ? 'default' : 'pointer' }}
+                              />
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <input 
+                                type="checkbox"
+                                checked={perms.can_edit_price || false}
+                                disabled={isSystemAdmin}
+                                onChange={() => handleTogglePermission(role, 'can_edit_price')}
+                                style={{ transform: 'scale(1.2)', cursor: isSystemAdmin ? 'default' : 'pointer' }}
+                              />
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <input 
+                                type="checkbox"
+                                checked={perms.can_edit_cost || false}
+                                disabled={isSystemAdmin}
+                                onChange={() => handleTogglePermission(role, 'can_edit_cost')}
+                                style={{ transform: 'scale(1.2)', cursor: isSystemAdmin ? 'default' : 'pointer' }}
+                              />
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <input 
+                                type="checkbox"
+                                checked={perms.can_edit_battery || false}
+                                disabled={isSystemAdmin}
+                                onChange={() => handleTogglePermission(role, 'can_edit_battery')}
+                                style={{ transform: 'scale(1.2)', cursor: isSystemAdmin ? 'default' : 'pointer' }}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <details style={{ marginTop: '10px', background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
+                  <summary style={{ fontWeight: 700, fontSize: '13px', cursor: 'pointer', color: 'var(--t2)' }}>
+                    🛠️ 데이터베이스 동기화 SQL 보기 (Supabase SQL Editor 실행용)
+                  </summary>
+                  <pre style={{ margin: '8px 0 0 0', padding: '10px', background: '#0f172a', color: '#38bdf8', fontSize: '11px', borderRadius: '6px', overflowX: 'auto', fontFamily: 'monospace' }}>
+{`CREATE TABLE IF NOT EXISTS public.settings_role_permissions (
+    role text PRIMARY KEY,
+    can_view_margin boolean DEFAULT false,
+    can_view_margin_detail boolean DEFAULT false,
+    can_edit_price boolean DEFAULT false,
+    can_edit_cost boolean DEFAULT false,
+    can_edit_battery boolean DEFAULT false
+);
+
+INSERT INTO public.settings_role_permissions (role, can_view_margin, can_view_margin_detail, can_edit_price, can_edit_cost, can_edit_battery)
+VALUES 
+('admin', true, true, true, true, true),
+('manager', true, false, true, true, true),
+('staff', false, false, false, false, false)
+ON CONFLICT (role) DO NOTHING;`}
+                  </pre>
+                </details>
+              </div>
+            )}
+
           </div>
         )}
 
         {/* ==================== VIEW 5: MARGIN & SETTLEMENT ==================== */}
-        {activeTab === 'margin' && (staffProfile?.role === 'admin' || staffProfile?.role === 'manager') && (
+        {activeTab === 'margin' && currentPermissions.can_view_margin && (
           <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             
             {/* Header and Monthly Filter */}
@@ -6594,7 +6831,7 @@ export default function StaffDashboard() {
                             <tr key={item.id}>
                               <td>{item.sale_date || '-'}</td>
                               <td style={{ fontWeight: 700 }}>
-                                {staffProfile?.role === 'admin' ? (
+                                {currentPermissions.can_edit_customer_info ? (
                                   editingCell?.id === item.id && editingCell?.field === 'customer_name' ? (
                                     <input
                                       type="text"
@@ -6626,7 +6863,7 @@ export default function StaffDashboard() {
                                 )}
                               </td>
                               <td>
-                                {staffProfile?.role === 'admin' ? (
+                                {currentPermissions.can_edit_customer_info ? (
                                   editingCell?.id === item.id && editingCell?.field === 'customer_phone' ? (
                                     <input
                                       type="text"
@@ -6658,7 +6895,7 @@ export default function StaffDashboard() {
                                 )}
                               </td>
                               <td>
-                                {staffProfile?.role === 'admin' ? (
+                                {currentPermissions.can_edit_customer_info ? (
                                   editingCell?.id === item.id && editingCell?.field === 'notes' ? (
                                     <input
                                       type="text"
@@ -6693,7 +6930,7 @@ export default function StaffDashboard() {
                               <td className="font-mono" style={{ fontSize: '11px' }}>{item.imei}</td>
                               <td style={{ textAlign: 'center', fontWeight: 800 }}>{paymentTypeLabel}</td>
                               <td>
-                                {staffProfile?.role === 'admin' ? (
+                                {currentPermissions.can_edit_customer_info ? (
                                   editingCell?.id === item.id && editingCell?.field === 'seller_name' ? (
                                     <input
                                       type="text"
@@ -7887,7 +8124,7 @@ export default function StaffDashboard() {
                   onChange={(e) => setSticker(e.target.value)}
                   className="form-input"
                   style={{ margin: 0 }}
-                  disabled={!!editingDevice && staffProfile?.role !== 'admin'}
+                  disabled={!!editingDevice && !currentPermissions.can_edit_core_device_fields}
                 />
               </div>
 
@@ -7898,7 +8135,7 @@ export default function StaffDashboard() {
                   onChange={(e) => handleModelSelectChange(e.target.value)}
                   className="form-input"
                   style={{ margin: 0 }}
-                  disabled={!!editingDevice && staffProfile?.role !== 'admin'}
+                  disabled={!!editingDevice && !currentPermissions.can_edit_core_device_fields}
                 >
                   <option value="">{t('staff_select_model_placeholder')}</option>
                   {modelOptions.map((mod) => (
@@ -7916,7 +8153,7 @@ export default function StaffDashboard() {
                       onChange={(e) => setCustomModelName(e.target.value)}
                       className="form-input"
                       style={{ margin: 0, borderColor: 'var(--purple)' }}
-                      disabled={!!editingDevice && staffProfile?.role !== 'admin'}
+                      disabled={!!editingDevice && !currentPermissions.can_edit_core_device_fields}
                     />
                     <small style={{ color: 'var(--purple)', fontSize: '11px', marginTop: '4px', display: 'block' }}>
                       {t('staff_model_auto_add_notice')}
@@ -8027,7 +8264,7 @@ export default function StaffDashboard() {
                   onChange={(e) => setSiteDate(e.target.value)}
                   className="form-input"
                   style={{ margin: 0 }}
-                  disabled={!!editingDevice && staffProfile?.role !== 'admin'}
+                  disabled={!!editingDevice && !currentPermissions.can_edit_core_device_fields}
                 />
               </div>
 
