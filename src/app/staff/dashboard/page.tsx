@@ -332,12 +332,53 @@ export default function StaffDashboard() {
     }, 0);
 
     const totalUnpaidCODTHB = soldList.filter(d => d.sale_type === 'cod' && d.payment_status === 'unpaid').reduce((sum, d) => sum + ((Number(d.selling_price) || 0) - (Number(d.deposit_amount) || 0)), 0);
-    const totalUnpaidInstallmentTHB = soldList.filter(d => d.sale_type === 'installment' && d.payment_status !== 'paid').reduce((sum, d) => {
+    
+    // Unpaid installments ONLY for devices sold in the selected month (used to calculate this month's cash collection)
+    const unpaidInstallmentsSelectedMonthSales = soldList.filter(d => d.sale_type === 'installment' && d.payment_status !== 'paid').reduce((sum, d) => {
       const history = d.installment_history || [];
       const unpaidSum = history.filter((h: any) => h.status === 'unpaid').reduce((s, h) => s + (Number(h.amount) || 0), 0);
       return sum + unpaidSum;
     }, 0);
-    const actualCollectedTHB = totalSalesTHB - totalUnpaidCODTHB - totalUnpaidInstallmentTHB;
+
+    // Cumulative unpaid installments (all devices sold in or before the selected month)
+    const allApprovedInstallmentDevices = devices.filter(d => !d.deleted_at && d.is_sold && d.is_approved && d.sale_type === 'installment');
+    const relevantInstallmentDevices = marginSelectedMonth && marginSelectedMonth !== 'all'
+      ? allApprovedInstallmentDevices.filter(d => getYearMonth(d.sale_date) <= marginSelectedMonth)
+      : allApprovedInstallmentDevices;
+
+    const totalUnpaidInstallmentTHB = relevantInstallmentDevices.reduce((sum, d) => {
+      const history = d.installment_history || [];
+      const unpaidSum = history.filter((h: any) => h.status === 'unpaid').reduce((s, h) => s + (Number(h.amount) || 0), 0);
+      return sum + unpaidSum;
+    }, 0);
+
+    // Helper to check if a payment was made in the selected month
+    const isPaidInMonth = (paidDateStr: string, ymStr: string) => {
+      if (!paidDateStr) return false;
+      const pts = paidDateStr.split('.').map(x => x.trim()).filter(Boolean);
+      if (pts.length >= 2) {
+        const year = 2000 + Number(pts[0]);
+        const month = Number(pts[1]);
+        const targetYear = Number(ymStr.split('-')[0]);
+        const targetMonth = Number(ymStr.split('-')[1]);
+        return year === targetYear && month === targetMonth;
+      }
+      return false;
+    };
+
+    // Installments paid in the selected month for devices sold BEFORE the selected month
+    const historicalCollectedInMonth = marginSelectedMonth && marginSelectedMonth !== 'all'
+      ? devices.filter(d => !d.deleted_at && d.is_sold && d.is_approved && d.sale_type === 'installment' && getYearMonth(d.sale_date) < marginSelectedMonth)
+          .reduce((sum, d) => {
+            const history = d.installment_history || [];
+            const paidInMonthSum = history
+              .filter((h: any) => h.status === 'paid' && isPaidInMonth(h.paid_date, marginSelectedMonth))
+              .reduce((s, h) => s + (Number(h.amount) || 0), 0);
+            return sum + paidInMonthSum;
+          }, 0)
+      : 0;
+
+    const actualCollectedTHB = (totalSalesTHB - totalUnpaidCODTHB - unpaidInstallmentsSelectedMonthSales) + historicalCollectedInMonth;
     const activeInstallmentCount = soldList.filter(d => d.payment_status === 'collecting').length;
     const unpaidList = soldList.filter(d => d.payment_status === 'unpaid' || d.payment_status === 'collecting');
     
