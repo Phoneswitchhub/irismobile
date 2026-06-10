@@ -11,7 +11,14 @@ import Navbar from '@/components/Navbar';
 
 export default function SellerDashboard() {
   const router = useRouter();
-  const { t, lang } = useTranslation();
+  const { t, lang, changeLanguage } = useTranslation();
+
+  // Force Thai language for the partner dashboard since they are all Thai.
+  useEffect(() => {
+    if (lang !== 'th' && changeLanguage) {
+      changeLanguage('th');
+    }
+  }, [lang, changeLanguage]);
 
   // Authentication & Profile States
   const [user, setUser] = useState<any>(null);
