@@ -98,6 +98,7 @@ export default function StaffDashboard() {
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   });
   const [showOverdueOnly, setShowOverdueOnly] = useState(false);
+  const [showMonthPaidOnly, setShowMonthPaidOnly] = useState(false);
   const [codSelectedMonth, setCodSelectedMonth] = useState('all');
   const [codSearchQuery, setCodSearchQuery] = useState('');
   const [custSearch, setCustSearch] = useState('');
@@ -3193,6 +3194,8 @@ export default function StaffDashboard() {
     setSearchQuery('');
     setSoldSearchQuery('');
     setInstallmentSearchQuery('');
+    setShowOverdueOnly(false);
+    setShowMonthPaidOnly(false);
     setTrashSearchQuery('');
     setHistorySearchQuery('');
     setHistoryMonthFilter('all');
@@ -5201,6 +5204,14 @@ export default function StaffDashboard() {
               if (!hasOverdue) return false;
             }
 
+            // 3. Paid-in-month filter
+            if (!installmentSearchQuery && showMonthPaidOnly) {
+              const isFinished = d.payment_status === 'paid';
+              const isMonthPaid = history.some((h: any) => isDueInSelectedMonth(h.due_date) && h.status === 'paid');
+              const isRowGray = isFinished || (instSelectedMonth !== 'all' && isMonthPaid);
+              if (!isRowGray) return false;
+            }
+
             const custNameMatch = d.customer_name?.toLowerCase().includes(installmentSearchQuery.toLowerCase());
             const custPhoneMatch = d.customer_phone?.includes(installmentSearchQuery);
             const stickerMatch = d.sticker?.toLowerCase().includes(installmentSearchQuery.toLowerCase());
@@ -5275,10 +5286,26 @@ export default function StaffDashboard() {
                     <input
                       type="checkbox"
                       checked={showOverdueOnly}
-                      onChange={(e) => setShowOverdueOnly(e.target.checked)}
+                      onChange={(e) => {
+                        setShowOverdueOnly(e.target.checked);
+                        if (e.target.checked) setShowMonthPaidOnly(false);
+                      }}
                       style={{ cursor: 'pointer', width: '16px', height: '16px' }}
                     />
                     <span style={{ color: 'var(--red)' }}>⚠️ {t('staff_overdue_only')}</span>
+                  </label>
+
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 700, marginLeft: '12px', cursor: 'pointer', userSelect: 'none' }}>
+                    <input
+                      type="checkbox"
+                      checked={showMonthPaidOnly}
+                      onChange={(e) => {
+                        setShowMonthPaidOnly(e.target.checked);
+                        if (e.target.checked) setShowOverdueOnly(false);
+                      }}
+                      style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                    />
+                    <span style={{ color: 'var(--green)' }}>🟢 {lang === 'ko' ? '당월 완납 고객만 보기' : 'แสดงเฉพาะผู้ที่ชำระงวดเดือนนี้แล้ว'}</span>
                   </label>
                 </div>
                 <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--purple-l)' }}>
@@ -5325,8 +5352,11 @@ export default function StaffDashboard() {
                         const isFinished = item.payment_status === 'paid';
                         const hasOverdue = history.some((h: any) => checkIsOverdue(h.due_date, h.status));
                         
+                        const isMonthPaid = history.some((h: any) => isDueInSelectedMonth(h.due_date) && h.status === 'paid');
+                        const isRowGray = isFinished || (instSelectedMonth !== 'all' && isMonthPaid);
+                        
                         return (
-                          <tr key={item.id} style={{ background: isFinished ? '#f4f4f5' : '#fff', opacity: isFinished ? 0.65 : 1 }}>
+                          <tr key={item.id} style={{ background: isRowGray ? '#f4f4f5' : '#fff', opacity: isRowGray ? 0.65 : 1 }}>
                             <td style={{ fontWeight: 700 }}>{item.sale_date}</td>
                             <td>
                               <div style={{ fontWeight: 700 }}>{item.model_name}</div>
