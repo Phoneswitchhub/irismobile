@@ -251,6 +251,10 @@ export default function StaffDashboard() {
   const [importingCSV, setImportingCSV] = useState(false);
   const [intakeMethod, setIntakeMethod] = useState<'file' | 'paste'>('file');
   const [pasteText, setPasteText] = useState('');
+  const [historySubTab, setHistorySubTab] = useState<'summary' | 'audit'>('summary');
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditFilterType, setAuditFilterType] = useState('all');
+  const [auditSearchQuery, setAuditSearchQuery] = useState('');
 
   // Settings/Master Data States
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
@@ -713,6 +717,53 @@ export default function StaffDashboard() {
     }
   }, [isAuthorized, router]);
 
+  // Fetch Audit Logs
+  const loadAuditLogs = useCallback(async () => {
+    if (!isAuthorized) return;
+    try {
+      const { data, error } = await supabase
+        .from('inventory_audit_log')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (error) {
+        // Graceful fallback if table does not exist
+        if (error.code !== 'PGRST116' && error.code !== '42P01') {
+          console.error('Error fetching audit logs:', error);
+        }
+      } else {
+        setAuditLogs(data || []);
+      }
+    } catch (err) {
+      console.error('Failed to load audit logs:', err);
+    }
+  }, [isAuthorized]);
+
+  // Write Audit Log Helper
+  const writeAuditLog = useCallback(async (actionType: string, modelName: string | null, imei: string | null, details: string) => {
+    try {
+      const operatorName = staffProfile?.name || '시스템(System)';
+      const operatorRole = staffProfile?.role || 'system';
+      const { error } = await supabase
+        .from('inventory_audit_log')
+        .insert({
+          operator_name: operatorName,
+          operator_role: operatorRole,
+          action_type: actionType,
+          model_name: modelName,
+          imei: imei,
+          details: details
+        });
+      if (error) {
+        console.error('Error inserting audit log:', error);
+      } else {
+        loadAuditLogs();
+      }
+    } catch (err) {
+      console.error('Failed to write audit log:', err);
+    }
+  }, [staffProfile, loadAuditLogs]);
+
   // 2. Fetch Ledger Data
   const loadLedgerData = useCallback(async () => {
     if (!isAuthorized) return;
@@ -725,13 +776,16 @@ export default function StaffDashboard() {
 
       if (error) throw error;
       setDevices(data || []);
+      
+      // Load audit logs in parallel
+      loadAuditLogs();
     } catch (err: any) {
       console.error(err);
       showToast(t('error_occurred') + err.message, 'error');
     } finally {
       setLoadingData(false);
     }
-  }, [isAuthorized, showToast, t]);
+  }, [isAuthorized, showToast, t, loadAuditLogs]);
 
   const fetchNextInstallmentNumber = async () => {
     try {
@@ -2316,6 +2370,11 @@ export default function StaffDashboard() {
 
       if (error) throw error;
 
+      // Log bulk import
+      const modelSummary = records.map(r => r.model_name).filter(Boolean).slice(0, 3).join(', ') + (records.length > 3 ? ` 외 ${records.length - 3}대` : '');
+      const imeiList = records.map(r => r.imei).filter(Boolean).slice(0, 5).join(', ') + (records.length > 5 ? ` 외 ${records.length - 5}개` : '');
+      writeAuditLog('BULK_IMPORT', modelSummary, imeiList, `클립보드 복사붙여넣기 일괄 입고 성공: 총 ${records.length}대 입고됨`);
+
       showToast(t('toast_paste_import_success', { count: records.length }), 'success');
       setIsCSVModalOpen(false);
       setPasteText('');
@@ -2402,6 +2461,27 @@ export default function StaffDashboard() {
           .from('sheets_inventory')
           .update(payload)
           .eq('id', editingDevice.id));
+        
+        if (!error) {
+          const changes = [];
+          if (Number(editingDevice.purchase_cost_krw) !== payload.purchase_cost_krw) {
+            changes.push(`원가: ฿${formatPrice(Number(editingDevice.purchase_cost_krw) || 0)} -> ฿${formatPrice(payload.purchase_cost_krw)}`);
+          }
+          if (Number(editingDevice.selling_price) !== payload.selling_price) {
+            changes.push(`판매가: ฿${formatPrice(Number(editingDevice.selling_price) || 0)} -> ฿${formatPrice(payload.selling_price)}`);
+          }
+          if (editingDevice.battery_pct !== payload.battery_pct) {
+            changes.push(`배터리: ${editingDevice.battery_pct || '100'}% -> ${payload.battery_pct}%`);
+          }
+          if (editingDevice.stock_location !== payload.stock_location) {
+            changes.push(`위치: ${editingDevice.stock_location || 'Shop'} -> ${payload.stock_location}`);
+          }
+          if (editingDevice.notes !== payload.notes) {
+            changes.push(`비고: "${editingDevice.notes || ''}" -> "${payload.notes || ''}"`);
+          }
+          const details = changes.length > 0 ? `기기 수정 (${changes.join(', ')})` : '기기 수정 (변경사항 없음)';
+          writeAuditLog('EDIT_DEVICE', payload.model_name, payload.imei, details);
+        }
       } else {
         const newPayload = {
           ...payload,
@@ -2410,6 +2490,10 @@ export default function StaffDashboard() {
         ({ error } = await supabase
           .from('sheets_inventory')
           .insert(newPayload));
+        
+        if (!error) {
+          writeAuditLog('MANUAL_ADD', payload.model_name, payload.imei, `수동 기기 등록: 원가 ฿${formatPrice(payload.purchase_cost_krw)}, 판매가 ฿${formatPrice(payload.selling_price)}`);
+        }
       }
 
       if (error) throw error;
@@ -2495,6 +2579,10 @@ export default function StaffDashboard() {
 
       if (error) throw error;
 
+      // Log transfer approval actions
+      writeAuditLog('APPROVE_TRANSFER', device.model_name, device.imei, `이관 신청 승인 완료 (대상 매장: ${targetStore})`);
+      writeAuditLog('APPROVE_REQUEST', device.model_name, device.imei, `협력사 기기 이관 요청 승인 완료 (대상 매장: ${targetStore})`);
+
       showToast(`이관 요청이 승인되었습니다. (${targetStore} 매장으로 재고 이관)`, 'success');
       await loadLedgerData();
     } catch (err: any) {
@@ -2515,6 +2603,10 @@ export default function StaffDashboard() {
         .eq('id', device.id);
 
       if (error) throw error;
+
+      // Log transfer rejection actions
+      writeAuditLog('REJECT_TRANSFER', device.model_name, device.imei, '이관 신청 거절 완료');
+      writeAuditLog('REJECT_REQUEST', device.model_name, device.imei, '협력사 기기 이관 요청 거절 완료');
 
       showToast('이관 요청이 거절되었습니다.', 'info');
       await loadLedgerData();
@@ -2572,6 +2664,14 @@ export default function StaffDashboard() {
       });
 
       await Promise.all(promises);
+
+      // Log bulk partner share action
+      const sharedCount = bulkShareDevices.filter(d => d.isShared).length;
+      const unsharedCount = bulkShareDevices.length - sharedCount;
+      const modelSummary = bulkShareDevices.map(d => d.model_name).filter(Boolean).slice(0, 3).join(', ') + (bulkShareDevices.length > 3 ? ` 외 ${bulkShareDevices.length - 3}대` : '');
+      const imeiList = bulkShareDevices.map(d => d.imei).filter(Boolean).slice(0, 5).join(', ') + (bulkShareDevices.length > 5 ? ` 외 ${bulkShareDevices.length - 5}개` : '');
+      writeAuditLog('BULK_SHARE', modelSummary, imeiList, `협력사 일괄 공유 설정 완료: 공개 ${sharedCount}대, 비공개 ${unsharedCount}대`);
+
       showToast('협력사 공유 설정이 일괄 업데이트되었습니다.', 'success');
       setIsBulkPartnerShareModalOpen(false);
       setSelectedIds([]);
@@ -2595,12 +2695,46 @@ export default function StaffDashboard() {
         finalValue = Number(value.replace(/[^\d]/g, '')) || 0;
       }
 
+      // Get previous value for audit log
+      const oldDevice = devices.find(d => d.id === id);
+      const oldValue = oldDevice ? oldDevice[field] : '';
+
       const { error } = await supabase
         .from('sheets_inventory')
         .update({ [field]: finalValue })
         .eq('id', id);
 
       if (error) throw error;
+
+      // Log action if value actually changed
+      if (oldDevice && String(oldValue) !== String(finalValue)) {
+        let actionType = 'EDIT_FIELD';
+        let details = `필드 [${field}] 수정: "${oldValue || ''}" -> "${finalValue || ''}"`;
+
+        if (field === 'purchase_cost_krw') {
+          actionType = 'EDIT_COST';
+          details = `매입원가 수정: ฿${formatPrice(Number(oldValue) || 0)} -> ฿${formatPrice(Number(finalValue) || 0)}`;
+        } else if (field === 'selling_price') {
+          actionType = 'EDIT_PRICE';
+          details = `소매판매가 수정: ฿${formatPrice(Number(oldValue) || 0)} -> ฿${formatPrice(Number(finalValue) || 0)}`;
+        } else if (field === 'notes') {
+          actionType = 'EDIT_NOTES';
+          details = `비고 수정: "${oldValue || ''}" -> "${finalValue || ''}"`;
+        } else if (field === 'battery_pct') {
+          actionType = 'EDIT_BATTERY';
+          details = `배터리 수치 수정: ${oldValue || '100'}% -> ${finalValue || '100'}%`;
+        } else if (field === 'stock_location') {
+          actionType = 'EDIT_LOCATION';
+          details = `기기 위치 수정: "${oldValue || ''}" -> "${finalValue || ''}"`;
+        } else if (field === 'model_name') {
+          actionType = 'EDIT_MODEL';
+          details = `모델명 수정: "${oldValue || ''}" -> "${finalValue || ''}"`;
+        } else if (field === 'imei') {
+          actionType = 'EDIT_IMEI';
+          details = `IMEI 수정: "${oldValue || ''}" -> "${finalValue || ''}"`;
+        }
+        writeAuditLog(actionType, oldDevice.model_name, oldDevice.imei, details);
+      }
 
       // Update local state
       setDevices(prev => prev.map(d => d.id === id ? { ...d, [field]: finalValue } : d));
@@ -2773,6 +2907,9 @@ export default function StaffDashboard() {
 
         if (returnError) throw returnError;
 
+        // Log return/exchange action
+        writeAuditLog('CANCEL_SALE', returnedDev.model_name, returnedDev.imei, `교환반품 처리 (반납 재고 복구, 대체기기 IMEI: ${sellingDevice.imei})`);
+
         // 2. Prep notes for the new device
         const newDevNote = `[기기교환 반납IMEI: ${returnedDev.imei}] ${exchangeMemo.trim()}`;
         finalNotes = finalNotes ? `${finalNotes} | ${newDevNote}` : newDevNote;
@@ -2821,6 +2958,14 @@ export default function StaffDashboard() {
 
       if (error) throw error;
 
+      // Log sale action
+      writeAuditLog(
+        'SELL_DEVICE', 
+        sellingDevice.model_name, 
+        sellingDevice.imei, 
+        `판매 처리 완료 (유형: ${saleType}, 판매가: ฿${formatPrice(calculatedFinalPrice)}, 판매원: ${sellerName.trim()}${custName.trim() ? `, 구매자: ${custName.trim()}` : ''})`
+      );
+
       showToast(t('toast_sale_recorded_success'), 'success');
       setSellingDevice(null);
       setSearchQuery('');
@@ -2839,6 +2984,7 @@ export default function StaffDashboard() {
     }
     if (!confirm('해당 판매 건을 승인하시겠습니까?\n승인 시 최종 마진 장부에 반영됩니다.\n(Do you want to approve this sale? It will be entered into the margin ledger.)')) return;
     try {
+      const targetDevice = devices.find(d => d.id === deviceId);
       const { error } = await supabase
         .from('sheets_inventory')
         .update({
@@ -2847,6 +2993,11 @@ export default function StaffDashboard() {
         .eq('id', deviceId);
 
       if (error) throw error;
+
+      if (targetDevice) {
+        writeAuditLog('APPROVE_SALE', targetDevice.model_name, targetDevice.imei, `판매 건 승인 완료 (판매가: ฿${formatPrice(targetDevice.selling_price || 0)})`);
+      }
+
       showToast('판매 승인이 완료되었습니다. (Sale approved successfully.)', 'success');
       loadLedgerData();
     } catch (err: any) {
@@ -2917,6 +3068,12 @@ export default function StaffDashboard() {
           .eq('id', item.id);
         if (error) throw error;
       }
+
+      // Log bulk sale action
+      const modelSummary = bulkSaleItems.map(item => item.model_name).filter(Boolean).slice(0, 3).join(', ') + (bulkSaleItems.length > 3 ? ` 외 ${bulkSaleItems.length - 3}대` : '');
+      const imeiList = bulkSaleItems.map(item => item.imei).filter(Boolean).slice(0, 5).join(', ') + (bulkSaleItems.length > 5 ? ` 외 ${bulkSaleItems.length - 5}개` : '');
+      writeAuditLog('BULK_SALE', modelSummary, imeiList, `대량 도매 판매 처리 완료: 총 ${bulkSaleItems.length}대 판매 (구매자: ${bulkBuyerName.trim() || '미지정'})`);
+
       showToast(`✅ ${bulkSaleItems.length}대 대량 판매 완료 (Wholesale sale recorded)`, 'success');
       setIsBulkSaleModalOpen(false);
       setSelectedIds([]);
@@ -5866,8 +6023,9 @@ export default function StaffDashboard() {
                                 </div>
                               ) : (
                                 <div 
-                                  style={{ fontWeight: 800, color: 'var(--purple-l)', cursor: 'pointer', marginBottom: '6px', fontSize: '12.5px' }}
+                                  style={{ fontWeight: 800, color: 'var(--purple-l)', cursor: currentPermissions.can_edit_customer_info ? 'pointer' : 'default', marginBottom: '6px', fontSize: '12.5px' }}
                                   onClick={() => {
+                                    if (!currentPermissions.can_edit_customer_info) return;
                                     setEditingCell({ id: item.id, field: 'installment_number' });
                                     setEditCellValue(item.installment_number || 'IRIS000000');
                                   }}
@@ -5894,8 +6052,9 @@ export default function StaffDashboard() {
                                 />
                               ) : (
                                 <div 
-                                  style={{ fontWeight: 700, color: 'var(--t1)', cursor: 'pointer', fontSize: '11.5px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}
+                                  style={{ fontWeight: 700, color: 'var(--t1)', cursor: currentPermissions.can_edit_customer_info ? 'pointer' : 'default', fontSize: '11.5px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}
                                   onClick={() => {
+                                    if (!currentPermissions.can_edit_customer_info) return;
                                     setEditingCell({ id: item.id, field: 'customer_name' });
                                     setEditCellValue(item.customer_name || '');
                                   }}
@@ -5935,8 +6094,9 @@ export default function StaffDashboard() {
                                 />
                               ) : (
                                 <div 
-                                  style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '4px', cursor: 'pointer' }}
+                                  style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '4px', cursor: currentPermissions.can_edit_customer_info ? 'pointer' : 'default' }}
                                   onClick={() => {
+                                    if (!currentPermissions.can_edit_customer_info) return;
                                     setEditingCell({ id: item.id, field: 'customer_phone' });
                                     setEditCellValue(item.customer_phone || '');
                                   }}
@@ -5965,7 +6125,13 @@ export default function StaffDashboard() {
                                   return (
                                     <button
                                       key={idx}
-                                      onClick={() => handleToggleInstallmentStatus(item.id, inst.sequence)}
+                                      onClick={() => {
+                                        if (!currentPermissions.can_edit_customer_info) {
+                                          showToast('권한이 없습니다. (No permission.)', 'error');
+                                          return;
+                                        }
+                                        handleToggleInstallmentStatus(item.id, inst.sequence);
+                                      }}
                                       style={{
                                         width: '100%',
                                         padding: '4px 2px',

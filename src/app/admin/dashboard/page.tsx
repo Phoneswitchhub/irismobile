@@ -309,8 +309,33 @@ export default function AdminDashboard() {
     }
   }, [activePage, loadChatRooms, loadChatMedia, loadAllContracts]);
 
+  const writeAuditLog = useCallback(async (actionType: string, modelName: string | null, imei: string | null, details: string) => {
+    try {
+      const operatorName = adminProfile?.name || '시스템(System)';
+      const operatorRole = adminProfile?.role || 'admin';
+      const { error } = await supabase
+        .from('inventory_audit_log')
+        .insert({
+          operator_name: operatorName,
+          operator_role: operatorRole,
+          action_type: actionType,
+          model_name: modelName,
+          imei: imei,
+          details: details
+        });
+      if (error) {
+        console.error('Error inserting audit log:', error);
+      }
+    } catch (err) {
+      console.error('Failed to write audit log:', err);
+    }
+  }, [adminProfile]);
+
   // 3. User operations
   const handleApproveSeller = async (id: string) => {
+    const seller = pendingSellers.find(s => s.id === id) || approvedSellers.find(s => s.id === id);
+    const sellerName = seller ? (seller.name || seller.store_name || id) : id;
+
     const { error } = await supabase
       .from('profiles')
       .update({ is_approved: true })
@@ -320,12 +345,19 @@ export default function AdminDashboard() {
       showToast('❌ Approval failed: ' + error.message, 'error');
       return;
     }
+
+    // Log seller approval action
+    writeAuditLog('APPROVE_SELLER', null, null, `가맹점 승인 완료 (ID/이름: ${sellerName})`);
+
     showToast('✅ Seller approved!', 'success');
     refreshAllData();
   };
 
   const handleRejectSeller = async (id: string) => {
     if (!confirm('Rejecting will demote this account to a buyer. Proceed?')) return;
+    const seller = pendingSellers.find(s => s.id === id) || approvedSellers.find(s => s.id === id);
+    const sellerName = seller ? (seller.name || seller.store_name || id) : id;
+
     const { error } = await supabase
       .from('profiles')
       .update({ role: 'buyer' })
@@ -335,12 +367,19 @@ export default function AdminDashboard() {
       showToast('❌ Reject failed: ' + error.message, 'error');
       return;
     }
+
+    // Log seller rejection action
+    writeAuditLog('REJECT_SELLER', null, null, `가맹점 거절 완료 (ID/이름: ${sellerName})`);
+
     showToast('❌ Seller application rejected.', 'info');
     refreshAllData();
   };
 
   const handleSuspendSeller = async (id: string) => {
     if (!confirm('Suspend this seller account?')) return;
+    const seller = pendingSellers.find(s => s.id === id) || approvedSellers.find(s => s.id === id);
+    const sellerName = seller ? (seller.name || seller.store_name || id) : id;
+
     const { error } = await supabase
       .from('profiles')
       .update({ is_approved: false })
@@ -350,6 +389,10 @@ export default function AdminDashboard() {
       showToast('❌ Suspension failed: ' + error.message, 'error');
       return;
     }
+
+    // Log seller suspension/rejection action
+    writeAuditLog('REJECT_SELLER', null, null, `가맹점 일시 정지/거절 완료 (ID/이름: ${sellerName})`);
+
     showToast('🚫 Seller account suspended.', 'info');
     refreshAllData();
   };

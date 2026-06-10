@@ -324,6 +324,22 @@ export default function AuthPage() {
         return;
       }
 
+      // Log seller registration
+      if (role === 'seller' && !isAdmin) {
+        try {
+          await supabase.from('inventory_audit_log').insert({
+            operator_name: name || '신규 가맹점(New Seller)',
+            operator_role: 'seller',
+            action_type: 'CREATE_SELLER',
+            model_name: null,
+            imei: null,
+            details: `가맹점 신규 등록 신청 완료 (상호명: ${rStore.trim() || '미기입'})`
+          });
+        } catch (logErr) {
+          console.error('Failed to log seller registration:', logErr);
+        }
+      }
+
       if (role === 'seller' && !isAdmin) {
         setROk(t('register_completed'));
         setTimeout(() => {

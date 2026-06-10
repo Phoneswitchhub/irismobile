@@ -221,6 +221,24 @@ export default function ContractPage() {
     );
   }, [user, sellerProfile]);
 
+  const logViewInstallmentCalc = async (price: number, months: number, downPayment: number, monthlyPayment: number) => {
+    try {
+      if (!user) return;
+      const operatorName = sellerProfile?.name || sellerProfile?.store_name || '협력사(Seller)';
+      const operatorRole = sellerProfile?.role || 'seller';
+      await supabase.from('inventory_audit_log').insert({
+        operator_name: operatorName,
+        operator_role: operatorRole,
+        action_type: 'VIEW_INSTALLMENT_CALC',
+        model_name: model || null,
+        imei: imei || null,
+        details: `할부 계산 조회 (판매가: ฿${price}, 할부개월: ${months}개월, 보증금: ฿${downPayment}, 월상환액: ฿${monthlyPayment})`
+      });
+    } catch (err) {
+      console.error('Failed to log VIEW_INSTALLMENT_CALC:', err);
+    }
+  };
+
   useEffect(() => {
     if (!loadingSeller && !user) {
       router.push('/auth');
@@ -621,6 +639,7 @@ export default function ContractPage() {
           const m = Number(installmentsCount);
           if (m === 3 || m === 4 || m === 6 || m === 8 || m === 10) {
             setInstallmentAmount(row[m]);
+            logViewInstallmentCalc(price, m, row.down, row[m]);
           }
         }
       } else {
@@ -644,6 +663,7 @@ export default function ContractPage() {
         const row = INTEREST_TABLE[closest];
         if (row && (m === 3 || m === 4 || m === 6 || m === 8 || m === 10)) {
           setInstallmentAmount(row[m]);
+          logViewInstallmentCalc(price, m, row.down, row[m]);
         }
       }
     }
@@ -674,6 +694,7 @@ export default function ContractPage() {
         if (m === 3 || m === 4 || m === 6 || m === 8 || m === 10) {
           setInstallmentsCount(m);
           setInstallmentAmount(row[m]);
+          logViewInstallmentCalc(item.price, m, row.down, row[m]);
         }
       }
     } else {
