@@ -4773,9 +4773,9 @@ export default function StaffDashboard() {
                           )}
                         </td>
                         <td 
-                          style={{ textAlign: 'center', cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }}
+                          style={{ textAlign: 'center', cursor: (staffProfile?.role === 'admin' || staffProfile?.role === 'manager') ? 'pointer' : 'default' }}
                           onClick={() => {
-                            if (staffProfile?.role !== 'admin') return;
+                            if (staffProfile?.role !== 'admin' && staffProfile?.role !== 'manager') return;
                             if (editingCell?.id !== item.id || editingCell?.field !== 'battery_pct') {
                               setEditingCell({ id: item.id, field: 'battery_pct' });
                               setEditCellValue(item.battery_pct || '');
@@ -4803,9 +4803,9 @@ export default function StaffDashboard() {
                           )}
                         </td>
                         <td 
-                          style={{ textAlign: 'right', fontWeight: 700, color: '#e11d48', cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }}
+                          style={{ textAlign: 'right', fontWeight: 700, color: '#e11d48', cursor: (staffProfile?.role === 'admin' || staffProfile?.role === 'manager') ? 'pointer' : 'default' }}
                           onClick={() => {
-                            if (staffProfile?.role !== 'admin') return;
+                            if (staffProfile?.role !== 'admin' && staffProfile?.role !== 'manager') return;
                             if (editingCell?.id !== item.id || editingCell?.field !== 'purchase_cost_krw') {
                               setEditingCell({ id: item.id, field: 'purchase_cost_krw' });
                               setEditCellValue(item.purchase_cost_krw ? item.purchase_cost_krw.toString() : '0');
@@ -4831,9 +4831,9 @@ export default function StaffDashboard() {
                           )}
                         </td>
                         <td 
-                          style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)', cursor: staffProfile?.role === 'admin' ? 'pointer' : 'default' }}
+                          style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)', cursor: (staffProfile?.role === 'admin' || staffProfile?.role === 'manager') ? 'pointer' : 'default' }}
                           onClick={() => {
-                            if (staffProfile?.role !== 'admin') return;
+                            if (staffProfile?.role !== 'admin' && staffProfile?.role !== 'manager') return;
                             if (editingCell?.id !== item.id || editingCell?.field !== 'selling_price') {
                               setEditingCell({ id: item.id, field: 'selling_price' });
                               setEditCellValue(item.selling_price ? item.selling_price.toString() : '0');
