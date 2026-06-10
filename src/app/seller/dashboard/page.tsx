@@ -52,6 +52,13 @@ export default function SellerDashboard() {
   const [partnerSharedStock, setPartnerSharedStock] = useState<any[]>([]);
   const [loadingPartnerData, setLoadingPartnerData] = useState(false);
 
+  // Partner Deposit Limit States
+  const [partnerDepositLimit, setPartnerDepositLimit] = useState<number>(0);
+  const [occupiedDeposit, setOccupiedDeposit] = useState<number>(0);
+  const [activeStockValue, setActiveStockValue] = useState<number>(0);
+  const [pendingRequestValue, setPendingRequestValue] = useState<number>(0);
+  const [pendingSaleValue, setPendingSaleValue] = useState<number>(0);
+
   // Search & Filter for Partner Inventory & Requests
   const [partnerInventorySearch, setPartnerInventorySearch] = useState('');
   const [partnerInventoryCategory, setPartnerInventoryCategory] = useState('All');
@@ -363,6 +370,7 @@ export default function SellerDashboard() {
     if (!sellerProfile || !sellerProfile.store_name) return;
     setLoadingPartnerData(true);
     try {
+      // 1. Fetch active inventory in store
       const { data: invData } = await supabase
         .from('sheets_inventory')
         .select('*')
@@ -373,6 +381,7 @@ export default function SellerDashboard() {
 
       setPartnerInventory(invData || []);
 
+      // 2. Fetch shared stocks available for request
       const { data: sharedData } = await supabase
         .from('sheets_inventory')
         .select('*')
@@ -382,6 +391,50 @@ export default function SellerDashboard() {
         .order('created_at', { ascending: false });
 
       setPartnerSharedStock(sharedData || []);
+
+      // 3. Fetch pending sales (sold but not approved)
+      const { data: pendingSales } = await supabase
+        .from('sheets_inventory')
+        .select('*')
+        .eq('seller_name', sellerProfile.store_name)
+        .eq('is_sold', true)
+        .eq('is_approved', false)
+        .is('deleted_at', null);
+
+      // 4. Fetch pending requests (requested but not transferred yet)
+      const { data: pendingRequests } = await supabase
+        .from('sheets_inventory')
+        .select('*')
+        .eq('is_sold', false)
+        .is('deleted_at', null)
+        .like('notes', `%[이관신청: ${sellerProfile.store_name},%`);
+
+      // 5. Calculate deposit limit and occupied values
+      let limit = 0;
+      if (sellerProfile) {
+        if (typeof sellerProfile.deposit_limit === 'number') {
+          limit = sellerProfile.deposit_limit;
+        } else if (sellerProfile.deposit_limit !== undefined && sellerProfile.deposit_limit !== null) {
+          const parsed = parseFloat(sellerProfile.deposit_limit);
+          if (!isNaN(parsed)) limit = parsed;
+        } else if (sellerProfile.description) {
+          const match = sellerProfile.description.match(/\[(?:보증금|한도|deposit|limit):\s*(\d+)\]/i);
+          if (match) {
+            limit = parseInt(match[1], 10);
+          }
+        }
+      }
+      setPartnerDepositLimit(limit);
+
+      const activeVal = (invData || []).reduce((sum, item) => sum + getDisplayPrice(item), 0);
+      const pendingSaleVal = (pendingSales || []).reduce((sum, item) => sum + getDisplayPrice(item), 0);
+      const pendingRequestVal = (pendingRequests || []).reduce((sum, item) => sum + getDisplayPrice(item), 0);
+      const occupied = activeVal + pendingSaleVal + pendingRequestVal;
+
+      setActiveStockValue(activeVal);
+      setPendingSaleValue(pendingSaleVal);
+      setPendingRequestValue(pendingRequestVal);
+      setOccupiedDeposit(occupied);
     } catch (e) {
       console.error('Failed to load partner data:', e);
     } finally {
@@ -395,6 +448,19 @@ export default function SellerDashboard() {
       if (device.notes && device.notes.includes('[이관신청:')) {
         showToast(t('toast_already_requested') || '이미 신청된 기기입니다.', 'error');
         return;
+      }
+
+      // Enforce deposit limit for consignment partner stores
+      if (sellerProfile.store_type !== 'direct') {
+        const devicePrice = getDisplayPrice(device);
+        if (partnerDepositLimit <= 0) {
+          showToast(t('toast_no_deposit_limit') || '보증금 한도가 설정되지 않았습니다. 본사에 문의해 주세요.', 'error');
+          return;
+        }
+        if (occupiedDeposit + devicePrice > partnerDepositLimit) {
+          showToast(t('toast_limit_exceeded') || '보증금 한도가 초과되어 기기를 신청할 수 없습니다.', 'error');
+          return;
+        }
       }
 
       const currentNotes = device.notes || '';
@@ -1199,6 +1265,37 @@ export default function SellerDashboard() {
                 <div>{t('payout_method')}: <span style={{ fontWeight: 800, color: 'var(--cyan)' }}>{sellerProfile?.payout_method === 'cod_commission' ? t('payout_method_cod') : t('payout_method_parent')}</span></div>
                 <div>{t('location_label') || '지역:'}: <span style={{ fontWeight: 800, color: 'var(--t1)' }}>{sellerProfile?.location_province || 'Bangkok'}</span></div>
               </div>
+
+              {sellerProfile?.store_type !== 'direct' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px dashed rgba(139, 92, 246, 0.2)', paddingTop: '10px', marginTop: '4px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '11.5px', color: 'var(--purple-l)', fontWeight: 700 }}>💰 {t('partner_deposit_limit') || '협력사 보증금 한도'}</span>
+                    <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--purple-l)' }}>฿{partnerDepositLimit.toLocaleString()}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px', fontSize: '11px', color: 'var(--t2)' }}>
+                    <div>
+                      {t('partner_deposit_occupied') || '사용 중인 보증금'}: <span style={{ fontWeight: 700, color: 'var(--red)' }}>฿{occupiedDeposit.toLocaleString()}</span>
+                      <span style={{ fontSize: '9.5px', color: 'var(--t3)', marginLeft: '4px' }}>
+                        (실재고: ฿{activeStockValue.toLocaleString()} / 신청대기: ฿{pendingRequestValue.toLocaleString()} / 승인대기: ฿{pendingSaleValue.toLocaleString()})
+                      </span>
+                    </div>
+                    <div>
+                      {t('partner_deposit_available') || '신청 가능 한도'}: <span style={{ fontWeight: 850, color: 'var(--green)' }}>฿{Math.max(0, partnerDepositLimit - occupiedDeposit).toLocaleString()}</span>
+                    </div>
+                  </div>
+                  {/* Progress bar to show usage */}
+                  {partnerDepositLimit > 0 && (
+                    <div style={{ width: '100%', height: '6px', background: 'rgba(0,0,0,0.05)', borderRadius: '3px', overflow: 'hidden', marginTop: '2px' }}>
+                      <div style={{
+                        width: `${Math.min(100, (occupiedDeposit / partnerDepositLimit) * 100)}%`,
+                        height: '100%',
+                        background: occupiedDeposit > partnerDepositLimit ? 'var(--red)' : occupiedDeposit / partnerDepositLimit > 0.8 ? 'var(--gold)' : 'var(--purple-l)',
+                        transition: 'width 0.3s ease'
+                      }} />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Stats grid */}
@@ -1596,6 +1693,36 @@ export default function SellerDashboard() {
                 {t('partner_request_empty_shared_desc')}
               </p>
             </div>
+          </div>
+
+          {/* Deposit Limit Status for requests */}
+          <div style={{
+            background: 'rgba(139, 92, 246, 0.06)',
+            border: '1px solid rgba(139, 92, 246, 0.12)',
+            borderRadius: '12px',
+            padding: '10px 14px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            fontSize: '12px',
+            color: 'var(--t1)'
+          }}>
+            <div>
+              <span style={{ color: 'var(--t2)' }}>{t('partner_deposit_available') || '신청 가능 한도'}:</span>{' '}
+              <b style={{ color: 'var(--green)', fontSize: '14px' }}>฿{Math.max(0, partnerDepositLimit - occupiedDeposit).toLocaleString()}</b>
+              <span style={{ fontSize: '10px', color: 'var(--t3)', marginLeft: '6px' }}>
+                ({t('partner_deposit_occupied') || '사용 중'}: ฿{occupiedDeposit.toLocaleString()} / {t('partner_deposit_limit') || '한도'}: ฿{partnerDepositLimit.toLocaleString()})
+              </span>
+            </div>
+            {partnerDepositLimit > 0 && (
+              <div style={{ width: '60px', height: '4px', background: 'rgba(0,0,0,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{
+                  width: `${Math.min(100, (occupiedDeposit / partnerDepositLimit) * 100)}%`,
+                  height: '100%',
+                  background: occupiedDeposit > partnerDepositLimit ? 'var(--red)' : occupiedDeposit / partnerDepositLimit > 0.8 ? 'var(--gold)' : 'var(--purple-l)'
+                }} />
+              </div>
+            )}
           </div>
 
           {/* Search and Filters Card */}

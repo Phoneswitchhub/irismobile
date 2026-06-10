@@ -666,7 +666,12 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     toast_partner_sale_failed: "판매 처리 실패: ",
     tab_partner_inventory: "우리 매장 재고",
     tab_request_devices: "기기 신청",
-    none_label: "없음"
+    none_label: "없음",
+    partner_deposit_limit: "협력사 보증금 한도",
+    partner_deposit_occupied: "사용 중인 보증금",
+    partner_deposit_available: "신청 가능 한도",
+    toast_limit_exceeded: "보증금 한도 초과! 보증금 한도 내에서만 기기를 신청할 수 있습니다.",
+    toast_no_deposit_limit: "보증금 한도가 설정되지 않았습니다. 본사에 문의해 주세요."
   },
   th: {
     app_title: "PHONE SWITCH HUB",
@@ -1333,7 +1338,12 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     toast_partner_sale_failed: "บันทึกการขายล้มเหลว: ",
     tab_partner_inventory: "สต็อกของร้านเรา",
     tab_request_devices: "ขอเครื่อง",
-    none_label: "ไม่มี"
+    none_label: "ไม่มี",
+    partner_deposit_limit: "วงเงินค้ำประกัน",
+    partner_deposit_occupied: "วงเงินที่ใช้ไป",
+    partner_deposit_available: "วงเงินคงเหลือที่ขอได้",
+    toast_limit_exceeded: "วงเงินค้ำประกันไม่เพียงพอ! คุณสามารถขอเครื่องได้ภายในวงเงินที่เหลืออยู่เท่านั้น",
+    toast_no_deposit_limit: "ยังไม่ได้ตั้งค่าวงเงินค้ำประกัน กรุณาติดต่อสำนักงานใหญ่"
   },
   mm: {
     app_title: "PHONE SWITCH HUB",
@@ -1753,7 +1763,12 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     toast_partner_sale_failed: "ရောင်းချမှု မအောင်မြင်ပါ- ",
     tab_partner_inventory: "ကျွန်ုပ်တို့ဆိုင်ရှိ ဖုန်းများ",
     tab_request_devices: "ဖုန်းတောင်းခံရန်",
-    none_label: "မရှိပါ"
+    none_label: "မရှိပါ",
+    partner_deposit_limit: "အာမခံစပေါ်ငွေကန့်သတ်ချက်",
+    partner_deposit_occupied: "အသုံးပြုထားသော အာမခံငွေ",
+    partner_deposit_available: "ထပ်မံတောင်းခံနိုင်သည့် လက်ကျန်ငွေ",
+    toast_limit_exceeded: "အာမခံစပေါ်ငွေ ကျော်လွန်နေပါသည်! လက်ကျန်ငွေအတွင်းသာ ထပ်မံတောင်းခံနိုင်ပါသည်။",
+    toast_no_deposit_limit: "အာမခံစပေါ်ငွေကန့်သတ်ချက် သတ်မှတ်မထားပါ။ ရုံးချုပ်သို့ ဆက်သွယ်ပါ။"
   },
   en: {
     app_title: "Phone Switch Hub",
@@ -2157,6 +2172,11 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     toast_partner_sale_failed: "Sale recording failed: ",
     tab_partner_inventory: "Our Store Stock",
     tab_request_devices: "Request Devices",
-    none_label: "None"
+    none_label: "None",
+    partner_deposit_limit: "Deposit Limit",
+    partner_deposit_occupied: "Occupied Deposit",
+    partner_deposit_available: "Available Limit",
+    toast_limit_exceeded: "Deposit limit exceeded! You can only request devices within your available limit.",
+    toast_no_deposit_limit: "Deposit limit is not set. Please contact the head office."
   }
 };

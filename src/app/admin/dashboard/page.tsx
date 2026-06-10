@@ -63,6 +63,7 @@ export default function AdminDashboard() {
   const [confCoords, setConfCoords] = useState('');
   const [confRole, setConfRole] = useState('seller');
   const [confStoreType, setConfStoreType] = useState('franchise');
+  const [confDepositLimit, setConfDepositLimit] = useState<number | string>(0);
   const [districtsList, setDistrictsList] = useState<District[]>([]);
 
   // Buyer Orders View Modal States
@@ -452,6 +453,7 @@ export default function AdminDashboard() {
     setConfProvince(seller.location_province || '');
     setConfRole(seller.role || 'seller');
     setConfStoreType(seller.store_type || 'franchise');
+    setConfDepositLimit(seller.deposit_limit || 0);
     // Wait for cascading state
     setTimeout(() => {
       setConfDistrict(seller.location_district || '');
@@ -484,7 +486,8 @@ export default function AdminDashboard() {
         location_address: confAddress.trim(),
         location_coords: confCoords.trim() || null,
         role: confRole,
-        store_type: confStoreType
+        store_type: confStoreType,
+        deposit_limit: Number(confDepositLimit) || 0
       })
       .eq('id', selectedSellerForConfig.id);
 
@@ -1176,6 +1179,11 @@ export default function AdminDashboard() {
                             <td>
                               <div style={{ fontWeight: 600, color: 'var(--gold)' }}>{s.commission_rate || '10.0'}%</div>
                               <div style={{ fontSize: '10px', color: 'var(--t2)' }}>{payoutText}</div>
+                              {s.store_type !== 'direct' && (
+                                <div style={{ fontSize: '10.5px', color: 'var(--purple-l)', fontWeight: 700, marginTop: '4px' }}>
+                                  💰 ฿{(s.deposit_limit || 0).toLocaleString()}
+                                </div>
+                              )}
                             </td>
                             <td style={{ fontSize: '12px', color: 'var(--t3)' }}>{formatDate(s.created_at)}</td>
                             <td>
@@ -1913,6 +1921,19 @@ export default function AdminDashboard() {
                   </select>
                 </div>
               </div>
+
+              {confRole === 'seller' && confStoreType !== 'direct' && (
+                <div className="form-group">
+                  <label className="form-label">보증금 한도 (Deposit Limit in ฿)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="예: 200000"
+                    value={confDepositLimit}
+                    onChange={(e) => setConfDepositLimit(e.target.value)}
+                  />
+                </div>
+              )}
               <div className="form-group">
                 <label className="form-label">{t('store_province')}</label>
                 <select 
