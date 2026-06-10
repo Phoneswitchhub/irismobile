@@ -2862,6 +2862,37 @@ export default function StaffDashboard() {
     printWindow.document.close();
   };
 
+  const handlePrintPriceList = () => {
+    if (selectedIds.length === 0) return;
+    const selectedDevices = devices.filter(d => selectedIds.includes(d.id));
+    const sortedDevices = [...selectedDevices].sort((a, b) => (a.model_name || '').localeCompare(b.model_name || ''));
+    
+    const printWindow = window.open('', '_blank', 'width=900,height=1000');
+    if (!printWindow) return;
+    
+    const rowsHtml = sortedDevices.map(item => `
+      <tr>
+        <td>${item.sticker || '-'}</td>
+        <td class="left">${item.model_name || '-'}</td>
+        <td class="imei">${item.imei || '-'}</td>
+        <td>${item.color || '-'}</td>
+        <td>${item.battery_pct || '-'}</td>
+        <td class="price">฿${(item.selling_price || 0).toLocaleString()}</td>
+      </tr>
+    `).join('');
+    
+    const titleText = lang === 'ko' ? '기기 가격표 (Price List)' : 'ใบราคาสินค้า (Price List)';
+    const thSticker = lang === 'ko' ? '스티커 (Sticker)' : 'สติกเกอร์ (Sticker)';
+    const thModel = lang === 'ko' ? '모델명 (Model)' : 'รุ่น (Model)';
+    const thImei = 'IMEI';
+    const thColor = lang === 'ko' ? '색상 (Color)' : 'สี (Color)';
+    const thBattery = lang === 'ko' ? '배터리 (Battery)' : 'แบตเตอรี่ (Battery)';
+    const thPrice = lang === 'ko' ? '판매가 (Price)' : 'ราคาขาย (Price)';
+    
+    printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${titleText}</title><style>@page{size:A4;margin:10mm 8mm;}body{font-family:'Sarabun','Tahoma',Arial,sans-serif;font-size:11px;color:#111;margin:0;padding:0;}.title{text-align:center;font-size:18px;font-weight:900;margin:10px 0 15px;letter-spacing:0.5px;}table{width:100%;border-collapse:collapse;}th{background:#2e7d32;color:#fff;border:1px solid #999;padding:6px 4px;text-align:center;font-size:11.5px;font-weight:700;}td{border:1px solid #aaa;padding:5px 4px;text-align:center;font-size:11px;}td.left{text-align:left;font-weight:700;}td.price{text-align:right;font-weight:900;color:#1b5e20;}.imei{font-family:monospace;font-size:10.5px;}</style></head><body><div class="title">${titleText} (${sortedDevices.length} pcs)</div><table><thead><tr><th style="width:15%;">${thSticker}</th><th style="width:32%;">${thModel}</th><th style="width:20%;">${thImei}</th><th style="width:12%;">${thColor}</th><th style="width:10%;">${thBattery}</th><th style="width:11%;">${thPrice}</th></tr></thead><tbody>${rowsHtml}</tbody></table><script>window.onload=function(){window.print();window.close();}<\/script></body></html>`);
+    printWindow.document.close();
+  };
+
   const handleToggleInstallmentStatus = async (deviceId: string, sequence: number) => {
 
     const device = devices.find(d => d.id === deviceId);
@@ -4238,6 +4269,12 @@ export default function StaffDashboard() {
                         👥 협력사 일괄 공유 ({selectedIds.length})
                       </button>
                     )}
+                    <button
+                      style={{ margin: 0, background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.25)', color: 'var(--green)', padding: '6px 14px', fontSize: '11px', borderRadius: '6px', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      onClick={handlePrintPriceList}
+                    >
+                      🏷️ {lang === 'ko' ? '가격표 인쇄' : 'พิมพ์ใบราคา'} ({selectedIds.length})
+                    </button>
                     <button
                       style={{ margin: 0, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: 'var(--red)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                       onClick={handleBulkDelete}
