@@ -6,7 +6,7 @@ const lines = content.split('\n');
 
 lines.forEach((line, idx) => {
   const trimmed = line.trim();
-  if (trimmed.includes("activeTab === 'trash'") || trimmed.includes("activeTab === \"trash\"") || trimmed.includes("('trash')") || trimmed.includes("can_view_trash")) {
+  if (trimmed.includes('localStorage')) {
     console.log(`${idx + 1}: ${trimmed}`);
   }
 });

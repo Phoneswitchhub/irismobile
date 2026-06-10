@@ -6372,7 +6372,7 @@ export default function StaffDashboard() {
                         <th style={{ textAlign: 'center' }}>⚙️ 기기 핵심정보 수정</th>
                         <th style={{ textAlign: 'center' }}>✅ 판매 승인 처리</th>
                         <th style={{ textAlign: 'center' }}>👤 고객 정보 수정</th>
-                        <th style={{ textAlign: 'center' }}>🗑️ 휴지통 조회</th>
+                        <th style={{ textAlign: 'center' }}>🗑️ 휴지통 영구삭제</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -6459,9 +6459,9 @@ export default function StaffDashboard() {
                             <td style={{ textAlign: 'center' }}>
                               <input 
                                 type="checkbox"
-                                checked={perms.can_view_trash || false}
+                                checked={perms.can_permanent_delete || false}
                                 disabled={isSystemAdmin}
-                                onChange={() => handleTogglePermission(role, 'can_view_trash')}
+                                onChange={() => handleTogglePermission(role, 'can_permanent_delete')}
                                 style={{ transform: 'scale(1.2)', cursor: isSystemAdmin ? 'default' : 'pointer' }}
                               />
                             </td>
@@ -6487,17 +6487,19 @@ export default function StaffDashboard() {
     can_edit_core_device_fields boolean DEFAULT false,
     can_approve_sale boolean DEFAULT false,
     can_edit_customer_info boolean DEFAULT false,
-    can_view_trash boolean DEFAULT false
+    can_view_trash boolean DEFAULT false,
+    can_permanent_delete boolean DEFAULT false
 );
 
--- 기존 테이블이 있다면 can_view_trash 컬럼 추가
+-- 기존 테이블이 있다면 컬럼 추가
 ALTER TABLE public.settings_role_permissions ADD COLUMN IF NOT EXISTS can_view_trash boolean DEFAULT false;
+ALTER TABLE public.settings_role_permissions ADD COLUMN IF NOT EXISTS can_permanent_delete boolean DEFAULT false;
 
-INSERT INTO public.settings_role_permissions (role, can_view_margin, can_view_margin_detail, can_edit_price, can_edit_cost, can_edit_battery, can_edit_core_device_fields, can_approve_sale, can_edit_customer_info, can_view_trash)
+INSERT INTO public.settings_role_permissions (role, can_view_margin, can_view_margin_detail, can_edit_price, can_edit_cost, can_edit_battery, can_edit_core_device_fields, can_approve_sale, can_edit_customer_info, can_view_trash, can_permanent_delete)
 VALUES 
-('admin', true, true, true, true, true, true, true, true, true),
-('manager', true, false, true, true, true, false, false, false, true),
-('staff', false, false, false, false, false, false, false, false, false)
+('admin', true, true, true, true, true, true, true, true, true, true),
+('manager', true, false, true, true, true, false, false, false, true, false),
+('staff', false, false, false, false, false, false, false, false, false, false)
 ON CONFLICT (role) DO UPDATE SET
   can_view_margin = EXCLUDED.can_view_margin,
   can_view_margin_detail = EXCLUDED.can_view_margin_detail,
@@ -6507,7 +6509,8 @@ ON CONFLICT (role) DO UPDATE SET
   can_edit_core_device_fields = EXCLUDED.can_edit_core_device_fields,
   can_approve_sale = EXCLUDED.can_approve_sale,
   can_edit_customer_info = EXCLUDED.can_edit_customer_info,
-  can_view_trash = EXCLUDED.can_view_trash;`}
+  can_view_trash = EXCLUDED.can_view_trash,
+  can_permanent_delete = EXCLUDED.can_permanent_delete;`}
                   </pre>
                 </details>
               </div>
