@@ -4903,7 +4903,6 @@ export default function StaffDashboard() {
                           style={{ fontSize: '11px', color: 'var(--t2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }} 
                           title={item.is_reserved ? `${lang === 'ko' ? '예약자' : 'Reserver'}: ${item.reserved_by} | ${item.notes || ''}` : item.notes || ''}
                           onClick={() => {
-                            if (item.is_reserved) return;
                             if (editingCell?.id !== item.id || editingCell?.field !== 'notes') {
                               setEditingCell({ id: item.id, field: 'notes' });
                               setEditCellValue(item.notes || '');
@@ -4924,10 +4923,16 @@ export default function StaffDashboard() {
                               className="form-input"
                               style={{ margin: 0, padding: '2px 4px', fontSize: '12px', width: '95%' }}
                             />
-                          ) : item.is_reserved ? (
-                            <span style={{ color: '#d97706', fontWeight: 700 }}>👤 {item.reserved_by} ({item.reserved_date})</span>
                           ) : (
-                            item.notes || '-'
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-start' }}>
+                              {item.is_reserved && (
+                                <span style={{ color: '#d97706', fontWeight: 700 }}>
+                                  👤 {item.reserved_by} {item.reserved_date ? `(${item.reserved_date})` : ''}
+                                </span>
+                              )}
+                              {item.notes && <span style={{ color: 'var(--t1)' }}>{item.notes}</span>}
+                              {!item.is_reserved && !item.notes && '-'}
+                            </div>
                           )}
                         </td>
                         <td>
