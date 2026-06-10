@@ -1691,10 +1691,18 @@ export default function StaffDashboard() {
       // Second pass for looser matches
       headerRow.forEach((cell, idx) => {
         const clean = cell.toLowerCase().replace(/\s+/g, '');
-        if (sellingPriceIdx === -1 && (clean === 'price' || clean.includes('sellingprice') || clean.includes('판매가') || clean.includes('소매가'))) {
+        if (sellingPriceIdx === -1 && (
+          clean === 'price' || 
+          clean === 'selling' || 
+          clean.includes('sellingprice') || 
+          clean.includes('판매가') || 
+          clean.includes('판매금액') || 
+          clean.includes('판매') || 
+          clean.includes('소매가')
+        )) {
           sellingPriceIdx = idx;
         }
-        if (marketPriceIdx === -1 && (clean.includes('도매가격') || (clean.includes('도매') && !clean.includes('마진') && !clean.includes('수수료')))) {
+        if (marketPriceIdx === -1 && (clean.includes('도매가격') || clean.includes('도매가') || (clean.includes('도매') && !clean.includes('마진') && !clean.includes('수수료')))) {
           marketPriceIdx = idx;
         }
       });
@@ -1718,8 +1726,12 @@ export default function StaffDashboard() {
       if (saleDateIdx === -1) saleDateIdx = 99;
       if (sellerIdx === -1) sellerIdx = 99;
       if (notesIdx === -1) notesIdx = 99;
-      if (sellingPriceIdx === -1) sellingPriceIdx = 99;
-      if (marketPriceIdx === -1) marketPriceIdx = 99;
+      if (sellingPriceIdx === -1) {
+        sellingPriceIdx = (firstRowLength >= 10) ? 9 : 99;
+      }
+      if (marketPriceIdx === -1) {
+        marketPriceIdx = (firstRowLength >= 11) ? 10 : 99;
+      }
 
       // Fetch existing DB records to prevent overwriting sold status or reviving deleted items
       const { data: existingDB } = await supabase
@@ -2031,10 +2043,18 @@ export default function StaffDashboard() {
         // Second pass for looser matches
         headerRow.forEach((cell, idx) => {
           const clean = cell.toLowerCase().replace(/\s+/g, '');
-          if (sellingPriceIdx === -1 && (clean === 'price' || clean.includes('sellingprice') || clean.includes('판매가') || clean.includes('소매가'))) {
+          if (sellingPriceIdx === -1 && (
+            clean === 'price' || 
+            clean === 'selling' || 
+            clean.includes('sellingprice') || 
+            clean.includes('판매가') || 
+            clean.includes('판매금액') || 
+            clean.includes('판매') || 
+            clean.includes('소매가')
+          )) {
             sellingPriceIdx = idx;
           }
-          if (marketPriceIdx === -1 && (clean.includes('도매가격') || (clean.includes('도매') && !clean.includes('마진') && !clean.includes('수수료')))) {
+          if (marketPriceIdx === -1 && (clean.includes('도매가격') || clean.includes('도매가') || (clean.includes('도매') && !clean.includes('마진') && !clean.includes('수수료')))) {
             marketPriceIdx = idx;
           }
         });
@@ -2059,8 +2079,12 @@ export default function StaffDashboard() {
       if (saleDateIdx === -1) saleDateIdx = 99;
       if (sellerIdx === -1) sellerIdx = 99;
       if (notesIdx === -1) notesIdx = 99;
-      if (sellingPriceIdx === -1) sellingPriceIdx = 99;
-      if (marketPriceIdx === -1) marketPriceIdx = 99;
+      if (sellingPriceIdx === -1) {
+        sellingPriceIdx = (firstRowLength >= 10) ? 9 : 99;
+      }
+      if (marketPriceIdx === -1) {
+        marketPriceIdx = (firstRowLength >= 11) ? 10 : 99;
+      }
 
       // Fetch existing DB records to prevent overwriting sold status or reviving deleted items
       const { data: existingDB } = await supabase
