@@ -60,7 +60,9 @@ export default function StaffDashboard() {
       can_edit_battery: true,
       can_edit_core_device_fields: true,
       can_approve_sale: true,
-      can_edit_customer_info: true
+      can_edit_customer_info: true,
+      can_permanent_delete: true,
+      can_view_trash: true
     },
     manager: { 
       can_view_margin: true, 
@@ -70,7 +72,9 @@ export default function StaffDashboard() {
       can_edit_battery: true,
       can_edit_core_device_fields: false,
       can_approve_sale: false,
-      can_edit_customer_info: false
+      can_edit_customer_info: false,
+      can_permanent_delete: false,
+      can_view_trash: false
     },
     staff: { 
       can_view_margin: false, 
@@ -80,7 +84,9 @@ export default function StaffDashboard() {
       can_edit_battery: false,
       can_edit_core_device_fields: false,
       can_approve_sale: false,
-      can_edit_customer_info: false
+      can_edit_customer_info: false,
+      can_permanent_delete: false,
+      can_view_trash: false
     }
   });
 
@@ -93,7 +99,9 @@ export default function StaffDashboard() {
     can_edit_battery: false,
     can_edit_core_device_fields: false,
     can_approve_sale: false,
-    can_edit_customer_info: false
+    can_edit_customer_info: false,
+    can_permanent_delete: false,
+    can_view_trash: false
   };
 
   const hideMargin = currentUserRole !== 'admin' && !currentPermissions.can_view_margin_detail;
@@ -122,7 +130,9 @@ export default function StaffDashboard() {
                 can_edit_battery: !!row.can_edit_battery,
                 can_edit_core_device_fields: !!row.can_edit_core_device_fields,
                 can_approve_sale: !!row.can_approve_sale,
-                can_edit_customer_info: !!row.can_edit_customer_info
+                can_edit_customer_info: !!row.can_edit_customer_info,
+                can_permanent_delete: !!row.can_permanent_delete,
+                can_view_trash: !!row.can_view_trash
               };
             }
           });
@@ -255,6 +265,7 @@ export default function StaffDashboard() {
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [auditFilterType, setAuditFilterType] = useState('all');
   const [auditSearchQuery, setAuditSearchQuery] = useState('');
+  const [auditRoleFilter, setAuditRoleFilter] = useState('all');
 
   // Settings/Master Data States
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
@@ -1688,7 +1699,7 @@ export default function StaffDashboard() {
       const stock = devices.filter(d => {
         if (d.deleted_at || d.stock_location === 'DHL') return false;
         const intakeVal = parseYYMD(d.site_date);
-        if (intakeVal === 0 || intakeVal > targetVal) return false;
+        if (intakeVal > 0 && intakeVal > targetVal) return false;
         
         if (!d.is_sold) return true;
         const saleVal = parseYYMD(d.sale_date);
@@ -1745,6 +1756,39 @@ export default function StaffDashboard() {
       return true;
     });
   }, [dailyStats, historyMonthFilter, historySearchQuery]);
+
+  const filteredAuditLogs = useMemo(() => {
+    return auditLogs.filter(log => {
+      // 1. Action Type Filter
+      if (auditFilterType !== 'all') {
+        if (log.action_type !== auditFilterType) return false;
+      }
+
+      // 2. Role Filter
+      if (auditRoleFilter !== 'all') {
+        if (log.operator_role !== auditRoleFilter) return false;
+      }
+
+      // 3. Keyword Search
+      if (auditSearchQuery.trim()) {
+        const q = auditSearchQuery.toLowerCase();
+        const opName = (log.operator_name || '').toLowerCase();
+        const model = (log.model_name || '').toLowerCase();
+        const imeiVal = (log.imei || '').toLowerCase();
+        const details = (log.details || '').toLowerCase();
+        const action = (log.action_type || '').toLowerCase();
+        return (
+          opName.includes(q) ||
+          model.includes(q) ||
+          imeiVal.includes(q) ||
+          details.includes(q) ||
+          action.includes(q)
+        );
+      }
+
+      return true;
+    });
+  }, [auditLogs, auditFilterType, auditRoleFilter, auditSearchQuery]);
 
   // 4. CSV File Parsing Helper
   function parseCSV(text: string): string[][] {
@@ -3688,6 +3732,10 @@ export default function StaffDashboard() {
 
   // Bulk Permanent Delete from Trash
   const handleBulkPermanentDelete = async () => {
+    if (!currentPermissions.can_permanent_delete) {
+      showToast('영구 삭제 권한이 없습니다. (No permission to permanently delete.)', 'error');
+      return;
+    }
     if (selectedIds.length === 0) return;
     if (!confirm(t('toast_confirm_permanent_delete', { count: selectedIds.length }))) return;
     try {
@@ -6321,6 +6369,10 @@ export default function StaffDashboard() {
                         <th style={{ textAlign: 'center' }}>🏷️ 소매판매가 수정</th>
                         <th style={{ textAlign: 'center' }}>₩ 매입원가 수정</th>
                         <th style={{ textAlign: 'center' }}>🔋 배터리 수치 수정</th>
+                        <th style={{ textAlign: 'center' }}>⚙️ 기기 핵심정보 수정</th>
+                        <th style={{ textAlign: 'center' }}>✅ 판매 승인 처리</th>
+                        <th style={{ textAlign: 'center' }}>👤 고객 정보 수정</th>
+                        <th style={{ textAlign: 'center' }}>🗑️ 휴지통 조회</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -6377,6 +6429,42 @@ export default function StaffDashboard() {
                                 style={{ transform: 'scale(1.2)', cursor: isSystemAdmin ? 'default' : 'pointer' }}
                               />
                             </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <input 
+                                type="checkbox"
+                                checked={perms.can_edit_core_device_fields || false}
+                                disabled={isSystemAdmin}
+                                onChange={() => handleTogglePermission(role, 'can_edit_core_device_fields')}
+                                style={{ transform: 'scale(1.2)', cursor: isSystemAdmin ? 'default' : 'pointer' }}
+                              />
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <input 
+                                type="checkbox"
+                                checked={perms.can_approve_sale || false}
+                                disabled={isSystemAdmin}
+                                onChange={() => handleTogglePermission(role, 'can_approve_sale')}
+                                style={{ transform: 'scale(1.2)', cursor: isSystemAdmin ? 'default' : 'pointer' }}
+                              />
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <input 
+                                type="checkbox"
+                                checked={perms.can_edit_customer_info || false}
+                                disabled={isSystemAdmin}
+                                onChange={() => handleTogglePermission(role, 'can_edit_customer_info')}
+                                style={{ transform: 'scale(1.2)', cursor: isSystemAdmin ? 'default' : 'pointer' }}
+                              />
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <input 
+                                type="checkbox"
+                                checked={perms.can_view_trash || false}
+                                disabled={isSystemAdmin}
+                                onChange={() => handleTogglePermission(role, 'can_view_trash')}
+                                style={{ transform: 'scale(1.2)', cursor: isSystemAdmin ? 'default' : 'pointer' }}
+                              />
+                            </td>
                           </tr>
                         );
                       })}
@@ -6395,15 +6483,31 @@ export default function StaffDashboard() {
     can_view_margin_detail boolean DEFAULT false,
     can_edit_price boolean DEFAULT false,
     can_edit_cost boolean DEFAULT false,
-    can_edit_battery boolean DEFAULT false
+    can_edit_battery boolean DEFAULT false,
+    can_edit_core_device_fields boolean DEFAULT false,
+    can_approve_sale boolean DEFAULT false,
+    can_edit_customer_info boolean DEFAULT false,
+    can_view_trash boolean DEFAULT false
 );
 
-INSERT INTO public.settings_role_permissions (role, can_view_margin, can_view_margin_detail, can_edit_price, can_edit_cost, can_edit_battery)
+-- 기존 테이블이 있다면 can_view_trash 컬럼 추가
+ALTER TABLE public.settings_role_permissions ADD COLUMN IF NOT EXISTS can_view_trash boolean DEFAULT false;
+
+INSERT INTO public.settings_role_permissions (role, can_view_margin, can_view_margin_detail, can_edit_price, can_edit_cost, can_edit_battery, can_edit_core_device_fields, can_approve_sale, can_edit_customer_info, can_view_trash)
 VALUES 
-('admin', true, true, true, true, true),
-('manager', true, false, true, true, true),
-('staff', false, false, false, false, false)
-ON CONFLICT (role) DO NOTHING;`}
+('admin', true, true, true, true, true, true, true, true, true),
+('manager', true, false, true, true, true, false, false, false, true),
+('staff', false, false, false, false, false, false, false, false, false)
+ON CONFLICT (role) DO UPDATE SET
+  can_view_margin = EXCLUDED.can_view_margin,
+  can_view_margin_detail = EXCLUDED.can_view_margin_detail,
+  can_edit_price = EXCLUDED.can_edit_price,
+  can_edit_cost = EXCLUDED.can_edit_cost,
+  can_edit_battery = EXCLUDED.can_edit_battery,
+  can_edit_core_device_fields = EXCLUDED.can_edit_core_device_fields,
+  can_approve_sale = EXCLUDED.can_approve_sale,
+  can_edit_customer_info = EXCLUDED.can_edit_customer_info,
+  can_view_trash = EXCLUDED.can_view_trash;`}
                   </pre>
                 </details>
               </div>
@@ -7164,12 +7268,14 @@ ON CONFLICT (role) DO NOTHING;`}
                     >
                       🔄 {t('staff_btn_restore')} ({selectedIds.length})
                     </button>
-                    <button 
-                      style={{ margin: 0, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: 'var(--red)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                      onClick={handleBulkPermanentDelete}
-                    >
-                      🔥 {t('staff_btn_permanent_delete')} ({selectedIds.length})
-                    </button>
+                    {currentPermissions.can_permanent_delete && (
+                      <button 
+                        style={{ margin: 0, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: 'var(--red)', padding: '6px 12px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        onClick={handleBulkPermanentDelete}
+                      >
+                        🔥 {t('staff_btn_permanent_delete')} ({selectedIds.length})
+                      </button>
+                    )}
                   </>
                 )}
               </div>
@@ -7264,17 +7370,19 @@ ON CONFLICT (role) DO NOTHING;`}
                             >
                               🔄
                             </button>
-                            <button
-                              className="btn-red"
-                              style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
-                              onClick={() => {
-                                setSelectedIds([item.id]);
-                                setTimeout(() => handleBulkPermanentDelete(), 50);
-                              }}
-                              title={t('staff_tooltip_permanent_delete') || "영구삭제"}
-                            >
-                              🔥
-                            </button>
+                            {currentPermissions.can_permanent_delete && (
+                              <button
+                                className="btn-red"
+                                style={{ width: '28px', height: '28px', minWidth: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
+                                onClick={() => {
+                                  setSelectedIds([item.id]);
+                                  setTimeout(() => handleBulkPermanentDelete(), 50);
+                                }}
+                                title={t('staff_tooltip_permanent_delete') || "영구삭제"}
+                              >
+                                🔥
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -7380,93 +7488,263 @@ ON CONFLICT (role) DO NOTHING;`}
         {activeTab === 'history_log' && (
           <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
-            {/* Search & Filters */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '8px 12px' }}>
-              <div style={{ display: 'flex', gap: '8px', flex: 1, alignItems: 'center' }}>
-                <input
-                  type="text"
-                  placeholder="날짜 검색 (예: 6.1 또는 26.6.1)"
-                  value={historySearchQuery}
-                  onChange={(e) => setHistorySearchQuery(e.target.value)}
-                  className="form-input"
-                  style={{ maxWidth: '220px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
-                />
+            {/* Sub-tab navigation */}
+            <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '10px', marginBottom: '4px' }}>
+              <button
+                type="button"
+                onClick={() => setHistorySubTab('summary')}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  background: historySubTab === 'summary' ? 'var(--purple-l)' : '#fff',
+                  color: historySubTab === 'summary' ? '#fff' : 'var(--t2)',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  cursor: 'pointer'
+                }}
+              >
+                📊 일일 통계 (Daily Summary)
+              </button>
+              <button
+                type="button"
+                onClick={() => setHistorySubTab('audit')}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  background: historySubTab === 'audit' ? 'var(--purple-l)' : '#fff',
+                  color: historySubTab === 'audit' ? '#fff' : 'var(--t2)',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  cursor: 'pointer'
+                }}
+              >
+                📝 작업 감사 로그 (Audit Logs)
+              </button>
+            </div>
 
-                <select
-                  value={historyMonthFilter}
-                  onChange={(e) => setHistoryMonthFilter(e.target.value)}
-                  className="form-input"
-                  style={{ maxWidth: '180px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
-                >
-                  <option value="all">전체 월 (All Months)</option>
-                  {historyMonths.map(m => {
-                    const parts = m.split('.');
-                    const yr = 2000 + parseInt(parts[0], 10);
-                    const mo = parseInt(parts[1], 10);
-                    return (
-                      <option key={m} value={m}>{`${yr}년 ${mo}월`}</option>
-                    );
-                  })}
-                </select>
+            {historySubTab === 'summary' ? (
+              <>
+                {/* Search & Filters (Summary) */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '8px 12px' }}>
+                  <div style={{ display: 'flex', gap: '8px', flex: 1, alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      placeholder="날짜 검색 (예: 6.1 또는 26.6.1)"
+                      value={historySearchQuery}
+                      onChange={(e) => setHistorySearchQuery(e.target.value)}
+                      className="form-input"
+                      style={{ maxWidth: '220px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
+                    />
 
-                <div style={{ display: 'flex', alignItems: 'center', fontSize: '13px', fontWeight: 700, color: 'var(--purple-l)', marginLeft: '12px', whiteSpace: 'nowrap' }}>
-                  총 {filteredDailyStats.length}일의 기록
+                    <select
+                      value={historyMonthFilter}
+                      onChange={(e) => setHistoryMonthFilter(e.target.value)}
+                      className="form-input"
+                      style={{ maxWidth: '180px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
+                    >
+                      <option value="all">전체 월 (All Months)</option>
+                      {historyMonths.map(m => {
+                        const parts = m.split('.');
+                        const yr = 2000 + parseInt(parts[0], 10);
+                        const mo = parseInt(parts[1], 10);
+                        return (
+                          <option key={m} value={m}>{`${yr}년 ${mo}월`}</option>
+                        );
+                      })}
+                    </select>
+
+                    <div style={{ display: 'flex', alignItems: 'center', fontSize: '13px', fontWeight: 700, color: 'var(--purple-l)', marginLeft: '12px', whiteSpace: 'nowrap' }}>
+                      총 {filteredDailyStats.length}일의 기록
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Daily History Table */}
-            <div className="tbl-wrap" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px' }}>
-              <table className="tbl" style={{ tableLayout: 'fixed', width: '100%' }}>
-                <thead>
-                  <tr>
-                    <th style={{ width: '25%' }}>날짜 (Date)</th>
-                    <th style={{ width: '20%', textAlign: 'center' }}>당일 입고 대수</th>
-                    <th style={{ width: '20%', textAlign: 'center' }}>당일 판매 대수</th>
-                    <th style={{ width: '20%', textAlign: 'center' }}>당일 마감 재고</th>
-                    <th style={{ width: '15%', textAlign: 'center' }}>상세</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredDailyStats.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
-                        일치하는 날짜 로그 기록이 없습니다.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredDailyStats.map(stat => (
-                      <tr key={stat.date}>
-                        <td style={{ fontWeight: 700, color: 'var(--t1)' }}>{stat.date}</td>
-                        <td style={{ textAlign: 'center', fontWeight: 700, color: stat.ingestedCount > 0 ? 'var(--blue)' : 'var(--t2)' }}>
-                          {stat.ingestedCount > 0 ? `+${stat.ingestedCount}대` : '0대'}
-                        </td>
-                        <td style={{ textAlign: 'center', fontWeight: 700, color: stat.soldCount > 0 ? 'var(--green)' : 'var(--t2)' }}>
-                          {stat.soldCount > 0 ? `-${stat.soldCount}대` : '0대'}
-                        </td>
-                        <td style={{ textAlign: 'center', fontWeight: 800, color: 'var(--purple-l)' }}>
-                          {stat.stockCount}대
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          <button
-                            type="button"
-                            className="btn-sm btn-blue"
-                            onClick={() => {
-                              setSelectedHistoryLogDate(stat.date);
-                              setHistoryLogDetailTab('ingested');
-                            }}
-                            style={{ padding: '6px 12px', fontSize: '11px', borderRadius: '6px', cursor: 'pointer' }}
-                          >
-                            상세 보기
-                          </button>
-                        </td>
+                {/* Daily History Table */}
+                <div className="tbl-wrap" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px' }}>
+                  <table className="tbl" style={{ tableLayout: 'fixed', width: '100%' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: '25%' }}>날짜 (Date)</th>
+                        <th style={{ width: '20%', textAlign: 'center' }}>당일 입고 대수</th>
+                        <th style={{ width: '20%', textAlign: 'center' }}>당일 판매 대수</th>
+                        <th style={{ width: '20%', textAlign: 'center' }}>당일 마감 재고</th>
+                        <th style={{ width: '15%', textAlign: 'center' }}>상세</th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody>
+                      {filteredDailyStats.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
+                            일치하는 날짜 로그 기록이 없습니다.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredDailyStats.map(stat => (
+                          <tr key={stat.date}>
+                            <td style={{ fontWeight: 700, color: 'var(--t1)' }}>{stat.date}</td>
+                            <td style={{ textAlign: 'center', fontWeight: 700, color: stat.ingestedCount > 0 ? 'var(--blue)' : 'var(--t2)' }}>
+                              {stat.ingestedCount > 0 ? `+${stat.ingestedCount}대` : '0대'}
+                            </td>
+                            <td style={{ textAlign: 'center', fontWeight: 700, color: stat.soldCount > 0 ? 'var(--green)' : 'var(--t2)' }}>
+                              {stat.soldCount > 0 ? `-${stat.soldCount}대` : '0대'}
+                            </td>
+                            <td style={{ textAlign: 'center', fontWeight: 800, color: 'var(--purple-l)' }}>
+                              {stat.stockCount}대
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                className="btn-sm btn-blue"
+                                onClick={() => {
+                                  setSelectedHistoryLogDate(stat.date);
+                                  setHistoryLogDetailTab('ingested');
+                                }}
+                                style={{ padding: '6px 12px', fontSize: '11px', borderRadius: '6px', cursor: 'pointer' }}
+                              >
+                                상세 보기
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Search & Filters (Audit Logs) */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '8px 12px' }}>
+                  <div style={{ display: 'flex', gap: '8px', flex: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                      type="text"
+                      placeholder="작업자, 모델, IMEI, 키워드 검색"
+                      value={auditSearchQuery}
+                      onChange={(e) => setAuditSearchQuery(e.target.value)}
+                      className="form-input"
+                      style={{ maxWidth: '240px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
+                    />
 
+                    <select
+                      value={auditFilterType}
+                      onChange={(e) => setAuditFilterType(e.target.value)}
+                      className="form-input"
+                      style={{ maxWidth: '180px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
+                    >
+                      <option value="all">모든 작업 유형 (All Actions)</option>
+                      <option value="CREATE_DEVICE">기기 등록 (CREATE_DEVICE)</option>
+                      <option value="BULK_INTAKE">대량 기기 입고 (BULK_INTAKE)</option>
+                      <option value="CREATE_SALE">판매 등록 (CREATE_SALE)</option>
+                      <option value="APPROVE_SALE">판매 승인 (APPROVE_SALE)</option>
+                      <option value="CANCEL_SALE">판매 취소 (CANCEL_SALE)</option>
+                      <option value="BULK_SALE">대량 판매 (BULK_SALE)</option>
+                      <option value="BULK_SHARE">공유 상태 설정 (BULK_SHARE)</option>
+                      <option value="APPROVE_TRANSFER">이관 승인 (APPROVE_TRANSFER)</option>
+                      <option value="REJECT_TRANSFER">이관 거절 (REJECT_TRANSFER)</option>
+                      <option value="APPROVE_REQUEST">신청 승인 (APPROVE_REQUEST)</option>
+                      <option value="REJECT_REQUEST">신청 거절 (REJECT_REQUEST)</option>
+                      <option value="EDIT_DEVICE">기기 수정 (EDIT_DEVICE)</option>
+                      <option value="DELETE_DEVICE">삭제 (DELETE_DEVICE)</option>
+                      <option value="RESTORE_DEVICE">삭제 복구 (RESTORE_DEVICE)</option>
+                      <option value="PERMANENT_DELETE">영구 삭제 (PERMANENT_DELETE)</option>
+                      <option value="CREATE_SELLER">가맹점 등록 신청 (CREATE_SELLER)</option>
+                      <option value="APPROVE_SELLER">가맹점 가입 승인 (APPROVE_SELLER)</option>
+                      <option value="REJECT_SELLER">가맹점 가입 거절 (REJECT_SELLER)</option>
+                      <option value="VIEW_INSTALLMENT_CALC">할부 이자 조회 (VIEW_INSTALLMENT_CALC)</option>
+                    </select>
+
+                    <select
+                      value={auditRoleFilter}
+                      onChange={(e) => setAuditRoleFilter(e.target.value)}
+                      className="form-input"
+                      style={{ maxWidth: '150px', margin: 0, padding: '8px 12px', fontSize: '13px' }}
+                    >
+                      <option value="all">모든 역할 (All Roles)</option>
+                      <option value="admin">Admin (어드민)</option>
+                      <option value="manager">Manager (매니저)</option>
+                      <option value="staff">Staff (스태프)</option>
+                      <option value="seller">Seller (협력사)</option>
+                    </select>
+
+                    <div style={{ display: 'flex', alignItems: 'center', fontSize: '13px', fontWeight: 700, color: 'var(--purple-l)', marginLeft: '12px', whiteSpace: 'nowrap' }}>
+                      총 {filteredAuditLogs.length}개의 로그
+                    </div>
+                  </div>
+                </div>
+
+                {/* Audit Logs Table */}
+                <div className="tbl-wrap" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden' }}>
+                  <table className="tbl" style={{ width: '100%' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: '150px' }}>작업 시간 (Date)</th>
+                        <th style={{ width: '120px' }}>작업자 (Name)</th>
+                        <th style={{ width: '100px' }}>역할 (Role)</th>
+                        <th style={{ width: '180px' }}>작업 유형 (Action)</th>
+                        <th style={{ width: '150px' }}>모델명 (Model)</th>
+                        <th style={{ width: '150px' }}>IMEI</th>
+                        <th>상세 정보 (Details)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredAuditLogs.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: 'var(--t2)' }}>
+                            감사 로그 기록이 존재하지 않거나 필터 조건에 맞는 로그가 없습니다.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredAuditLogs.map(log => {
+                          let badgeBg = 'rgba(100,116,139,0.1)';
+                          let badgeColor = 'var(--t2)';
+                          const act = log.action_type || '';
+                          if (act.includes('CREATE') || act.includes('IMPORT') || act.includes('INTAKE')) {
+                            badgeBg = 'rgba(59,130,246,0.1)';
+                            badgeColor = 'var(--blue)';
+                          } else if (act.includes('APPROVE') || act.includes('RESTORE')) {
+                            badgeBg = 'rgba(16,185,129,0.1)';
+                            badgeColor = 'var(--green)';
+                          } else if (act.includes('DELETE') || act.includes('REJECT') || act.includes('CANCEL')) {
+                            badgeBg = 'rgba(239,68,68,0.1)';
+                            badgeColor = 'var(--red)';
+                          } else if (act.includes('EDIT')) {
+                            badgeBg = 'rgba(245,158,11,0.1)';
+                            badgeColor = 'var(--gold)';
+                          } else if (act.includes('CALC')) {
+                            badgeBg = 'rgba(139,92,246,0.1)';
+                            badgeColor = 'var(--purple-l)';
+                          }
+
+                          return (
+                            <tr key={log.id}>
+                              <td style={{ fontSize: '12px', color: 'var(--t2)' }}>
+                                {log.created_at ? new Date(log.created_at).toLocaleString('ko-KR', { hour12: false }) : '-'}
+                              </td>
+                              <td style={{ fontWeight: 700, color: 'var(--t1)' }}>{log.operator_name || 'System'}</td>
+                              <td>
+                                <span style={{ fontSize: '10.5px', fontWeight: 800, textTransform: 'uppercase', color: log.operator_role === 'admin' ? 'var(--purple-l)' : log.operator_role === 'manager' ? '#d97706' : 'var(--t2)' }}>
+                                  {log.operator_role}
+                                </span>
+                              </td>
+                              <td>
+                                <span style={{ background: badgeBg, color: badgeColor, padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 800, display: 'inline-block' }}>
+                                  {act}
+                                </span>
+                              </td>
+                              <td style={{ fontWeight: 700, color: 'var(--t1)', fontSize: '12px' }}>{log.model_name || '-'}</td>
+                              <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{log.imei || '-'}</td>
+                              <td style={{ fontSize: '12.5px', color: 'var(--t1)', wordBreak: 'break-all' }}>{log.details || '-'}</td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </div>
         )}
 
