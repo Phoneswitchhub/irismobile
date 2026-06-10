@@ -2445,18 +2445,18 @@ export default function ContractPage() {
             max-height: none;
             overflow-x: auto;
           }
-          .contract-document {
+          .contract-container:not(.print-contract-only) .contract-document {
             zoom: 0.9;
             transform-origin: top left;
           }
         }
         @media screen and (max-width: 767px) {
-          .contract-document {
+          .contract-container:not(.print-contract-only) .contract-document {
             zoom: 0.65;
           }
         }
         @media screen and (max-width: 479px) {
-          .contract-document {
+          .contract-container:not(.print-contract-only) .contract-document {
             zoom: 0.45;
           }
         }
@@ -2825,21 +2825,21 @@ export default function ContractPage() {
 
         /* Screen Responsive zoom to fit left-column container preview */
         @media screen and (max-width: 1200px) {
-          .shipping-label-document {
+          .contract-container:not(.print-shipping-only) .shipping-label-document {
             zoom: 0.75;
             transform-origin: top center;
             margin: 0 auto;
           }
         }
         @media screen and (max-width: 767px) {
-          .shipping-label-document {
+          .contract-container:not(.print-shipping-only) .shipping-label-document {
             zoom: 0.5;
             transform-origin: top center;
             margin: 0 auto;
           }
         }
         @media screen and (max-width: 479px) {
-          .shipping-label-document {
+          .contract-container:not(.print-shipping-only) .shipping-label-document {
             zoom: 0.4;
             transform-origin: top center;
             margin: 0 auto;
