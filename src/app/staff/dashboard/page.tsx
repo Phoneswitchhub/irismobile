@@ -50,6 +50,7 @@ export default function StaffDashboard() {
   const [staffProfile, setStaffProfile] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [redirectCountdown, setRedirectCountdown] = useState(3);
+  const hideMargin = staffProfile?.role !== 'admin';
 
   // Active Tab: 'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake' | 'history_log' | 'cod' | 'customers' | 'partner_transfer'
   const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'sales' | 'settings' | 'trash' | 'margin' | 'installment' | 'pending_intake' | 'history_log' | 'cod' | 'customers' | 'partner_transfer'>('overview');
@@ -3497,7 +3498,7 @@ export default function StaffDashboard() {
             <span className="ico">⚙️</span> {t('staff_menu_settings') || '기준 정보 관리'}
           </button>
 
-          {staffProfile?.role === 'admin' && (
+          {(staffProfile?.role === 'admin' || staffProfile?.role === 'manager') && (
             <button 
               className={`sb-link ${activeTab === 'margin' ? 'active' : ''}`}
               onClick={() => handleTabChange('margin')}
@@ -5645,22 +5646,22 @@ export default function StaffDashboard() {
           </div>
         )}
 
-        {/* ==================== VIEW 5: MARGIN & SETTLEMENT (ADMIN ONLY) ==================== */}
-        {activeTab === 'margin' && staffProfile?.role === 'admin' && (
+        {/* ==================== VIEW 5: MARGIN & SETTLEMENT ==================== */}
+        {activeTab === 'margin' && (staffProfile?.role === 'admin' || staffProfile?.role === 'manager') && (
           <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             
             {/* Header and Monthly Filter */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>📈 마진 및 정산관리</h3>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>{t('margin_title')}</h3>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', fontWeight: 700 }}>월별 필터:</span>
+                <span style={{ fontSize: '13px', fontWeight: 700 }}>{t('staff_billing_month') || '월별 필터:'}</span>
                 <select
                   value={marginSelectedMonth}
                   onChange={(e) => setMarginSelectedMonth(e.target.value)}
                   className="form-input"
                   style={{ width: '150px', margin: 0, padding: '6px 12px', fontSize: '13px', height: '34px' }}
                 >
-                  <option value="all">전체 월 (All Months)</option>
+                  <option value="all">{t('staff_all_months') || '전체 월 (All Months)'}</option>
                   {customerMonths.map(month => (
                     <option key={month} value={month}>{month}</option>
                   ))}
@@ -5674,9 +5675,9 @@ export default function StaffDashboard() {
               <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
                 <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>📈</div>
                 <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>총 소매 판매가 (Total Sales)</div>
+                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>{t('margin_total_sales')}</div>
                   <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--blue)', marginTop: '4px' }}>฿{marginStats.totalSalesTHB.toLocaleString()}</div>
-                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>₩{Math.round(marginStats.totalSalesTHB * exchangeRate).toLocaleString()} 상당</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>{t('margin_sales_equivalent').replace('{amount}', Math.round(marginStats.totalSalesTHB * exchangeRate).toLocaleString())}</div>
                 </div>
               </div>
 
@@ -5684,9 +5685,9 @@ export default function StaffDashboard() {
               <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
                 <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>🚚</div>
                 <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>COD 미수금 (COD Receivables)</div>
+                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>{t('margin_cod_receivables')}</div>
                   <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--red)', marginTop: '4px' }}>฿{marginStats.totalUnpaidCODTHB.toLocaleString()}</div>
-                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>정산 확인 대기 잔액</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>{t('margin_cod_waiting')}</div>
                 </div>
               </div>
 
@@ -5694,9 +5695,9 @@ export default function StaffDashboard() {
               <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
                 <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>💳</div>
                 <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>할부 미수금 (Inst. Receivables)</div>
+                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>{t('margin_installment_receivables')}</div>
                   <div style={{ fontSize: '18px', fontWeight: 800, color: '#d97706', marginTop: '4px' }}>฿{marginStats.totalUnpaidInstallmentTHB.toLocaleString()}</div>
-                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>미납 회차 전체 잔액</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>{t('margin_installment_desc')}</div>
                 </div>
               </div>
 
@@ -5704,21 +5705,23 @@ export default function StaffDashboard() {
               <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
                 <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>💵</div>
                 <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>최종 실입금액 (Collected Cash)</div>
+                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>{t('margin_collected_cash')}</div>
                   <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--green)', marginTop: '4px' }}>฿{marginStats.actualCollectedTHB.toLocaleString()}</div>
-                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>판매가 - COD미수 - 할부미수</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>{t('margin_collected_desc')}</div>
                 </div>
               </div>
 
               {/* Total Margin Card */}
-              <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>💰</div>
-                <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>총 정산 마진 (Total Margin)</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--purple-l)', marginTop: '4px' }}>₩{marginStats.totalMarginKRW.toLocaleString()}</div>
-                  <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>총 매입원가: ₩{marginStats.totalCostKRW.toLocaleString()}</div>
+              {!hideMargin && (
+                <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>💰</div>
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>{t('margin_total_margin')}</div>
+                    <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--purple-l)', marginTop: '4px' }}>₩{marginStats.totalMarginKRW.toLocaleString()}</div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>{t('margin_total_purchase_cost').replace('{amount}', marginStats.totalCostKRW.toLocaleString())}</div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Seller Monthly Performance Aggregation */}
@@ -5768,36 +5771,38 @@ export default function StaffDashboard() {
               return (
                 <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>👥</span> 담당자별 월간 판매 실적 및 마진 요약 (Seller Monthly Performance Summary)
+                    <span>👥</span> {t('margin_seller_summary_title')}
                   </h4>
                   <div className="tbl-wrap" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
                     <table className="tbl" style={{ margin: 0 }}>
                       <thead>
                         <tr>
-                          <th style={{ width: '15%' }}>정산 월</th>
-                          <th style={{ width: '25%' }}>담당자 (판매원)</th>
-                          <th style={{ width: '15%', textAlign: 'center' }}>판매 대수</th>
-                          <th style={{ width: '15%', textAlign: 'right' }}>총 소매 판매가</th>
-                          <th style={{ width: '15%', textAlign: 'right' }}>총 매입 원가</th>
-                          <th style={{ width: '15%', textAlign: 'right' }}>총 정산 마진 (예상)</th>
+                          <th style={{ width: hideMargin ? '25%' : '15%' }}>{t('margin_th_month')}</th>
+                          <th style={{ width: hideMargin ? '40%' : '25%' }}>{t('margin_th_seller')}</th>
+                          <th style={{ width: hideMargin ? '15%' : '15%', textAlign: 'center' }}>{t('margin_th_qty')}</th>
+                          <th style={{ width: hideMargin ? '20%' : '15%', textAlign: 'right' }}>{t('margin_th_total_sales')}</th>
+                          {!hideMargin && <th style={{ width: '15%', textAlign: 'right' }}>{t('margin_th_total_cost')}</th>}
+                          {!hideMargin && <th style={{ width: '15%', textAlign: 'right' }}>{t('margin_th_total_margin')}</th>}
                         </tr>
                       </thead>
                       <tbody>
                         {sellerStatsList.length === 0 ? (
                           <tr>
-                            <td colSpan={6} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>정산 요약 데이터가 없습니다. (No summary data available.)</td>
+                            <td colSpan={hideMargin ? 4 : 6} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>{t('margin_empty_summary')}</td>
                           </tr>
                         ) : (
                           sellerStatsList.map(row => (
                             <tr key={`${row.yearMonth}_${row.sellerName}`}>
                               <td style={{ fontWeight: 700, color: 'var(--purple-l)' }}>{row.yearMonth}</td>
                               <td style={{ fontWeight: 700 }}>{row.sellerName}</td>
-                              <td style={{ textAlign: 'center', fontWeight: 800 }}>{row.qty}대</td>
+                              <td style={{ textAlign: 'center', fontWeight: 800 }}>{t('margin_qty_suffix').replace('{qty}', row.qty.toString())}</td>
                               <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)' }}>฿{row.totalSalesTHB.toLocaleString()}</td>
-                              <td style={{ textAlign: 'right', color: '#94a3b8' }}>₩{row.totalCostKRW.toLocaleString()}</td>
-                              <td style={{ textAlign: 'right', fontWeight: 900, color: row.estimatedMarginKRW >= 0 ? 'var(--green)' : '#e11d48' }}>
-                                ₩{row.estimatedMarginKRW.toLocaleString()}
-                              </td>
+                              {!hideMargin && <td style={{ textAlign: 'right', color: '#94a3b8' }}>₩{row.totalCostKRW.toLocaleString()}</td>}
+                              {!hideMargin && (
+                                <td style={{ textAlign: 'right', fontWeight: 900, color: row.estimatedMarginKRW >= 0 ? 'var(--green)' : '#e11d48' }}>
+                                  ₩{row.estimatedMarginKRW.toLocaleString()}
+                                </td>
+                              )}
                             </tr>
                           ))
                         )}
@@ -5810,13 +5815,15 @@ export default function StaffDashboard() {
                         return (
                           <tfoot>
                             <tr style={{ background: '#f8fafc', borderTop: '2px solid var(--border)', fontWeight: 800 }}>
-                              <td style={{ fontWeight: 800 }} colSpan={2}>합계 (Total)</td>
-                              <td style={{ textAlign: 'center', fontWeight: 800 }}>{totalQty}대</td>
+                              <td style={{ fontWeight: 800 }} colSpan={2}>{t('margin_total')}</td>
+                              <td style={{ textAlign: 'center', fontWeight: 800 }}>{t('margin_qty_suffix').replace('{qty}', totalQty.toString())}</td>
                               <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--green)' }}>฿{totalSales.toLocaleString()}</td>
-                              <td style={{ textAlign: 'right', color: '#64748b' }}>₩{totalCost.toLocaleString()}</td>
-                              <td style={{ textAlign: 'right', fontWeight: 900, color: totalMargin >= 0 ? 'var(--green)' : '#e11d48' }}>
-                                ₩{totalMargin.toLocaleString()}
-                              </td>
+                              {!hideMargin && <td style={{ textAlign: 'right', color: '#64748b' }}>₩{totalCost.toLocaleString()}</td>}
+                              {!hideMargin && (
+                                <td style={{ textAlign: 'right', fontWeight: 900, color: totalMargin >= 0 ? 'var(--green)' : '#e11d48' }}>
+                                  ₩{totalMargin.toLocaleString()}
+                                </td>
+                              )}
                             </tr>
                           </tfoot>
                         );
@@ -5830,34 +5837,36 @@ export default function StaffDashboard() {
             {/* Part 2: Complete Margin Ledger */}
             <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>📊</span> 전체 판매 마진 대장 (Completed Margin Log)
+                <span>📊</span> {t('margin_log_title')}
               </h4>
               <div className="tbl-wrap" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
                 <table className="tbl" style={{ margin: 0 }}>
                   <thead>
                     <tr>
-                      <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('sale_date')}>
-                        판매일 {sortField === 'sale_date' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      <th style={{ width: hideMargin ? '25%' : '15%', cursor: 'pointer' }} onClick={() => toggleSort('sale_date')}>
+                        {t('margin_th_sale_date')} {sortField === 'sale_date' && (sortDirection === 'asc' ? '▲' : '▼')}
                       </th>
-                      <th style={{ width: '25%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
-                        판매모델 {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      <th style={{ width: hideMargin ? '35%' : '25%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
+                        {t('margin_th_model')} {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
                       </th>
-                      <th style={{ width: '15%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('purchase_cost_krw')}>
-                        매입원가 {sortField === 'purchase_cost_krw' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      {!hideMargin && (
+                        <th style={{ width: '15%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('purchase_cost_krw')}>
+                          {t('margin_th_cost')} {sortField === 'purchase_cost_krw' && (sortDirection === 'asc' ? '▲' : '▼')}
+                        </th>
+                      )}
+                      <th style={{ width: hideMargin ? '20%' : '15%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
+                        {t('margin_th_price')} {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
                       </th>
-                      <th style={{ width: '15%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
-                        판매금액 {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      <th style={{ width: hideMargin ? '20%' : '15%', cursor: 'pointer' }} onClick={() => toggleSort('seller_name')}>
+                        {t('margin_th_seller_col')} {sortField === 'seller_name' && (sortDirection === 'asc' ? '▲' : '▼')}
                       </th>
-                      <th style={{ width: '15%', cursor: 'pointer' }} onClick={() => toggleSort('seller_name')}>
-                        판매사원 {sortField === 'seller_name' && (sortDirection === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th style={{ width: '15%', textAlign: 'right' }}>마진</th>
+                      {!hideMargin && <th style={{ width: '15%', textAlign: 'right' }}>{t('margin_th_margin')}</th>}
                     </tr>
                   </thead>
                   <tbody>
                     {marginStats.soldList.length === 0 ? (
                       <tr>
-                        <td colSpan={6} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>{t('staff_no_sales_records')}</td>
+                        <td colSpan={hideMargin ? 4 : 6} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>{t('staff_no_sales_records')}</td>
                       </tr>
                     ) : (
                       sortDevices(marginStats.soldList).map(item => {
@@ -5873,7 +5882,7 @@ export default function StaffDashboard() {
                                 IMEI: {item.imei}
                               </div>
                             </td>
-                            <td style={{ textAlign: 'right', color: '#94a3b8' }}>₩{formatPrice(cost)}</td>
+                            {!hideMargin && <td style={{ textAlign: 'right', color: '#94a3b8' }}>₩{formatPrice(cost)}</td>}
                             <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)' }}>฿{formatPrice(price)}</td>
                             <td>
                               {staffProfile?.role === 'admin' ? (
@@ -5907,9 +5916,11 @@ export default function StaffDashboard() {
                                 item.seller_name || '-'
                               )}
                             </td>
-                            <td style={{ textAlign: 'right', fontWeight: 800, color: marginKRW >= 0 ? 'var(--green)' : '#e11d48' }}>
-                              ₩{marginKRW.toLocaleString()}
-                            </td>
+                            {!hideMargin && (
+                              <td style={{ textAlign: 'right', fontWeight: 800, color: marginKRW >= 0 ? 'var(--green)' : '#e11d48' }}>
+                                ₩{marginKRW.toLocaleString()}
+                              </td>
+                            )}
                           </tr>
                         );
                       })
@@ -5931,13 +5942,15 @@ export default function StaffDashboard() {
                     return (
                       <tfoot>
                         <tr style={{ background: '#f8fafc', borderTop: '2px solid var(--border)', fontWeight: 800 }}>
-                          <td colSpan={2} style={{ fontWeight: 800 }}>합계 ({marginStats.soldList.length}대)</td>
-                          <td style={{ textAlign: 'right', color: '#64748b' }}>₩{totalCost.toLocaleString()}</td>
+                          <td colSpan={2} style={{ fontWeight: 800 }}>{t('margin_total')} ({t('margin_qty_suffix').replace('{qty}', marginStats.soldList.length.toString())})</td>
+                          {!hideMargin && <td style={{ textAlign: 'right', color: '#64748b' }}>₩{totalCost.toLocaleString()}</td>}
                           <td style={{ textAlign: 'right', color: 'var(--green)' }}>฿{totalSales.toLocaleString()}</td>
                           <td></td>
-                          <td style={{ textAlign: 'right', fontWeight: 900, color: totalMargin >= 0 ? 'var(--green)' : '#e11d48' }}>
-                            ₩{totalMargin.toLocaleString()}
-                          </td>
+                          {!hideMargin && (
+                            <td style={{ textAlign: 'right', fontWeight: 900, color: totalMargin >= 0 ? 'var(--green)' : '#e11d48' }}>
+                              ₩{totalMargin.toLocaleString()}
+                            </td>
+                          )}
                         </tr>
                       </tfoot>
                     );
