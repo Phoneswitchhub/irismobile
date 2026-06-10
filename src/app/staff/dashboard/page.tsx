@@ -7289,7 +7289,21 @@ export default function StaffDashboard() {
                 <table className="table" style={{ fontSize: '12px' }}>
                   <thead>
                     <tr>
-                      <th style={{ width: '80px', textAlign: 'center' }}>공유 상태</th>
+                      <th style={{ width: '100px', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                          <input
+                            type="checkbox"
+                            checked={bulkShareDevices.length > 0 && bulkShareDevices.every(d => d.isShared)}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              const updated = bulkShareDevices.map(d => ({ ...d, isShared: checked }));
+                              setBulkShareDevices(updated);
+                            }}
+                            style={{ transform: 'scale(1.2)', cursor: 'pointer' }}
+                          />
+                          <span>공유 상태</span>
+                        </div>
+                      </th>
                       <th>모델 / Sticker / IMEI</th>
                       <th style={{ width: '120px' }}>소매가 (원가 참조)</th>
                       <th style={{ width: '150px' }}>도매가 (Wholesale)</th>
