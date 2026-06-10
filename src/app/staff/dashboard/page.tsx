@@ -7339,6 +7339,24 @@ export default function StaffDashboard() {
                               placeholder="도매가 입력"
                             />
                           </div>
+                          {(() => {
+                            if (!item.isShared) return null;
+                            const wsPriceNum = Number(item.wholesale_price) || 0;
+                            if (wsPriceNum <= 0) return null;
+                            const cost = devices.find(d => d.id === item.id)?.purchase_cost_krw || 0;
+                            const marginVal = Math.round(wsPriceNum * exchangeRate) - cost;
+                            return (
+                              <div style={{ 
+                                fontSize: '11px', 
+                                color: marginVal >= 0 ? '#16a34a' : '#dc2626', 
+                                marginTop: '4px',
+                                paddingLeft: '14px',
+                                fontWeight: 700 
+                              }}>
+                                마진: ₩{marginVal.toLocaleString()}
+                              </div>
+                            );
+                          })()}
                         </td>
                       </tr>
                     ))}
