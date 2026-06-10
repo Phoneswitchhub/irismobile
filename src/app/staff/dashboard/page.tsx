@@ -867,12 +867,35 @@ export default function StaffDashboard() {
 
   // Sorting Helper
   const sortDevices = useCallback((list: DeviceItem[]) => {
+    const getDayFromSaleDate = (dateStr: string): number => {
+      if (!dateStr) return 999;
+      const pts = dateStr.split('.').map(x => x.trim()).filter(Boolean);
+      if (pts.length >= 3) {
+        const d = parseInt(pts[2], 10);
+        if (!isNaN(d)) return d;
+      }
+      const dashPts = dateStr.split('-');
+      if (dashPts.length >= 3) {
+        const d = parseInt(dashPts[2], 10);
+        if (!isNaN(d)) return d;
+      }
+      return 999;
+    };
+
     return [...list].sort((a, b) => {
       let valA: any = a[sortField as keyof DeviceItem];
       let valB: any = b[sortField as keyof DeviceItem];
 
       if (valA === undefined || valA === null) valA = '';
       if (valB === undefined || valB === null) valB = '';
+
+      if (activeTab === 'installment' && sortField === 'sale_date') {
+        const dayA = getDayFromSaleDate(String(valA));
+        const dayB = getDayFromSaleDate(String(valB));
+        if (dayA !== dayB) {
+          return sortDirection === 'asc' ? dayA - dayB : dayB - dayA;
+        }
+      }
 
       const isNumA = typeof valA === 'number';
       const isNumB = typeof valB === 'number';
@@ -888,7 +911,7 @@ export default function StaffDashboard() {
         ? strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' })
         : strB.localeCompare(strA, undefined, { numeric: true, sensitivity: 'base' });
     });
-  }, [sortField, sortDirection]);
+  }, [sortField, sortDirection, activeTab]);
 
   const toggleSort = (field: string) => {
     if (sortField === field) {
