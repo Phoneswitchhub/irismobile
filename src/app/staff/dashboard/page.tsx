@@ -335,6 +335,7 @@ export default function StaffDashboard() {
   const [newCatLevel, setNewCatLevel] = useState<'large' | 'medium' | 'small'>('large');
   const [newCatParentId, setNewCatParentId] = useState('');
   const [isMarginLogExpanded, setIsMarginLogExpanded] = useState(false);
+  const [expenseFilterMonth, setExpenseFilterMonth] = useState<string>('all');
 
   // Bulk Partner Share States
   const [isBulkPartnerShareModalOpen, setIsBulkPartnerShareModalOpen] = useState(false);
@@ -1214,13 +1215,28 @@ export default function StaffDashboard() {
     }
   }, [expenseCategories]);
 
+  // Computed list of months available for expense filtering (merging customer months & expense months)
+  const expenseAvailableMonths = useMemo(() => {
+    const months = new Set<string>();
+    customerMonths.forEach(m => months.add(m));
+    expenses.forEach(exp => {
+      if (exp.expense_date) {
+        const ym = exp.expense_date.substring(0, 7);
+        if (ym && ym.length === 7) {
+          months.add(ym);
+        }
+      }
+    });
+    return Array.from(months).sort((a, b) => b.localeCompare(a));
+  }, [customerMonths, expenses]);
+
   // Computed Values for Expense Filtering & Metrics
   const filteredExpensesList = useMemo(() => {
     return expenses.filter(exp => {
-      // Month selection filter (aligns with MarginSelectedMonths)
-      if (marginSelectedMonths.length > 0) {
+      // Month selection filter (independent of Margin tab now)
+      if (expenseFilterMonth !== 'all') {
         const expYM = exp.expense_date ? exp.expense_date.substring(0, 7) : '';
-        if (!marginSelectedMonths.includes(expYM)) {
+        if (expYM !== expenseFilterMonth) {
           return false;
         }
       }
@@ -1243,15 +1259,26 @@ export default function StaffDashboard() {
 
       return true;
     });
-  }, [expenses, marginSelectedMonths, filterExpenseLarge, filterExpenseMedium, filterExpenseSmall, expenseCategories]);
+  }, [expenses, expenseFilterMonth, filterExpenseLarge, filterExpenseMedium, filterExpenseSmall, expenseCategories]);
 
   const totalExpensesTHB = useMemo(() => {
     return filteredExpensesList.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
   }, [filteredExpensesList]);
 
+  // Sum of expenses within the selected margin month(s) for top widget subtraction
+  const marginTotalExpensesTHB = useMemo(() => {
+    return expenses.filter(exp => {
+      if (marginSelectedMonths.length > 0) {
+        const expYM = exp.expense_date ? exp.expense_date.substring(0, 7) : '';
+        return marginSelectedMonths.includes(expYM);
+      }
+      return true;
+    }).reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+  }, [expenses, marginSelectedMonths]);
+
   const currentBalanceTHB = useMemo(() => {
-    return marginStats.actualCollectedTHB - totalExpensesTHB;
-  }, [marginStats.actualCollectedTHB, totalExpensesTHB]);
+    return marginStats.actualCollectedTHB - marginTotalExpensesTHB;
+  }, [marginStats.actualCollectedTHB, marginTotalExpensesTHB]);
 
   useEffect(() => {
     if (isAuthorized) {
@@ -7558,7 +7585,23 @@ CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authentic
                 </div>
 
                 {/* Filters */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '8px', background: '#f8fafc', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '8px', background: '#f8fafc', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                  {/* Month filter */}
+                  <div>
+                    <label className="form-label" style={{ fontSize: '10.5px', marginBottom: '4px' }}>{lang === 'ko' ? '지출 월 필터' : 'Expense Month'}</label>
+                    <select
+                      className="form-input"
+                      style={{ height: '32px', padding: '4px 8px', fontSize: '11.5px', margin: 0 }}
+                      value={expenseFilterMonth}
+                      onChange={(e) => setExpenseFilterMonth(e.target.value)}
+                    >
+                      <option value="all">{lang === 'ko' ? '전체 월 (All)' : 'All Months'}</option>
+                      {expenseAvailableMonths.map(month => (
+                        <option key={month} value={month}>{formatMonthDropdownLabel(month, lang)}</option>
+                      ))}
+                    </select>
+                  </div>
+
                   {/* Large category filter */}
                   <div>
                     <label className="form-label" style={{ fontSize: '10.5px', marginBottom: '4px' }}>{lang === 'ko' ? '대분류 필터' : 'Large Category'}</label>
