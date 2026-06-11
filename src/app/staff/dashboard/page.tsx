@@ -1265,20 +1265,27 @@ export default function StaffDashboard() {
     return filteredExpensesList.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
   }, [filteredExpensesList]);
 
-  // Sum of expenses within the selected margin month(s) for top widget subtraction
-  const marginTotalExpensesTHB = useMemo(() => {
-    return expenses.filter(exp => {
-      if (marginSelectedMonths.length > 0) {
-        const expYM = exp.expense_date ? exp.expense_date.substring(0, 7) : '';
-        return marginSelectedMonths.includes(expYM);
-      }
-      return true;
-    }).reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
-  }, [expenses, marginSelectedMonths]);
-
   const currentBalanceTHB = useMemo(() => {
-    return marginStats.actualCollectedTHB - marginTotalExpensesTHB;
-  }, [marginStats.actualCollectedTHB, marginTotalExpensesTHB]);
+    // 1. Calculate all-time (lifetime) actual collected cash
+    const allTimeSoldList = devices.filter(d => !d.deleted_at && d.is_sold && d.is_approved);
+    const allTimeSalesTHB = allTimeSoldList.reduce((sum, d) => sum + Number(d.selling_price || 0), 0);
+    const allTimeUnpaidCODTHB = allTimeSoldList.filter(d => d.sale_type === 'cod' && d.payment_status === 'unpaid').reduce((sum, d) => sum + ((Number(d.selling_price) || 0) - (Number(d.deposit_amount) || 0)), 0);
+    const allTimeUnpaidInstallmentTHB = allTimeSoldList.filter(d => d.sale_type === 'installment').reduce((sum, d) => {
+      const history = d.installment_history || [];
+      const unpaidSum = history.filter((h: any) => h.status === 'unpaid').reduce((s, h) => s + (Number(h.amount) || 0), 0);
+      return sum + unpaidSum;
+    }, 0);
+    const allTimeUnpaidOtherTHB = allTimeSoldList
+      .filter(d => d.sale_type !== 'cod' && d.sale_type !== 'installment' && d.payment_status === 'unpaid')
+      .reduce((sum, d) => sum + ((Number(d.selling_price) || 0) - (Number(d.deposit_amount) || 0)), 0);
+    const lifetimeCollectedTHB = allTimeSalesTHB - allTimeUnpaidCODTHB - allTimeUnpaidInstallmentTHB - allTimeUnpaidOtherTHB;
+
+    // 2. Calculate all-time (lifetime) total expenses
+    const lifetimeExpensesTHB = expenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+
+    // 3. Return lifetime actual balance
+    return lifetimeCollectedTHB - lifetimeExpensesTHB;
+  }, [devices, expenses]);
 
   useEffect(() => {
     if (isAuthorized) {
@@ -6056,7 +6063,36 @@ export default function StaffDashboard() {
                         <td style={{ color: 'var(--t2)' }}>{item.sticker || '-'}</td>
                         <td style={{ fontWeight: 700, wordBreak: 'break-all' }}>{item.model_name}</td>
                         <td className="font-mono" style={{ fontSize: '11px', wordBreak: 'break-all' }}>{item.imei}</td>
-                        <td style={{ textAlign: 'right', color: '#94a3b8' }}>₩{formatPrice(item.purchase_cost_krw)}</td>
+                        <td 
+                          style={{ textAlign: 'right', color: '#94a3b8', cursor: currentPermissions.can_edit_cost ? 'pointer' : 'default' }}
+                          onClick={() => {
+                            if (!currentPermissions.can_edit_cost) return;
+                            if (editingCell?.id !== item.id || editingCell?.field !== 'purchase_cost_krw') {
+                              setEditingCell({ id: item.id, field: 'purchase_cost_krw' });
+                              setEditCellValue(item.purchase_cost_krw ? item.purchase_cost_krw.toString() : '0');
+                            }
+                          }}
+                        >
+                          {editingCell?.id === item.id && editingCell?.field === 'purchase_cost_krw' ? (
+                            <input
+                              type="text"
+                              value={editCellValue}
+                              onChange={(e) => setEditCellValue(e.target.value.replace(/[^\d]/g, ''))}
+                              onBlur={() => handleInlineSave(item.id, 'purchase_cost_krw', editCellValue)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleInlineSave(item.id, 'purchase_cost_krw', editCellValue);
+                                if (e.key === 'Escape') setEditingCell(null);
+                              }}
+                              autoFocus
+                              className="form-input"
+                              style={{ margin: 0, padding: '2px 4px', fontSize: '12px', width: '90%', textAlign: 'right', display: 'inline-block' }}
+                            />
+                          ) : (
+                            <span style={currentPermissions.can_edit_cost ? { textDecoration: 'underline dotted var(--border)' } : undefined}>
+                              ₩{formatPrice(item.purchase_cost_krw)}
+                            </span>
+                          )}
+                        </td>
                         <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)' }}>฿{formatPrice(item.selling_price)}</td>
                         <td style={{ fontSize: '11.5px', color: 'var(--t1)' }}>
                           {getSaleDetailsLabel(item)}
@@ -7130,7 +7166,7 @@ ON CONFLICT (role) DO UPDATE SET
                 <div style={{ textAlign: 'left' }}>
                   <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>{lang === 'ko' ? '현재 잔고 (Current Balance)' : 'Current Balance'}</div>
                   <div style={{ fontSize: '18px', fontWeight: 800, color: '#34d399', marginTop: '4px' }}>฿{currentBalanceTHB.toLocaleString()}</div>
-                  <div style={{ fontSize: '11.5px', color: '#94a3b8', marginTop: '2px' }}>{lang === 'ko' ? '실입금액 - 총 지출액' : 'Collected Cash - Total Expenses'}</div>
+                  <div style={{ fontSize: '11.5px', color: '#94a3b8', marginTop: '2px' }}>{lang === 'ko' ? '전체 실입금액 - 전체 지출액' : 'All-time Collected - All-time Expenses'}</div>
                 </div>
               </div>
 
