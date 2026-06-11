@@ -88,6 +88,22 @@ const getMonthLabel = (ymStr: string, lang: string) => {
   return ymStr;
 };
 
+const DEFAULT_CATEGORIES = [
+  { id: '10000000-0000-0000-0000-000000000000', name: '매장 운영비', level: 'large', parent_id: null },
+  { id: '20000000-0000-0000-0000-000000000000', name: '기기 매입비', level: 'large', parent_id: null },
+  { id: '11000000-0000-0000-0000-000000000000', name: '임대료', level: 'medium', parent_id: '10000000-0000-0000-0000-000000000000' },
+  { id: '12000000-0000-0000-0000-000000000000', name: '공과금', level: 'medium', parent_id: '10000000-0000-0000-0000-000000000000' },
+  { id: '13000000-0000-0000-0000-000000000000', name: '인건비', level: 'medium', parent_id: '10000000-0000-0000-0000-000000000000' },
+  { id: '21000000-0000-0000-0000-000000000000', name: '본사 송금', level: 'medium', parent_id: '20000000-0000-0000-0000-000000000000' },
+  { id: '11100000-0000-0000-0000-000000000000', name: '월세', level: 'small', parent_id: '11000000-0000-0000-0000-000000000000' },
+  { id: '11200000-0000-0000-0000-000000000000', name: '보증금', level: 'small', parent_id: '11000000-0000-0000-0000-000000000000' },
+  { id: '12100000-0000-0000-0000-000000000000', name: '전기세', level: 'small', parent_id: '12000000-0000-0000-0000-000000000000' },
+  { id: '12200000-0000-0000-0000-000000000000', name: '수도세', level: 'small', parent_id: '12000000-0000-0000-0000-000000000000' },
+  { id: '12300000-0000-0000-0000-000000000000', name: '인터넷', level: 'small', parent_id: '12000000-0000-0000-0000-000000000000' },
+  { id: '13100000-0000-0000-0000-000000000000', name: '급여', level: 'small', parent_id: '13000000-0000-0000-0000-000000000000' },
+  { id: '21100000-0000-0000-0000-000000000000', name: '기기 대금', level: 'small', parent_id: '21000000-0000-0000-0000-000000000000' }
+];
+
 export default function StaffDashboard() {
   const router = useRouter();
   const { t, lang, changeLanguage } = useTranslation();
@@ -290,6 +306,34 @@ export default function StaffDashboard() {
   // Intake Modals (Manual & CSV Upload)
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
+
+  // Expense & Category Management States
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [expenseCategories, setExpenseCategories] = useState<any[]>([]);
+  const [loadingExpenses, setLoadingExpenses] = useState(false);
+  const [isExpenseDbMissing, setIsExpenseDbMissing] = useState(false);
+
+  // Add Expense Form Inputs
+  const [addExpenseDate, setAddExpenseDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
+  const [addExpenseLarge, setAddExpenseLarge] = useState('');
+  const [addExpenseMedium, setAddExpenseMedium] = useState('');
+  const [addExpenseSmall, setAddExpenseSmall] = useState('');
+  const [addExpenseAmount, setAddExpenseAmount] = useState('');
+  const [addExpenseDesc, setAddExpenseDesc] = useState('');
+
+  // Filtering Expense States
+  const [filterExpenseLarge, setFilterExpenseLarge] = useState('all');
+  const [filterExpenseMedium, setFilterExpenseMedium] = useState('all');
+  const [filterExpenseSmall, setFilterExpenseSmall] = useState('all');
+
+  // Category Configuration Modal States
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatLevel, setNewCatLevel] = useState<'large' | 'medium' | 'small'>('large');
+  const [newCatParentId, setNewCatParentId] = useState('');
 
   // Bulk Partner Share States
   const [isBulkPartnerShareModalOpen, setIsBulkPartnerShareModalOpen] = useState(false);
@@ -934,14 +978,289 @@ export default function StaffDashboard() {
     }
   }, []);
 
+  // Expense & Category DB Handlers
+  const loadExpenseData = useCallback(async () => {
+    if (!isAuthorized) return;
+    setLoadingExpenses(true);
+    setIsExpenseDbMissing(false);
+    try {
+      const categoriesRes = await supabase
+        .from('sheets_expense_categories')
+        .select('*')
+        .order('name', { ascending: true });
+
+      if (categoriesRes.error) {
+        if (categoriesRes.error.code === '42P01') {
+          setIsExpenseDbMissing(true);
+          setExpenseCategories(DEFAULT_CATEGORIES);
+          const cached = localStorage.getItem('local_expenses');
+          setExpenses(cached ? JSON.parse(cached) : []);
+          setLoadingExpenses(false);
+          return;
+        } else {
+          throw categoriesRes.error;
+        }
+      }
+
+      const expensesRes = await supabase
+        .from('sheets_expenses')
+        .select('*')
+        .order('expense_date', { ascending: false });
+
+      if (expensesRes.error) throw expensesRes.error;
+
+      setExpenseCategories(categoriesRes.data || []);
+      setExpenses(expensesRes.data || []);
+    } catch (err: any) {
+      console.error('Failed to load expense data:', err);
+      setIsExpenseDbMissing(true);
+      setExpenseCategories(DEFAULT_CATEGORIES);
+      const cached = localStorage.getItem('local_expenses');
+      setExpenses(cached ? JSON.parse(cached) : []);
+    } finally {
+      setLoadingExpenses(false);
+    }
+  }, [isAuthorized]);
+
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCatName.trim()) return;
+
+    const level = newCatLevel;
+    const parentId = level === 'large' ? null : (newCatParentId || null);
+
+    if (level !== 'large' && !parentId) {
+      alert(lang === 'ko' ? '상위 카테고리를 선택해 주세요.' : 'Please select a parent category.');
+      return;
+    }
+
+    if (isExpenseDbMissing) {
+      const newCategory = {
+        id: Math.random().toString(36).substring(2, 9),
+        name: newCatName.trim(),
+        level,
+        parent_id: parentId,
+        created_at: new Date().toISOString()
+      };
+      const updated = [...expenseCategories, newCategory];
+      setExpenseCategories(updated);
+      setNewCatName('');
+      showToast(lang === 'ko' ? '카테고리가 임시 추가되었습니다 (데모 모드)' : 'Category temporarily added (Demo)', 'success');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('sheets_expense_categories')
+        .insert({
+          name: newCatName.trim(),
+          level,
+          parent_id: parentId
+        });
+
+      if (error) throw error;
+
+      showToast(lang === 'ko' ? '카테고리가 추가되었습니다.' : 'Category added.', 'success');
+      setNewCatName('');
+      loadExpenseData();
+    } catch (err: any) {
+      console.error('Error adding category:', err);
+      showToast(t('error_occurred') + err.message, 'error');
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    const getDescendantIds = (catId: string): string[] => {
+      const children = expenseCategories.filter(c => c.parent_id === catId);
+      let ids = children.map(c => c.id);
+      children.forEach(c => {
+        ids = [...ids, ...getDescendantIds(c.id)];
+      });
+      return ids;
+    };
+    const descendantIds = getDescendantIds(id);
+    const allCategoryIds = [id, ...descendantIds];
+    const hasCascadeExpenses = expenses.some(exp => allCategoryIds.includes(exp.category_id));
+
+    if (hasCascadeExpenses) {
+      alert(lang === 'ko' ? '이 카테고리 또는 하위 카테고리에 등록된 지출 내역이 있어 삭제할 수 없습니다.' : 'Cannot delete: there are expense records under this category or its subcategories.');
+      return;
+    }
+
+    const confirmMsg = lang === 'ko' 
+      ? '이 카테고리를 삭제하시겠습니까? (하위 카테고리도 모두 함께 삭제됩니다)'
+      : 'Are you sure you want to delete this category? (All subcategories will be deleted too)';
+    if (!confirm(confirmMsg)) return;
+
+    if (isExpenseDbMissing) {
+      const updated = expenseCategories.filter(c => !allCategoryIds.includes(c.id));
+      setExpenseCategories(updated);
+      showToast(lang === 'ko' ? '카테고리가 삭제되었습니다 (데모 모드)' : 'Category deleted (Demo)', 'success');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('sheets_expense_categories')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      showToast(lang === 'ko' ? '카테고리가 삭제되었습니다.' : 'Category deleted.', 'success');
+      loadExpenseData();
+    } catch (err: any) {
+      console.error('Error deleting category:', err);
+      showToast(t('error_occurred') + err.message, 'error');
+    }
+  };
+
+  const handleAddExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amountNum = parseFloat(addExpenseAmount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      alert(lang === 'ko' ? '올바른 금액을 입력해 주세요.' : 'Please enter a valid amount.');
+      return;
+    }
+
+    const selectedCategoryId = addExpenseSmall || addExpenseMedium || addExpenseLarge;
+    if (!selectedCategoryId) {
+      alert(lang === 'ko' ? '지출 카테고리를 선택해 주세요.' : 'Please select an expense category.');
+      return;
+    }
+
+    if (isExpenseDbMissing) {
+      const newExpense = {
+        id: Math.random().toString(36).substring(2, 9),
+        category_id: selectedCategoryId,
+        amount: amountNum,
+        description: addExpenseDesc.trim(),
+        expense_date: addExpenseDate,
+        created_at: new Date().toISOString()
+      };
+      const updated = [newExpense, ...expenses];
+      setExpenses(updated);
+      localStorage.setItem('local_expenses', JSON.stringify(updated));
+      setAddExpenseAmount('');
+      setAddExpenseDesc('');
+      showToast(lang === 'ko' ? '지출 내역이 추가되었습니다 (데모 모드)' : 'Expense added (Demo)', 'success');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('sheets_expenses')
+        .insert({
+          category_id: selectedCategoryId,
+          amount: amountNum,
+          description: addExpenseDesc.trim(),
+          expense_date: addExpenseDate
+        });
+
+      if (error) throw error;
+
+      showToast(lang === 'ko' ? '지출 내역이 저장되었습니다.' : 'Expense recorded successfully.', 'success');
+      setAddExpenseAmount('');
+      setAddExpenseDesc('');
+      loadExpenseData();
+    } catch (err: any) {
+      console.error('Error adding expense:', err);
+      showToast(t('error_occurred') + err.message, 'error');
+    }
+  };
+
+  const handleDeleteExpense = async (id: string) => {
+    const confirmMsg = lang === 'ko' ? '이 지출 내역을 삭제하시겠습니까?' : 'Are you sure you want to delete this expense?';
+    if (!confirm(confirmMsg)) return;
+
+    if (isExpenseDbMissing) {
+      const updated = expenses.filter(exp => exp.id !== id);
+      setExpenses(updated);
+      localStorage.setItem('local_expenses', JSON.stringify(updated));
+      showToast(lang === 'ko' ? '지출 내역이 삭제되었습니다 (데모 모드)' : 'Expense deleted (Demo)', 'success');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('sheets_expenses')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      showToast(lang === 'ko' ? '지출 내역이 삭제되었습니다.' : 'Expense deleted successfully.', 'success');
+      loadExpenseData();
+    } catch (err: any) {
+      console.error('Error deleting expense:', err);
+      showToast(t('error_occurred') + err.message, 'error');
+    }
+  };
+
+  const getCategoryPath = useCallback((categoryId: string) => {
+    const cat = expenseCategories.find(c => c.id === categoryId);
+    if (!cat) return '-';
+    
+    if (cat.level === 'small') {
+      const parentMed = expenseCategories.find(p => p.id === cat.parent_id);
+      const parentLarge = parentMed ? expenseCategories.find(p => p.id === parentMed.parent_id) : null;
+      return `${parentLarge ? parentLarge.name : ''} > ${parentMed ? parentMed.name : ''} > ${cat.name}`;
+    } else if (cat.level === 'medium') {
+      const parentLarge = expenseCategories.find(p => p.id === cat.parent_id);
+      return `${parentLarge ? parentLarge.name : ''} > ${cat.name}`;
+    } else {
+      return cat.name;
+    }
+  }, [expenseCategories]);
+
+  // Computed Values for Expense Filtering & Metrics
+  const filteredExpensesList = useMemo(() => {
+    return expenses.filter(exp => {
+      // Month selection filter (aligns with MarginSelectedMonths)
+      if (marginSelectedMonths.length > 0) {
+        const expYM = exp.expense_date ? exp.expense_date.substring(0, 7) : '';
+        if (!marginSelectedMonths.includes(expYM)) {
+          return false;
+        }
+      }
+
+      // Category filter cascade
+      if (filterExpenseSmall !== 'all') {
+        return exp.category_id === filterExpenseSmall;
+      }
+      if (filterExpenseMedium !== 'all') {
+        const smallIds = expenseCategories.filter(c => c.parent_id === filterExpenseMedium).map(c => c.id);
+        const matchIds = [filterExpenseMedium, ...smallIds];
+        return matchIds.includes(exp.category_id);
+      }
+      if (filterExpenseLarge !== 'all') {
+        const mediumIds = expenseCategories.filter(c => c.parent_id === filterExpenseLarge).map(c => c.id);
+        const smallIds = expenseCategories.filter(c => mediumIds.includes(c.parent_id)).map(c => c.id);
+        const matchIds = [filterExpenseLarge, ...mediumIds, ...smallIds];
+        return matchIds.includes(exp.category_id);
+      }
+
+      return true;
+    });
+  }, [expenses, marginSelectedMonths, filterExpenseLarge, filterExpenseMedium, filterExpenseSmall, expenseCategories]);
+
+  const totalExpensesTHB = useMemo(() => {
+    return filteredExpensesList.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+  }, [filteredExpensesList]);
+
+  const currentBalanceTHB = useMemo(() => {
+    return marginStats.actualCollectedTHB - totalExpensesTHB;
+  }, [marginStats.actualCollectedTHB, totalExpensesTHB]);
+
   useEffect(() => {
     if (isAuthorized) {
       purgeOldTrash().then(() => {
         loadLedgerData();
         loadSettingsData();
+        loadExpenseData();
       });
     }
-  }, [isAuthorized, loadLedgerData, loadSettingsData, purgeOldTrash]);
+  }, [isAuthorized, loadLedgerData, loadSettingsData, loadExpenseData, purgeOldTrash]);
 
   // Model & Location options helper with dynamic temp additions for selected device edits
   const modelOptions = useMemo(() => {
@@ -6777,6 +7096,16 @@ ON CONFLICT (role) DO UPDATE SET
                 </div>
               </div>
 
+              {/* Current Balance Card */}
+              <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px', color: '#fff' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>⚖️</div>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>{lang === 'ko' ? '현재 잔고 (Current Balance)' : 'Current Balance'}</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#34d399', marginTop: '4px' }}>฿{currentBalanceTHB.toLocaleString()}</div>
+                  <div style={{ fontSize: '11.5px', color: '#94a3b8', marginTop: '2px' }}>{lang === 'ko' ? '실입금액 - 총 지출액' : 'Collected Cash - Total Expenses'}</div>
+                </div>
+              </div>
+
               {/* Total Margin Card */}
               {!hideMargin && (
                 <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -7024,6 +7353,493 @@ ON CONFLICT (role) DO UPDATE SET
                 </table>
               </div>
             </div>
+
+            {/* Database Missing SQL Warning Banner */}
+            {isExpenseDbMissing && (
+              <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '12px', padding: '16px', color: '#991b1b', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ fontWeight: 800, fontSize: '14px' }}>⚠️ {lang === 'ko' ? '지출 관리 데이터베이스 테이블 미설정 안내' : 'Expense Table Not Initialized'}</div>
+                <div>
+                  {lang === 'ko' 
+                    ? 'Supabase에 지출 및 카테고리 테이블이 생성되지 않았습니다. 현재 임시 브라우저 로컬 저장소(localStorage) 모드로 동작 중입니다. 데이터 저장을 위해 아래 SQL 쿼리를 Supabase SQL Editor에서 실행해 주세요.'
+                    : 'Expense tables are not yet setup in your Supabase database. Operating in browser local storage mode. Please execute the following SQL in Supabase Editor to setup permanent tables:'}
+                </div>
+                <textarea 
+                  readOnly 
+                  value={`-- 1. 지출 카테고리 테이블 생성
+CREATE TABLE IF NOT EXISTS public.sheets_expense_categories (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    level TEXT NOT NULL CHECK (level IN ('large', 'medium', 'small')),
+    parent_id UUID REFERENCES public.sheets_expense_categories(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. 지출 내역 테이블 생성
+CREATE TABLE IF NOT EXISTS public.sheets_expenses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    category_id UUID REFERENCES public.sheets_expense_categories(id) ON DELETE RESTRICT,
+    amount DECIMAL(12, 2) NOT NULL,
+    description TEXT,
+    expense_date TEXT NOT NULL, -- YYYY-MM-DD
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS 활성화 및 정책 생성
+ALTER TABLE public.sheets_expense_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sheets_expenses ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "expense_categories_select_all" ON public.sheets_expense_categories FOR SELECT USING (true);
+CREATE POLICY "expense_categories_all_auth" ON public.sheets_expense_categories FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "expenses_select_all" ON public.sheets_expenses FOR SELECT USING (true);
+CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authenticated USING (true) WITH CHECK (true);`}
+                  style={{ width: '100%', height: '100px', fontFamily: 'monospace', fontSize: '11px', padding: '8px', border: '1px solid #fca5a5', borderRadius: '6px', resize: 'none', background: '#fff' }}
+                />
+              </div>
+            )}
+
+            {/* Expense Management Title and Trigger */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>
+                💸 {lang === 'ko' ? '지출 및 잔고 관리' : 'Expense & Balance Management'}
+              </h3>
+              <button
+                type="button"
+                className="btn-sm btn-purple"
+                onClick={() => setIsCategoryModalOpen(true)}
+                style={{ height: '34px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                📁 {lang === 'ko' ? '지출 카테고리 설정' : 'Category Settings'}
+              </button>
+            </div>
+
+            {/* Grid Layout for Add Form and Log/Reports */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', alignItems: 'start' }}>
+              
+              {/* Left Column: Register Expense */}
+              <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  ✏️ {lang === 'ko' ? '지출 등록 (Add Expense)' : 'Add Expense'}
+                </h4>
+                
+                <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">{lang === 'ko' ? '지출 일자' : 'Date'}</label>
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={addExpenseDate}
+                      onChange={(e) => setAddExpenseDate(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">{lang === 'ko' ? '대분류 (Large Category)' : 'Large Category'}</label>
+                    <select
+                      className="form-input"
+                      value={addExpenseLarge}
+                      onChange={(e) => {
+                        setAddExpenseLarge(e.target.value);
+                        setAddExpenseMedium('');
+                        setAddExpenseSmall('');
+                      }}
+                      required
+                    >
+                      <option value="">{lang === 'ko' ? '-- 대분류 선택 --' : '-- Select Large --'}</option>
+                      {expenseCategories.filter(c => c.level === 'large').map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {addExpenseLarge && (
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">{lang === 'ko' ? '중분류 (Medium Category)' : 'Medium Category'}</label>
+                      <select
+                        className="form-input"
+                        value={addExpenseMedium}
+                        onChange={(e) => {
+                          setAddExpenseMedium(e.target.value);
+                          setAddExpenseSmall('');
+                        }}
+                      >
+                        <option value="">{lang === 'ko' ? '-- 중분류 선택 (선택사항) --' : '-- Select Medium (Optional) --'}</option>
+                        {expenseCategories.filter(c => c.level === 'medium' && c.parent_id === addExpenseLarge).map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {addExpenseMedium && (
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">{lang === 'ko' ? '소분류 (Small Category)' : 'Small Category'}</label>
+                      <select
+                        className="form-input"
+                        value={addExpenseSmall}
+                        onChange={(e) => setAddExpenseSmall(e.target.value)}
+                      >
+                        <option value="">{lang === 'ko' ? '-- 소분류 선택 (선택사항) --' : '-- Select Small (Optional) --'}</option>
+                        {expenseCategories.filter(c => c.level === 'small' && c.parent_id === addExpenseMedium).map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">{lang === 'ko' ? '금액 (THB)' : 'Amount (THB)'}</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="form-input"
+                      placeholder="0.00"
+                      value={addExpenseAmount}
+                      onChange={(e) => setAddExpenseAmount(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">{lang === 'ko' ? '상세 내역 / 메모' : 'Description / Notes'}</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder={lang === 'ko' ? '예: 6월 사무실 월세, 전기요금 등' : 'e.g., June office rent, electric bill'}
+                      value={addExpenseDesc}
+                      onChange={(e) => setAddExpenseDesc(e.target.value)}
+                    />
+                  </div>
+
+                  <button type="submit" className="btn-submit" style={{ marginTop: '8px' }}>
+                    💸 {lang === 'ko' ? '지출 내역 등록' : 'Record Expense'}
+                  </button>
+                </form>
+              </div>
+
+              {/* Right Column: Expense Table & Report */}
+              <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                
+                {/* Header & Subtotal */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>📊</span> {lang === 'ko' ? '지출 보고서 및 필터' : 'Expense Reports & Filter'}
+                  </h4>
+                  <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '8px', padding: '6px 12px', textAlign: 'right' }}>
+                    <div style={{ fontSize: '10px', color: '#92400e', fontWeight: 700, textTransform: 'uppercase' }}>
+                      {filterExpenseSmall !== 'all' 
+                        ? (lang === 'ko' ? '소분류 지출총액' : 'Small Cat Total')
+                        : filterExpenseMedium !== 'all'
+                        ? (lang === 'ko' ? '중분류 지출총액' : 'Medium Cat Total')
+                        : filterExpenseLarge !== 'all'
+                        ? (lang === 'ko' ? '대분류 지출총액' : 'Large Cat Total')
+                        : (lang === 'ko' ? '전체 지출총액' : 'Total Expenses')}
+                    </div>
+                    <div style={{ fontSize: '16px', fontWeight: 900, color: '#b45309' }}>
+                      ฿{totalExpensesTHB.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filters */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '8px', background: '#f8fafc', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                  {/* Large category filter */}
+                  <div>
+                    <label className="form-label" style={{ fontSize: '10.5px', marginBottom: '4px' }}>{lang === 'ko' ? '대분류 필터' : 'Large Category'}</label>
+                    <select
+                      className="form-input"
+                      style={{ height: '32px', padding: '4px 8px', fontSize: '11.5px', margin: 0 }}
+                      value={filterExpenseLarge}
+                      onChange={(e) => {
+                        setFilterExpenseLarge(e.target.value);
+                        setFilterExpenseMedium('all');
+                        setFilterExpenseSmall('all');
+                      }}
+                    >
+                      <option value="all">{lang === 'ko' ? '전체 대분류' : 'All Large'}</option>
+                      {expenseCategories.filter(c => c.level === 'large').map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Medium category filter */}
+                  <div>
+                    <label className="form-label" style={{ fontSize: '10.5px', marginBottom: '4px' }}>{lang === 'ko' ? '중분류 필터' : 'Medium Category'}</label>
+                    <select
+                      className="form-input"
+                      style={{ height: '32px', padding: '4px 8px', fontSize: '11.5px', margin: 0 }}
+                      value={filterExpenseMedium}
+                      onChange={(e) => {
+                        setFilterExpenseMedium(e.target.value);
+                        setFilterExpenseSmall('all');
+                      }}
+                      disabled={filterExpenseLarge === 'all'}
+                    >
+                      <option value="all">{lang === 'ko' ? '전체 중분류' : 'All Medium'}</option>
+                      {expenseCategories.filter(c => c.level === 'medium' && c.parent_id === filterExpenseLarge).map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Small category filter */}
+                  <div>
+                    <label className="form-label" style={{ fontSize: '10.5px', marginBottom: '4px' }}>{lang === 'ko' ? '소분류 필터' : 'Small Category'}</label>
+                    <select
+                      className="form-input"
+                      style={{ height: '32px', padding: '4px 8px', fontSize: '11.5px', margin: 0 }}
+                      value={filterExpenseSmall}
+                      onChange={(e) => setFilterExpenseSmall(e.target.value)}
+                      disabled={filterExpenseMedium === 'all'}
+                    >
+                      <option value="all">{lang === 'ko' ? '전체 소분류' : 'All Small'}</option>
+                      {expenseCategories.filter(c => c.level === 'small' && c.parent_id === filterExpenseMedium).map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Expense List Table */}
+                <div className="tbl-wrap" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+                  <table className="tbl" style={{ margin: 0 }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: '20%' }}>{lang === 'ko' ? '날짜' : 'Date'}</th>
+                        <th style={{ width: '35%' }}>{lang === 'ko' ? '지출 구분' : 'Category Path'}</th>
+                        <th style={{ width: '20%', textAlign: 'right' }}>{lang === 'ko' ? '금액' : 'Amount'}</th>
+                        <th style={{ width: '20%' }}>{lang === 'ko' ? '설명' : 'Desc'}</th>
+                        <th style={{ width: '5%', textAlign: 'center' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loadingExpenses ? (
+                        <tr>
+                          <td colSpan={5} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>
+                            {t('loading_data')}
+                          </td>
+                        </tr>
+                      ) : filteredExpensesList.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>
+                            {lang === 'ko' ? '선택된 월/카테고리에 지출 내역이 없습니다.' : 'No expense records found for selected filters.'}
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredExpensesList.map(exp => (
+                          <tr key={exp.id}>
+                            <td style={{ fontSize: '12.5px' }}>{exp.expense_date}</td>
+                            <td style={{ fontWeight: 600, fontSize: '11.5px', color: 'var(--purple-l)' }}>
+                              {getCategoryPath(exp.category_id)}
+                            </td>
+                            <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--red)', fontSize: '12.5px' }}>
+                              ฿{exp.amount ? Number(exp.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                            </td>
+                            <td style={{ fontSize: '11.5px', color: 'var(--t2)', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={exp.description}>
+                              {exp.description || '-'}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteExpense(exp.id)}
+                                style={{ background: 'none', border: 'none', color: 'var(--red)', cursor: 'pointer', fontSize: '13px', padding: 0 }}
+                              >
+                                🗑️
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                    {filteredExpensesList.length > 0 && (
+                      <tfoot>
+                        <tr style={{ background: '#f8fafc', borderTop: '2px solid var(--border)', fontWeight: 800 }}>
+                          <td colSpan={2}>{lang === 'ko' ? '합계' : 'Total'}</td>
+                          <td style={{ textAlign: 'right', color: 'var(--red)' }}>
+                            ฿{totalExpensesTHB.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td colSpan={2}></td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            {/* CATEGORY CONFIGURATION MODAL */}
+            {isCategoryModalOpen && (
+              <div className="modal-bg open" style={{ display: 'flex', zIndex: 3000 }} onClick={() => setIsCategoryModalOpen(false)}>
+                <div className="modal animate-slide-up" style={{ maxWidth: '600px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-hd">
+                    <span className="modal-title">
+                      📁 {lang === 'ko' ? '지출 카테고리 관리' : 'Manage Expense Categories'}
+                    </span>
+                    <button className="modal-x" onClick={() => setIsCategoryModalOpen(false)}>✕</button>
+                  </div>
+
+                  <div className="modal-body" style={{ padding: '20px', maxHeight: '70vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* Form to add a new category */}
+                    <form onSubmit={handleAddCategory} style={{ background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <h5 style={{ fontSize: '13px', fontWeight: 800, margin: 0 }}>
+                        ➕ {lang === 'ko' ? '새 카테고리 추가' : 'Add New Category'}
+                      </h5>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontSize: '11px' }}>{lang === 'ko' ? '분류 수준' : 'Classification Level'}</label>
+                          <select
+                            className="form-input"
+                            style={{ height: '36px', padding: '6px 12px', fontSize: '12px' }}
+                            value={newCatLevel}
+                            onChange={(e: any) => {
+                              setNewCatLevel(e.target.value);
+                              setNewCatParentId('');
+                            }}
+                          >
+                            <option value="large">{lang === 'ko' ? '대분류 (Large)' : 'Large Category'}</option>
+                            <option value="medium">{lang === 'ko' ? '중분류 (Medium)' : 'Medium Category'}</option>
+                            <option value="small">{lang === 'ko' ? '소분류 (Small)' : 'Small Category'}</option>
+                          </select>
+                        </div>
+                        {newCatLevel !== 'large' && (
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label" style={{ fontSize: '11px' }}>
+                              {newCatLevel === 'medium' 
+                                ? (lang === 'ko' ? '상위 대분류 선택' : 'Select Large Parent') 
+                                : (lang === 'ko' ? '상위 중분류 선택' : 'Select Medium Parent')}
+                            </label>
+                            <select
+                              className="form-input"
+                              style={{ height: '36px', padding: '6px 12px', fontSize: '12px' }}
+                              value={newCatParentId}
+                              onChange={(e) => setNewCatParentId(e.target.value)}
+                              required
+                            >
+                              <option value="">{lang === 'ko' ? '-- 선택 --' : '-- Select --'}</option>
+                              {expenseCategories
+                                .filter(c => c.level === (newCatLevel === 'medium' ? 'large' : 'medium'))
+                                .map(c => {
+                                  let prefix = '';
+                                  if (newCatLevel === 'small') {
+                                    const parentLarge = expenseCategories.find(p => p.id === c.parent_id);
+                                    prefix = parentLarge ? `${parentLarge.name} > ` : '';
+                                  }
+                                  return (
+                                    <option key={c.id} value={c.id}>{prefix}{c.name}</option>
+                                  );
+                                })}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ fontSize: '11px' }}>{lang === 'ko' ? '카테고리명' : 'Category Name'}</label>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <input
+                            type="text"
+                            className="form-input"
+                            style={{ height: '36px', padding: '6px 12px', fontSize: '13px', margin: 0 }}
+                            placeholder={lang === 'ko' ? '예: 전기세, 월세, 기기 대금' : 'e.g., Electricity, Rent, Salary'}
+                            value={newCatName}
+                            onChange={(e) => setNewCatName(e.target.value)}
+                            required
+                          />
+                          <button type="submit" className="btn-sm btn-purple" style={{ height: '36px', padding: '0 16px', whiteSpace: 'nowrap', fontWeight: 800 }}>
+                            {lang === 'ko' ? '추가' : 'Add'}
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+
+                    {/* Category Tree View */}
+                    <div style={{ flex: 1 }}>
+                      <h5 style={{ fontSize: '13px', fontWeight: 800, marginBottom: '10px' }}>
+                        🌳 {lang === 'ko' ? '카테고리 구성 (Category Tree)' : 'Current Category Structure'}
+                      </h5>
+                      <div style={{ border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', background: '#fff', display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '300px', overflowY: 'auto' }}>
+                        {expenseCategories.filter(c => c.level === 'large').length === 0 ? (
+                          <div style={{ color: 'var(--t3)', fontSize: '12px', textAlign: 'center', padding: '12px' }}>
+                            {lang === 'ko' ? '등록된 카테고리가 없습니다.' : 'No categories registered.'}
+                          </div>
+                        ) : (
+                          expenseCategories.filter(c => c.level === 'large').map(largeCat => {
+                            const mediumCats = expenseCategories.filter(c => c.level === 'medium' && c.parent_id === largeCat.id);
+                            return (
+                              <div key={largeCat.id} style={{ borderBottom: '1px dashed var(--border)', paddingBottom: '10px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 800, fontSize: '13px', color: 'var(--purple-l)' }}>
+                                  <span>📁 {largeCat.name}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCategory(largeCat.id)}
+                                    style={{ background: 'none', border: 'none', color: 'var(--red)', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                                <div style={{ paddingLeft: '16px', marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  {mediumCats.map(medCat => {
+                                    const smallCats = expenseCategories.filter(c => c.level === 'small' && c.parent_id === medCat.id);
+                                    return (
+                                      <div key={medCat.id}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px', fontWeight: 700, color: 'var(--t1)' }}>
+                                          <span>📂 {medCat.name}</span>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDeleteCategory(medCat.id)}
+                                            style={{ background: 'none', border: 'none', color: 'var(--red)', fontSize: '11px', cursor: 'pointer' }}
+                                          >
+                                            ✕
+                                          </button>
+                                        </div>
+                                        <div style={{ paddingLeft: '16px', marginTop: '4px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                          {smallCats.map(smallCat => (
+                                            <span
+                                              key={smallCat.id}
+                                              style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                background: '#f1f5f9',
+                                                border: '1px solid var(--border)',
+                                                borderRadius: '6px',
+                                                padding: '2px 8px',
+                                                fontSize: '11.5px',
+                                                color: 'var(--t2)'
+                                              }}
+                                            >
+                                              📄 {smallCat.name}
+                                              <button
+                                                type="button"
+                                                onClick={() => handleDeleteCategory(smallCat.id)}
+                                                style={{ background: 'none', border: 'none', color: 'var(--red)', fontSize: '11px', cursor: 'pointer', padding: 0 }}
+                                              >
+                                                ✕
+                                              </button>
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="modal-ft" style={{ borderTop: '1px solid var(--border)', padding: '12px 20px', display: 'flex', justifyContent: 'flex-end', background: '#f8fafc', borderBottomLeftRadius: 'var(--r)', borderBottomRightRadius: 'var(--r)' }}>
+                    <button type="button" className="btn-secondary" style={{ padding: '8px 16px', fontSize: '13px' }} onClick={() => setIsCategoryModalOpen(false)}>
+                      {lang === 'ko' ? '닫기' : 'Close'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
           </div>
         )}
