@@ -6,7 +6,7 @@ const lines = content.split('\n');
 
 lines.forEach((line, idx) => {
   const trimmed = line.trim();
-  if (trimmed.includes('refund') || trimmed.includes('교환') || trimmed.includes('반품') || trimmed.includes('불량')) {
+  if (trimmed.includes('calculatedFinalPrice')) {
     console.log(`${idx + 1}: ${trimmed}`);
   }
 });
