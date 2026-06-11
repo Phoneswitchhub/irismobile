@@ -334,6 +334,7 @@ export default function StaffDashboard() {
   const [newCatName, setNewCatName] = useState('');
   const [newCatLevel, setNewCatLevel] = useState<'large' | 'medium' | 'small'>('large');
   const [newCatParentId, setNewCatParentId] = useState('');
+  const [isMarginLogExpanded, setIsMarginLogExpanded] = useState(false);
 
   // Bulk Partner Share States
   const [isBulkPartnerShareModalOpen, setIsBulkPartnerShareModalOpen] = useState(false);
@@ -7231,127 +7232,142 @@ ON CONFLICT (role) DO UPDATE SET
 
             {/* Part 2: Complete Margin Ledger */}
             <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>📊</span> {t('margin_log_title')}
-              </h4>
-              <div className="tbl-wrap" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
-                <table className="tbl" style={{ margin: 0 }}>
-                  <thead>
-                    <tr>
-                      <th style={{ width: hideMargin ? '25%' : '15%', cursor: 'pointer' }} onClick={() => toggleSort('sale_date')}>
-                        {t('margin_th_sale_date')} {sortField === 'sale_date' && (sortDirection === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th style={{ width: hideMargin ? '35%' : '25%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
-                        {t('margin_th_model')} {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
-                      </th>
-                      {!hideMargin && (
-                        <th style={{ width: '15%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('purchase_cost_krw')}>
-                          {t('margin_th_cost')} {sortField === 'purchase_cost_krw' && (sortDirection === 'asc' ? '▲' : '▼')}
-                        </th>
-                      )}
-                      <th style={{ width: hideMargin ? '20%' : '15%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
-                        {t('margin_th_price')} {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th style={{ width: hideMargin ? '20%' : '15%', cursor: 'pointer' }} onClick={() => toggleSort('seller_name')}>
-                        {t('margin_th_seller_col')} {sortField === 'seller_name' && (sortDirection === 'asc' ? '▲' : '▼')}
-                      </th>
-                      {!hideMargin && <th style={{ width: '15%', textAlign: 'right' }}>{t('margin_th_margin')}</th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {marginStats.soldList.length === 0 ? (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>📊</span> {t('margin_log_title')} ({marginStats.soldList.length}{t('staff_qty_unit') || '대'})
+                </h4>
+                <button
+                  type="button"
+                  className="btn-sm btn-purple"
+                  onClick={() => setIsMarginLogExpanded(!isMarginLogExpanded)}
+                  style={{ height: '28px', padding: '0 12px', fontSize: '11.5px', fontWeight: 800, margin: 0, cursor: 'pointer' }}
+                >
+                  {isMarginLogExpanded 
+                    ? (lang === 'ko' ? '접기 ▲' : 'Collapse ▲') 
+                    : (lang === 'ko' ? '펼치기 ▼' : 'Expand ▼')}
+                </button>
+              </div>
+
+              {isMarginLogExpanded && (
+                <div className="tbl-wrap animate-slide-up" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+                  <table className="tbl" style={{ margin: 0 }}>
+                    <thead>
                       <tr>
-                        <td colSpan={hideMargin ? 4 : 6} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>{t('staff_no_sales_records')}</td>
+                        <th style={{ width: hideMargin ? '25%' : '15%', cursor: 'pointer' }} onClick={() => toggleSort('sale_date')}>
+                          {t('margin_th_sale_date')} {sortField === 'sale_date' && (sortDirection === 'asc' ? '▲' : '▼')}
+                        </th>
+                        <th style={{ width: hideMargin ? '35%' : '25%', cursor: 'pointer' }} onClick={() => toggleSort('model_name')}>
+                          {t('margin_th_model')} {sortField === 'model_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                        </th>
+                        {!hideMargin && (
+                          <th style={{ width: '15%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('purchase_cost_krw')}>
+                            {t('margin_th_cost')} {sortField === 'purchase_cost_krw' && (sortDirection === 'asc' ? '▲' : '▼')}
+                          </th>
+                        )}
+                        <th style={{ width: hideMargin ? '20%' : '15%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
+                          {t('margin_th_price')} {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
+                        </th>
+                        <th style={{ width: hideMargin ? '20%' : '15%', cursor: 'pointer' }} onClick={() => toggleSort('seller_name')}>
+                          {t('margin_th_seller_col')} {sortField === 'seller_name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                        </th>
+                        {!hideMargin && <th style={{ width: '15%', textAlign: 'right' }}>{t('margin_th_margin')}</th>}
                       </tr>
-                    ) : (
-                      sortDevices(marginStats.soldList).map(item => {
-                        const price = item.selling_price || 0;
-                        const cost = price === 0 ? 0 : (item.purchase_cost_krw || 0);
-                        const marginKRW = price === 0 ? 0 : (Math.round(price * exchangeRate) - cost);
-                        return (
-                          <tr key={item.id}>
-                            <td>{item.sale_date || '-'}</td>
-                            <td style={{ fontWeight: 700 }}>
-                              {item.model_name}
-                              <div style={{ fontSize: '10.5px', color: 'var(--t3)', fontWeight: 'normal', marginTop: '2px', fontFamily: 'monospace' }}>
-                                IMEI: {item.imei}
-                              </div>
-                            </td>
-                            {!hideMargin && <td style={{ textAlign: 'right', color: '#94a3b8' }}>₩{formatPrice(cost)}</td>}
-                            <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)' }}>฿{formatPrice(price)}</td>
-                            <td>
-                              {staffProfile?.role === 'admin' ? (
-                                editingCell?.id === item.id && editingCell?.field === 'seller_name' ? (
-                                  <input
-                                    type="text"
-                                    value={editCellValue}
-                                    onChange={(e) => setEditCellValue(e.target.value)}
-                                    onBlur={() => handleInlineSave(item.id, 'seller_name', editCellValue)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') handleInlineSave(item.id, 'seller_name', editCellValue);
-                                      if (e.key === 'Escape') setEditingCell(null);
-                                    }}
-                                    autoFocus
-                                    className="form-input"
-                                    style={{ margin: 0, padding: '2px 4px', fontSize: '12px', height: '26px', width: '100px', display: 'inline-block' }}
-                                  />
+                    </thead>
+                    <tbody>
+                      {marginStats.soldList.length === 0 ? (
+                        <tr>
+                          <td colSpan={hideMargin ? 4 : 6} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>{t('staff_no_sales_records')}</td>
+                        </tr>
+                      ) : (
+                        sortDevices(marginStats.soldList).map(item => {
+                          const price = item.selling_price || 0;
+                          const cost = price === 0 ? 0 : (item.purchase_cost_krw || 0);
+                          const marginKRW = price === 0 ? 0 : (Math.round(price * exchangeRate) - cost);
+                          return (
+                            <tr key={item.id}>
+                              <td>{item.sale_date || '-'}</td>
+                              <td style={{ fontWeight: 700 }}>
+                                {item.model_name}
+                                <div style={{ fontSize: '10.5px', color: 'var(--t3)', fontWeight: 'normal', marginTop: '2px', fontFamily: 'monospace' }}>
+                                  IMEI: {item.imei}
+                                </div>
+                              </td>
+                              {!hideMargin && <td style={{ textAlign: 'right', color: '#94a3b8' }}>₩{formatPrice(cost)}</td>}
+                              <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)' }}>฿{formatPrice(price)}</td>
+                              <td>
+                                {staffProfile?.role === 'admin' ? (
+                                  editingCell?.id === item.id && editingCell?.field === 'seller_name' ? (
+                                    <input
+                                      type="text"
+                                      value={editCellValue}
+                                      onChange={(e) => setEditCellValue(e.target.value)}
+                                      onBlur={() => handleInlineSave(item.id, 'seller_name', editCellValue)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleInlineSave(item.id, 'seller_name', editCellValue);
+                                        if (e.key === 'Escape') setEditingCell(null);
+                                      }}
+                                      autoFocus
+                                      className="form-input"
+                                      style={{ margin: 0, padding: '2px 4px', fontSize: '12px', height: '26px', width: '100px', display: 'inline-block' }}
+                                    />
+                                  ) : (
+                                    <span
+                                      style={{ cursor: 'pointer', textDecoration: 'underline dotted var(--border)', fontWeight: 600 }}
+                                      onClick={() => {
+                                        setEditingCell({ id: item.id, field: 'seller_name' });
+                                        setEditCellValue(item.seller_name || '');
+                                      }}
+                                      title={t('staff_click_to_edit')}
+                                    >
+                                      {item.seller_name || t('staff_unassigned')}
+                                    </span>
+                                  )
                                 ) : (
-                                  <span
-                                    style={{ cursor: 'pointer', textDecoration: 'underline dotted var(--border)', fontWeight: 600 }}
-                                    onClick={() => {
-                                      setEditingCell({ id: item.id, field: 'seller_name' });
-                                      setEditCellValue(item.seller_name || '');
-                                    }}
-                                    title={t('staff_click_to_edit')}
-                                  >
-                                    {item.seller_name || t('staff_unassigned')}
-                                  </span>
-                                )
-                              ) : (
-                                item.seller_name || '-'
+                                  item.seller_name || '-'
+                                )}
+                              </td>
+                              {!hideMargin && (
+                                <td style={{ textAlign: 'right', fontWeight: 800, color: marginKRW >= 0 ? 'var(--green)' : '#e11d48' }}>
+                                  ₩{marginKRW.toLocaleString()}
+                                </td>
                               )}
-                            </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                    {marginStats.soldList.length > 0 && (() => {
+                      const totalCost = marginStats.soldList.reduce((sum, item) => {
+                        const price = Number(item.selling_price || 0);
+                        const cost = price === 0 ? 0 : Number(item.purchase_cost_krw || 0);
+                        return sum + cost;
+                      }, 0);
+                      const totalSales = marginStats.soldList.reduce((sum, item) => sum + Number(item.selling_price || 0), 0);
+                      const totalMargin = marginStats.soldList.reduce((sum, item) => {
+                        const price = Number(item.selling_price || 0);
+                        const cost = price === 0 ? 0 : Number(item.purchase_cost_krw || 0);
+                        const margin = price === 0 ? 0 : (Math.round(price * exchangeRate) - cost);
+                        return sum + margin;
+                      }, 0);
+                      return (
+                        <tfoot>
+                          <tr style={{ background: '#f8fafc', borderTop: '2px solid var(--border)', fontWeight: 800 }}>
+                            <td colSpan={2} style={{ fontWeight: 800 }}>{t('margin_total')} ({t('margin_qty_suffix').replace('{qty}', marginStats.soldList.length.toString())})</td>
+                            {!hideMargin && <td style={{ textAlign: 'right', color: '#64748b' }}>₩{totalCost.toLocaleString()}</td>}
+                            <td style={{ textAlign: 'right', color: 'var(--green)' }}>฿{totalSales.toLocaleString()}</td>
+                            <td></td>
                             {!hideMargin && (
-                              <td style={{ textAlign: 'right', fontWeight: 800, color: marginKRW >= 0 ? 'var(--green)' : '#e11d48' }}>
-                                ₩{marginKRW.toLocaleString()}
+                              <td style={{ textAlign: 'right', fontWeight: 900, color: totalMargin >= 0 ? 'var(--green)' : '#e11d48' }}>
+                                ₩{totalMargin.toLocaleString()}
                               </td>
                             )}
                           </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                  {marginStats.soldList.length > 0 && (() => {
-                    const totalCost = marginStats.soldList.reduce((sum, item) => {
-                      const price = Number(item.selling_price || 0);
-                      const cost = price === 0 ? 0 : Number(item.purchase_cost_krw || 0);
-                      return sum + cost;
-                    }, 0);
-                    const totalSales = marginStats.soldList.reduce((sum, item) => sum + Number(item.selling_price || 0), 0);
-                    const totalMargin = marginStats.soldList.reduce((sum, item) => {
-                      const price = Number(item.selling_price || 0);
-                      const cost = price === 0 ? 0 : Number(item.purchase_cost_krw || 0);
-                      const margin = price === 0 ? 0 : (Math.round(price * exchangeRate) - cost);
-                      return sum + margin;
-                    }, 0);
-                    return (
-                      <tfoot>
-                        <tr style={{ background: '#f8fafc', borderTop: '2px solid var(--border)', fontWeight: 800 }}>
-                          <td colSpan={2} style={{ fontWeight: 800 }}>{t('margin_total')} ({t('margin_qty_suffix').replace('{qty}', marginStats.soldList.length.toString())})</td>
-                          {!hideMargin && <td style={{ textAlign: 'right', color: '#64748b' }}>₩{totalCost.toLocaleString()}</td>}
-                          <td style={{ textAlign: 'right', color: 'var(--green)' }}>฿{totalSales.toLocaleString()}</td>
-                          <td></td>
-                          {!hideMargin && (
-                            <td style={{ textAlign: 'right', fontWeight: 900, color: totalMargin >= 0 ? 'var(--green)' : '#e11d48' }}>
-                              ₩{totalMargin.toLocaleString()}
-                            </td>
-                          )}
-                        </tr>
-                      </tfoot>
-                    );
-                  })()}
-                </table>
-              </div>
+                        </tfoot>
+                      );
+                    })()}
+                  </table>
+                </div>
+              )}
             </div>
 
             {/* Database Missing SQL Warning Banner */}
