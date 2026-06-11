@@ -521,65 +521,14 @@ export default function StaffDashboard() {
     }, 0);
 
     const totalUnpaidCODTHB = soldList.filter(d => d.sale_type === 'cod' && d.payment_status === 'unpaid').reduce((sum, d) => sum + ((Number(d.selling_price) || 0) - (Number(d.deposit_amount) || 0)), 0);
-    
-    // Helper to check if an installment was unpaid/not-yet-paid as of the selected month
-    const isUnpaidAsOfSelectedMonth = (h: any) => {
-      if (h.status === 'unpaid') return true;
-      if (h.status === 'paid' && marginSelectedMonth && marginSelectedMonth !== 'all') {
-        const paidYM = getYearMonth(h.paid_date);
-        if (paidYM && paidYM !== 'Unknown') {
-          return paidYM > marginSelectedMonth;
-        }
-      }
-      return false;
-    };
 
-    // Unpaid installments ONLY for devices sold in the selected month (used to calculate this month's cash collection)
-    const unpaidInstallmentsSelectedMonthSales = soldList.filter(d => d.sale_type === 'installment').reduce((sum, d) => {
+    const totalUnpaidInstallmentTHB = soldList.filter(d => d.sale_type === 'installment').reduce((sum, d) => {
       const history = d.installment_history || [];
-      const unpaidSum = history.filter(isUnpaidAsOfSelectedMonth).reduce((s, h) => s + (Number(h.amount) || 0), 0);
+      const unpaidSum = history.filter((h: any) => h.status === 'unpaid').reduce((s, h) => s + (Number(h.amount) || 0), 0);
       return sum + unpaidSum;
     }, 0);
 
-    // Cumulative unpaid installments (all devices sold in or before the selected month)
-    const allApprovedInstallmentDevices = devices.filter(d => !d.deleted_at && d.is_sold && d.is_approved && d.sale_type === 'installment');
-    const relevantInstallmentDevices = marginSelectedMonth && marginSelectedMonth !== 'all'
-      ? allApprovedInstallmentDevices.filter(d => getYearMonth(d.sale_date) <= marginSelectedMonth)
-      : allApprovedInstallmentDevices;
-
-    const totalUnpaidInstallmentTHB = relevantInstallmentDevices.reduce((sum, d) => {
-      const history = d.installment_history || [];
-      const unpaidSum = history.filter(isUnpaidAsOfSelectedMonth).reduce((s, h) => s + (Number(h.amount) || 0), 0);
-      return sum + unpaidSum;
-    }, 0);
-
-    // Helper to check if a payment was made in the selected month
-    const isPaidInMonth = (paidDateStr: string, ymStr: string) => {
-      if (!paidDateStr) return false;
-      const pts = paidDateStr.split('.').map(x => x.trim()).filter(Boolean);
-      if (pts.length >= 2) {
-        const year = pts[0].length === 2 ? 2000 + Number(pts[0]) : Number(pts[0]);
-        const month = Number(pts[1]);
-        const targetYear = Number(ymStr.split('-')[0]);
-        const targetMonth = Number(ymStr.split('-')[1]);
-        return year === targetYear && month === targetMonth;
-      }
-      return false;
-    };
-
-    // Installments paid in the selected month for devices sold BEFORE the selected month
-    const historicalCollectedInMonth = marginSelectedMonth && marginSelectedMonth !== 'all'
-      ? devices.filter(d => !d.deleted_at && d.is_sold && d.is_approved && d.sale_type === 'installment' && getYearMonth(d.sale_date) < marginSelectedMonth)
-          .reduce((sum, d) => {
-            const history = d.installment_history || [];
-            const paidInMonthSum = history
-              .filter((h: any) => h.status === 'paid' && isPaidInMonth(h.paid_date, marginSelectedMonth))
-              .reduce((s, h) => s + (Number(h.amount) || 0), 0);
-            return sum + paidInMonthSum;
-          }, 0)
-      : 0;
-
-    const actualCollectedTHB = (totalSalesTHB - totalUnpaidCODTHB - unpaidInstallmentsSelectedMonthSales) + historicalCollectedInMonth;
+    const actualCollectedTHB = totalSalesTHB - totalUnpaidCODTHB - totalUnpaidInstallmentTHB;
     const activeInstallmentCount = soldList.filter(d => d.payment_status === 'collecting').length;
     const unpaidList = soldList.filter(d => d.payment_status === 'unpaid' || d.payment_status === 'collecting');
     
@@ -598,14 +547,16 @@ export default function StaffDashboard() {
 
   const customerMonths = useMemo(() => {
     const months = new Set<string>();
-    marginStats.soldList.forEach(item => {
-      const ym = getYearMonth(item.sale_date);
-      if (ym && ym !== 'Unknown') {
-        months.add(ym);
+    devices.forEach(d => {
+      if (d.is_sold && d.is_approved && !d.deleted_at) {
+        const ym = getYearMonth(d.sale_date);
+        if (ym && ym !== 'Unknown') {
+          months.add(ym);
+        }
       }
     });
     return Array.from(months).sort((a, b) => b.localeCompare(a));
-  }, [marginStats.soldList, getYearMonth]);
+  }, [devices, getYearMonth]);
 
   const soldMonths = useMemo(() => {
     const months = new Set<string>();
@@ -6596,7 +6547,7 @@ ON CONFLICT (role) DO UPDATE SET
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>{t('margin_title')}</h3>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', fontWeight: 700 }}>{t('staff_billing_month') || '월별 필터:'}</span>
+                <span style={{ fontSize: '13px', fontWeight: 700 }}>{lang === 'ko' ? '정산 월 (판매 기준):' : (lang === 'th' ? 'เดือนที่ขาย:' : 'Settlement Month (Sale Date):')}</span>
                 <select
                   value={marginSelectedMonth}
                   onChange={(e) => setMarginSelectedMonth(e.target.value)}
