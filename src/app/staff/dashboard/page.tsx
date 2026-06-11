@@ -41,6 +41,53 @@ interface DeviceItem {
   installment_history?: any[];
 }
 
+const formatMonthDropdownLabel = (ymStr: string, lang: string) => {
+  if (!ymStr || ymStr === 'all') return ymStr;
+  const parts = ymStr.split('-');
+  if (parts.length === 2) {
+    const y = parts[0];
+    const m = parseInt(parts[1], 10);
+    if (lang === 'ko') {
+      return `${y}년 ${m}월`;
+    } else if (lang === 'th') {
+      const thaiMonthsFull = [
+        'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+        'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+      ];
+      return `${thaiMonthsFull[m - 1] || parts[1]} ${y}`;
+    } else {
+      const engMonthsFull = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+      return `${engMonthsFull[m - 1] || parts[1]} ${y}`;
+    }
+  }
+  return ymStr;
+};
+
+const getMonthLabel = (ymStr: string, lang: string) => {
+  if (!ymStr || ymStr === 'all') {
+    return lang === 'ko' ? '모든 월' : (lang === 'th' ? 'ทุกเดือน' : 'All Months');
+  }
+  const parts = ymStr.split('-');
+  if (parts.length === 2) {
+    const y = parts[0];
+    const m = parseInt(parts[1], 10);
+    const shortYear = y.length === 4 ? y.substring(2) : y;
+    if (lang === 'ko') {
+      return `${shortYear}년 ${m}월`;
+    } else if (lang === 'th') {
+      const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+      return `${thaiMonths[m - 1] || parts[1]} ${shortYear}`;
+    } else {
+      const engMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${engMonths[m - 1] || parts[1]} '${shortYear}`;
+    }
+  }
+  return ymStr;
+};
+
 export default function StaffDashboard() {
   const router = useRouter();
   const { t, lang, changeLanguage } = useTranslation();
@@ -475,10 +522,22 @@ export default function StaffDashboard() {
 
     const totalUnpaidCODTHB = soldList.filter(d => d.sale_type === 'cod' && d.payment_status === 'unpaid').reduce((sum, d) => sum + ((Number(d.selling_price) || 0) - (Number(d.deposit_amount) || 0)), 0);
     
+    // Helper to check if an installment was unpaid/not-yet-paid as of the selected month
+    const isUnpaidAsOfSelectedMonth = (h: any) => {
+      if (h.status === 'unpaid') return true;
+      if (h.status === 'paid' && marginSelectedMonth && marginSelectedMonth !== 'all') {
+        const paidYM = getYearMonth(h.paid_date);
+        if (paidYM && paidYM !== 'Unknown') {
+          return paidYM > marginSelectedMonth;
+        }
+      }
+      return false;
+    };
+
     // Unpaid installments ONLY for devices sold in the selected month (used to calculate this month's cash collection)
-    const unpaidInstallmentsSelectedMonthSales = soldList.filter(d => d.sale_type === 'installment' && d.payment_status !== 'paid').reduce((sum, d) => {
+    const unpaidInstallmentsSelectedMonthSales = soldList.filter(d => d.sale_type === 'installment').reduce((sum, d) => {
       const history = d.installment_history || [];
-      const unpaidSum = history.filter((h: any) => h.status === 'unpaid').reduce((s, h) => s + (Number(h.amount) || 0), 0);
+      const unpaidSum = history.filter(isUnpaidAsOfSelectedMonth).reduce((s, h) => s + (Number(h.amount) || 0), 0);
       return sum + unpaidSum;
     }, 0);
 
@@ -490,7 +549,7 @@ export default function StaffDashboard() {
 
     const totalUnpaidInstallmentTHB = relevantInstallmentDevices.reduce((sum, d) => {
       const history = d.installment_history || [];
-      const unpaidSum = history.filter((h: any) => h.status === 'unpaid').reduce((s, h) => s + (Number(h.amount) || 0), 0);
+      const unpaidSum = history.filter(isUnpaidAsOfSelectedMonth).reduce((s, h) => s + (Number(h.amount) || 0), 0);
       return sum + unpaidSum;
     }, 0);
 
@@ -499,7 +558,7 @@ export default function StaffDashboard() {
       if (!paidDateStr) return false;
       const pts = paidDateStr.split('.').map(x => x.trim()).filter(Boolean);
       if (pts.length >= 2) {
-        const year = 2000 + Number(pts[0]);
+        const year = pts[0].length === 2 ? 2000 + Number(pts[0]) : Number(pts[0]);
         const month = Number(pts[1]);
         const targetYear = Number(ymStr.split('-')[0]);
         const targetMonth = Number(ymStr.split('-')[1]);
@@ -5373,7 +5432,7 @@ export default function StaffDashboard() {
                 >
                   <option value="all">{t('staff_all_months')}</option>
                   {soldMonths.map(month => (
-                    <option key={month} value={month}>{month}</option>
+                    <option key={month} value={month}>{formatMonthDropdownLabel(month, lang)}</option>
                   ))}
                 </select>
 
@@ -5419,7 +5478,17 @@ export default function StaffDashboard() {
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>
                       📅 {soldSelectedDays.length === 0 
                         ? (lang === 'ko' ? '모든 일자' : (lang === 'th' ? 'ทุกวันที่' : 'All Days'))
-                        : `${soldSelectedDays.sort((a,b)=>a-b).map(d => `${d}일`).join(', ')}`}
+                        : (() => {
+                            const sortedDays = [...soldSelectedDays].sort((a, b) => a - b);
+                            const monthPrefix = getMonthLabel(soldSelectedMonth, lang);
+                            if (lang === 'ko') {
+                              return `${monthPrefix} ${sortedDays.map(d => `${d}일`).join(', ')}`;
+                            } else if (lang === 'th') {
+                              return `${monthPrefix} วันที่ ${sortedDays.join(', ')}`;
+                            } else {
+                              return `${monthPrefix} ${sortedDays.map(d => `${d}`).join(', ')}`;
+                            }
+                          })()}
                     </span>
                     <span>▼</span>
                   </button>
@@ -5895,7 +5964,7 @@ export default function StaffDashboard() {
                   >
                     <option value="all">{t('staff_all_months')}</option>
                     {soldMonths.map(month => (
-                      <option key={month} value={month}>{month}</option>
+                      <option key={month} value={month}>{formatMonthDropdownLabel(month, lang)}</option>
                     ))}
                   </select>
 
@@ -6536,7 +6605,7 @@ ON CONFLICT (role) DO UPDATE SET
                 >
                   <option value="all">{t('staff_all_months') || '전체 월 (All Months)'}</option>
                   {customerMonths.map(month => (
-                    <option key={month} value={month}>{month}</option>
+                    <option key={month} value={month}>{formatMonthDropdownLabel(month, lang)}</option>
                   ))}
                 </select>
               </div>
@@ -6903,7 +6972,7 @@ ON CONFLICT (role) DO UPDATE SET
                   >
                     <option value="all">{t('staff_all_months')}</option>
                     {customerMonths.map(month => (
-                      <option key={month} value={month}>{month}</option>
+                      <option key={month} value={month}>{formatMonthDropdownLabel(month, lang)}</option>
                     ))}
                   </select>
                 </div>
@@ -7065,7 +7134,7 @@ ON CONFLICT (role) DO UPDATE SET
                     >
                       <option value="">전체 월 (All Months)</option>
                       {customerMonths.map(month => (
-                        <option key={month} value={month}>{month}</option>
+                        <option key={month} value={month}>{formatMonthDropdownLabel(month, lang)}</option>
                       ))}
                     </select>
                     <button
