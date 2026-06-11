@@ -266,10 +266,11 @@ export default function StaffDashboard() {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   });
-  const [marginSelectedMonth, setMarginSelectedMonth] = useState(() => {
+  const [marginSelectedMonths, setMarginSelectedMonths] = useState<string[]>(() => {
     const today = new Date();
-    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    return [`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`];
   });
+  const [isMarginMonthFilterOpen, setIsMarginMonthFilterOpen] = useState(false);
   const [instSelectedMonth, setInstSelectedMonth] = useState(() => {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
@@ -498,8 +499,8 @@ export default function StaffDashboard() {
     // Only approved sold items are counted in margins!
     let soldList = devices.filter(d => !d.deleted_at && d.is_sold && d.is_approved);
     
-    if (marginSelectedMonth && marginSelectedMonth !== 'all') {
-      soldList = soldList.filter(d => getYearMonth(d.sale_date) === marginSelectedMonth);
+    if (marginSelectedMonths.length > 0) {
+      soldList = soldList.filter(d => marginSelectedMonths.includes(getYearMonth(d.sale_date)));
     }
     
     // totalSalesTHB: Sum of selling_price for all approved sold items
@@ -528,7 +529,11 @@ export default function StaffDashboard() {
       return sum + unpaidSum;
     }, 0);
 
-    const actualCollectedTHB = totalSalesTHB - totalUnpaidCODTHB - totalUnpaidInstallmentTHB;
+    const totalUnpaidOtherTHB = soldList
+      .filter(d => d.sale_type !== 'cod' && d.sale_type !== 'installment' && d.payment_status === 'unpaid')
+      .reduce((sum, d) => sum + ((Number(d.selling_price) || 0) - (Number(d.deposit_amount) || 0)), 0);
+
+    const actualCollectedTHB = totalSalesTHB - totalUnpaidCODTHB - totalUnpaidInstallmentTHB - totalUnpaidOtherTHB;
     const activeInstallmentCount = soldList.filter(d => d.payment_status === 'collecting').length;
     const unpaidList = soldList.filter(d => d.payment_status === 'unpaid' || d.payment_status === 'collecting');
     
@@ -543,7 +548,7 @@ export default function StaffDashboard() {
       unpaidList,
       soldList
     };
-  }, [devices, exchangeRate, marginSelectedMonth, getYearMonth]);
+  }, [devices, exchangeRate, marginSelectedMonths, getYearMonth]);
 
   const customerMonths = useMemo(() => {
     const months = new Set<string>();
@@ -627,12 +632,51 @@ export default function StaffDashboard() {
   const handleCancelPayment = async (deviceId: string, saleType?: string) => {
     if (!confirm('해당 건의 완납 처리를 취소하고 미수/할부 상태로 되돌리시겠습니까?\n(Do you want to cancel the payment completion for this item?)')) return;
     try {
+      const device = devices.find(d => d.id === deviceId);
+      let history = device?.installment_history ? [...device.installment_history] : [];
+      
+      if (saleType === 'installment' && history.length > 0) {
+        // Find the latest paid_date in the history to revert
+        const paidDates = history.map((h: any) => h.paid_date).filter(Boolean);
+        if (paidDates.length > 0) {
+          const parseDate = (dStr: string) => {
+            const pts = dStr.split('.').map(x => x.trim()).filter(Boolean);
+            if (pts.length >= 3) {
+              const y = pts[0].length === 2 ? 2000 + Number(pts[0]) : Number(pts[0]);
+              const m = Number(pts[1]) - 1;
+              const d = Number(pts[2]);
+              return new Date(y, m, d).getTime();
+            }
+            return 0;
+          };
+          
+          const times = paidDates.map(parseDate);
+          const maxTime = Math.max(...times);
+          
+          history = history.map((h: any) => {
+            if (h.status === 'paid' && h.paid_date && parseDate(h.paid_date) === maxTime) {
+              return { ...h, status: 'unpaid', paid_date: null };
+            }
+            return h;
+          });
+        } else {
+          // Fallback if no dates: mark all as unpaid
+          history = history.map((h: any) => ({ ...h, status: 'unpaid', paid_date: null }));
+        }
+      }
+
       const targetStatus = saleType === 'installment' ? 'collecting' : 'unpaid';
+      
+      const updateData: any = {
+        payment_status: targetStatus
+      };
+      if (saleType === 'installment') {
+        updateData.installment_history = history;
+      }
+
       const { error } = await supabase
         .from('sheets_inventory')
-        .update({
-          payment_status: targetStatus
-        })
+        .update(updateData)
         .eq('id', deviceId);
 
       if (error) throw error;
@@ -6548,17 +6592,146 @@ ON CONFLICT (role) DO UPDATE SET
               <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>{t('margin_title')}</h3>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <span style={{ fontSize: '13px', fontWeight: 700 }}>{lang === 'ko' ? '정산 월 (판매 기준):' : (lang === 'th' ? 'เดือนที่ขาย:' : 'Settlement Month (Sale Date):')}</span>
-                <select
-                  value={marginSelectedMonth}
-                  onChange={(e) => setMarginSelectedMonth(e.target.value)}
-                  className="form-input"
-                  style={{ width: '150px', margin: 0, padding: '6px 12px', fontSize: '13px', height: '34px' }}
-                >
-                  <option value="all">{t('staff_all_months') || '전체 월 (All Months)'}</option>
-                  {customerMonths.map(month => (
-                    <option key={month} value={month}>{formatMonthDropdownLabel(month, lang)}</option>
-                  ))}
-                </select>
+                <div style={{ position: 'relative', display: 'inline-block' }}>
+                  {isMarginMonthFilterOpen && (
+                    <div 
+                      onClick={() => setIsMarginMonthFilterOpen(false)} 
+                      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999, background: 'transparent' }}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsMarginMonthFilterOpen(!isMarginMonthFilterOpen)}
+                    className="form-input"
+                    style={{
+                      margin: 0,
+                      padding: '6px 12px',
+                      fontSize: '13px',
+                      height: '34px',
+                      background: '#fff',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      minWidth: '160px',
+                      justifyContent: 'space-between',
+                      position: 'relative',
+                      zIndex: 1000
+                    }}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>
+                      📅 {marginSelectedMonths.length === 0 
+                        ? (lang === 'ko' ? '전체 월 (All Months)' : (lang === 'th' ? 'ทุกเดือน (All Months)' : 'All Months'))
+                        : `${marginSelectedMonths.sort((a,b)=>b.localeCompare(a)).map(m => formatMonthDropdownLabel(m, lang)).join(', ')}`}
+                    </span>
+                    <span>▼</span>
+                  </button>
+
+                  {isMarginMonthFilterOpen && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        right: 0,
+                        zIndex: 1000,
+                        background: '#fff',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        marginTop: '4px',
+                        padding: '12px',
+                        width: '260px',
+                        maxHeight: '350px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setMarginSelectedMonths([])}
+                          style={{
+                            flex: 1,
+                            padding: '4px 8px',
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            background: '#f1f5f9',
+                            border: '1px solid var(--border)',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            color: 'var(--t2)'
+                          }}
+                        >
+                          {lang === 'ko' ? '전체 월 선택 (All)' : (lang === 'th' ? 'ล้างค่า (ทุกเดือน)' : 'Select All')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsMarginMonthFilterOpen(false)}
+                          style={{
+                            padding: '4px 10px',
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            background: 'var(--purple-l)',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            color: '#fff'
+                          }}
+                        >
+                          {lang === 'ko' ? '확인' : (lang === 'th' ? 'ตกลง' : 'OK')}
+                        </button>
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px',
+                          overflowY: 'auto',
+                          maxHeight: '220px',
+                          padding: '2px'
+                        }}
+                      >
+                        {customerMonths.map(month => {
+                          const isChecked = marginSelectedMonths.includes(month);
+                          return (
+                            <label
+                              key={month}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '6px 8px',
+                                border: isChecked ? '1px solid var(--purple-l)' : '1px solid var(--border)',
+                                borderRadius: '6px',
+                                background: isChecked ? 'rgba(139, 92, 246, 0.08)' : 'transparent',
+                                cursor: 'pointer',
+                                fontSize: '12px',
+                                fontWeight: isChecked ? 800 : 'normal',
+                                color: isChecked ? 'var(--purple-l)' : 'var(--t1)',
+                                userSelect: 'none',
+                                transition: 'all 0.15s'
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => {
+                                  setMarginSelectedMonths(prev => 
+                                    prev.includes(month) 
+                                      ? prev.filter(m => m !== month) 
+                                      : [...prev, month]
+                                  );
+                                }}
+                              />
+                              {formatMonthDropdownLabel(month, lang)}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
