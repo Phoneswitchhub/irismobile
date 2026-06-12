@@ -4,15 +4,8 @@ const filePath = 'c:/Users/ASUS/Documents/GitHub/phoneswitchhub/src/app/staff/da
 const content = fs.readFileSync(filePath, 'utf-8');
 const lines = content.split('\n');
 
-let startIdx = -1;
 lines.forEach((line, idx) => {
-  if (line.includes('handleFileChange =')) {
-    startIdx = idx;
+  if (line.includes('type="file"')) {
+    console.log(`Line ${idx + 1}: ${line.trim()}`);
   }
 });
-if (startIdx !== -1) {
-  console.log(`handleFileChange starts at line ${startIdx + 1}`);
-  for (let i = startIdx; i < startIdx + 20; i++) {
-    console.log(`${i + 1}: ${lines[i].trim()}`);
-  }
-}

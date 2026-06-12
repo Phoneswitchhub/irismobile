@@ -8867,7 +8867,7 @@ CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authentic
                   onClick={() => setIntakeMethod('file')}
                   style={{ flex: 1, padding: '10px', border: 'none', background: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, transition: 'all 0.2s' }}
                 >
-                  {t('staff_tab_csv') || '📁 CSV 파일 업로드'}
+                  {t('staff_tab_csv') || '📁 CSV / Excel 파일 업로드'}
                 </button>
                 <button 
                   type="button"
@@ -8879,28 +8879,28 @@ CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authentic
                 </button>
               </div>
 
-              {/* METHOD 2: CSV File Upload */}
+              {/* METHOD 2: CSV / Excel File Upload */}
               {intakeMethod === 'file' && (
                 <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div style={{ background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', fontSize: '12px', lineHeight: 1.6, color: 'var(--t2)' }}>
-                    <h4 style={{ fontWeight: 800, color: 'var(--t1)', marginBottom: '8px' }}>{t('staff_csv_info_title') || '📁 CSV 파일 내보내기 안내'}</h4>
-                    <p>{t('staff_csv_info_1') || '구글 스프레드시트 또는 엑셀에서 [파일] ➔ [다운로드] ➔ [쉼표로 구분된 값(.csv)]으로 저장한 뒤 아래에 업로드해 주세요.'}</p>
+                    <h4 style={{ fontWeight: 800, color: 'var(--t1)', marginBottom: '8px' }}>{t('staff_csv_info_title') || '📁 파일 업로드 안내'}</h4>
+                    <p>{t('staff_csv_info_1') || '엑셀(.xlsx, .xls) 또는 CSV(.csv) 파일을 업로드해 주세요. 맞춤형 파일 양식(P/G No, 실판매가 포함)도 자동 인식됩니다.'}</p>
                   </div>
 
                   <div style={{ border: '2px dashed var(--border)', borderRadius: '12px', padding: '24px', textAlign: 'center', background: '#f8fafc', position: 'relative' }}>
                     <input
                       type="file"
-                      accept=".csv"
+                      accept=".csv,.xlsx,.xls"
                       onChange={handleFileChange}
                       style={{ display: 'block', margin: '0 auto 12px' }}
                     />
-                    <span style={{ fontSize: '11px', color: '#64748b' }}>{t('staff_csv_info_2') || 'UTF-8 인코딩 형식의 파일만 지원됩니다.'}</span>
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>{t('staff_csv_info_2') || '엑셀(.xlsx, .xls) 및 CSV(.csv) 파일을 지원합니다.'}</span>
                   </div>
 
                   {csvFileText && (
                     <div className="animate-fade-in" style={{ marginTop: '8px' }}>
                       <label className="form-label" style={{ fontSize: '11px', fontWeight: 700, color: 'var(--t2)', marginBottom: '6px', display: 'block' }}>
-                        {t('staff_csv_preview') || '📄 로드된 CSV 파일 데이터 일부 미리보기'}
+                        {t('staff_csv_preview') || '📄 로드된 파일 데이터 일부 미리보기'}
                       </label>
                       <textarea
                         rows={4}
@@ -8919,7 +8919,7 @@ CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authentic
                     disabled={importingCSV || !csvFileText}
                     style={{ margin: '8px 0 0' }}
                   >
-                    {importingCSV ? (t('staff_btn_csv_upload_loading') || '🔄 기기 업로드 처리 중...') : (t('staff_btn_csv_upload') || '🚀 업로드된 CSV 데이터 일괄 등록')}
+                    {importingCSV ? (t('staff_btn_csv_upload_loading') || '🔄 기기 업로드 처리 중...') : (t('staff_btn_csv_upload') || '🚀 업로드된 데이터 일괄 등록')}
                   </button>
                 </div>
               )}
