@@ -2404,10 +2404,29 @@ export default function StaffDashboard() {
       const stickerNo = stickerIdx !== -1 && row[stickerIdx] ? String(row[stickerIdx]).trim() : '';
       if (!stickerNo) continue;
 
+      // 1. Skip rows that represent summary/totals (e.g. starts with '합계' or sticker contains '합계'/'수량')
+      const col0 = row[0] ? String(row[0]).trim() : '';
+      if (
+        col0 === '합계' || 
+        col0.includes('합계') || 
+        col0.toLowerCase().includes('total') ||
+        stickerNo.includes('합계') ||
+        stickerNo.includes('수량') ||
+        stickerNo.includes('판매 수량') ||
+        stickerNo.includes('판매수량')
+      ) {
+        continue;
+      }
+
       // Skip rows with no valid IMEI
       let rawImei = imeiIdx !== -1 && row[imeiIdx] ? String(row[imeiIdx]).trim().replace(/\s+/g, '') : '';
       if (!rawImei && stickerNo) {
         rawImei = stickerNo.replace(/\s+/g, '');
+      }
+
+      // 2. An IMEI or serial should never contain Korean characters (indicating metadata/footer texts)
+      if (/[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(rawImei)) {
+        continue;
       }
 
       if (!rawImei || rawImei.toLowerCase() === 'imei' || rawImei.toLowerCase() === 'imei/serial' || rawImei.length < 4) {
