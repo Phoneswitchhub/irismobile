@@ -380,6 +380,7 @@ export default function StaffDashboard() {
   const [importingCSV, setImportingCSV] = useState(false);
   const [intakeMethod, setIntakeMethod] = useState<'file' | 'paste'>('file');
   const [pasteText, setPasteText] = useState('');
+  const [bulkImportLocation, setBulkImportLocation] = useState('DHL');
   const [historySubTab, setHistorySubTab] = useState<'summary' | 'audit'>('summary');
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [auditFilterType, setAuditFilterType] = useState('all');
@@ -2498,7 +2499,7 @@ export default function StaffDashboard() {
       } else {
         const isSoldStr = isSoldIdx !== 99 && row[isSoldIdx] ? String(row[isSoldIdx]).trim().toUpperCase() : 'FALSE';
         isSoldVal = isSoldStr === 'TRUE' || isSoldStr === 'YES' || isSoldStr === '예' || isSoldStr === '1';
-        loc = locationIdx !== 99 && row[locationIdx] ? String(row[locationIdx]).trim() : 'Shop';
+        loc = locationIdx !== 99 && row[locationIdx] ? String(row[locationIdx]).trim() : bulkImportLocation;
         const batteryClean = batteryIdx !== 99 && row[batteryIdx] ? String(row[batteryIdx]).trim().replace(/[^\d]/g, '') : '';
         battery = batteryClean;
         seller = sellerIdx !== 99 && row[sellerIdx] ? String(row[sellerIdx]).trim() : '';
@@ -2525,8 +2526,8 @@ export default function StaffDashboard() {
         imei: rawImei,
         color: colorVal || null,
         is_sold: isSoldVal,
-        stock_location: loc || 'Shop',
-        battery_pct: battery || '100',
+        stock_location: loc || bulkImportLocation,
+        battery_pct: battery || '',
         seller_name: seller || null,
         notes: note || null,
         selling_price: sellingPriceVal,
@@ -8973,6 +8974,30 @@ CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authentic
                 >
                   {t('staff_tab_paste') || '📋 복사 붙여넣기 (Ctrl+C/V)'}
                 </button>
+              </div>
+
+              {/* Target Location Selector for Bulk Import */}
+              <div className="form-group" style={{ marginBottom: '20px', background: '#f8fafc', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                <label className="form-label" style={{ fontSize: '12px', fontWeight: 800, color: 'var(--t1)', marginBottom: '6px', display: 'block' }}>
+                  {lang === 'ko' ? '📍 기본 입고 위치 선택 (Default Location)' : '📍 เลือกตำแหน่งเริ่มต้น'}
+                </label>
+                <select
+                  value={bulkImportLocation}
+                  onChange={(e) => setBulkImportLocation(e.target.value)}
+                  className="form-input"
+                  style={{ margin: 0, padding: '8px 12px', fontSize: '13px', background: '#fff', border: '1px solid var(--border)', borderRadius: '8px', width: '100%' }}
+                >
+                  <option value="DHL">{lang === 'ko' ? '입고 대기 (DHL)' : 'รอเข้าคลัง (DHL)'}</option>
+                  <option value="Shop">Shop (매장)</option>
+                  {locations.map(loc => (
+                    <option key={loc.id} value={loc.name}>{loc.name}</option>
+                  ))}
+                </select>
+                <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                  {lang === 'ko' 
+                    ? '※ 업로드/붙여넣기한 데이터에 위치 정보가 없는 행들은 설정하신 이 위치로 자동 지정됩니다.' 
+                    : '※ รายการที่ไม่มีข้อมูลตำแหน่งจะถูกตั้งค่าเป็นตำแหน่งนี้'}
+                </span>
               </div>
 
               {/* METHOD 2: CSV / Excel File Upload */}
