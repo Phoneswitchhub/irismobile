@@ -2516,6 +2516,16 @@ export default function StaffDashboard() {
     return recordsToInsert;
   };
 
+  const csvPreviewRecords = useMemo(() => {
+    if (!csvFileText.trim()) return [];
+    try {
+      const parsed = parseCSV(csvFileText.trim());
+      return processRawRows(parsed, new Map(), new Date().toISOString());
+    } catch (e) {
+      return [];
+    }
+  }, [csvFileText]);
+
   // 5. Bulk CSV Upload Handler
   const handleCSVImport = async () => {
     if (!csvFileText.trim()) {
@@ -8914,17 +8924,49 @@ CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authentic
                   </div>
 
                   {csvFileText && (
-                    <div className="animate-fade-in" style={{ marginTop: '8px' }}>
-                      <label className="form-label" style={{ fontSize: '11px', fontWeight: 700, color: 'var(--t2)', marginBottom: '6px', display: 'block' }}>
-                        {t('staff_csv_preview') || '📄 로드된 파일 데이터 일부 미리보기'}
+                    <div className="animate-fade-in" style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label className="form-label" style={{ fontSize: '12px', fontWeight: 800, color: 'var(--t1)', marginBottom: '4px', display: 'block' }}>
+                        {t('staff_csv_preview_parsed') || '📋 파싱된 기기 정보 미리보기'}
                       </label>
-                      <textarea
-                        rows={4}
-                        readOnly
-                        value={csvFileText.slice(0, 1000) + (csvFileText.length > 1000 ? '\n...[생략]...' : '')}
-                        className="form-textarea"
-                        style={{ fontSize: '11px', fontFamily: 'monospace', background: '#f1f5f9', color: '#334155', resize: 'none' }}
-                      />
+                      {csvPreviewRecords.length > 0 ? (
+                        <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '10px', background: '#fff' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', textAlign: 'left' }}>
+                            <thead>
+                              <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 1 }}>
+                                <th style={{ padding: '8px 12px', fontWeight: 800, color: '#475569' }}>Sticker (P/G)</th>
+                                <th style={{ padding: '8px 12px', fontWeight: 800, color: '#475569' }}>Model (모델명)</th>
+                                <th style={{ padding: '8px 12px', fontWeight: 800, color: '#475569' }}>IMEI</th>
+                                <th style={{ padding: '8px 12px', fontWeight: 800, color: '#475569' }}>Color (색상)</th>
+                                <th style={{ padding: '8px 12px', fontWeight: 800, color: '#475569', textAlign: 'right' }}>Cost (매입가)</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {csvPreviewRecords.slice(0, 5).map((rec: any, idx: number) => (
+                                <tr key={idx} style={{ borderBottom: idx === csvPreviewRecords.length - 1 && csvPreviewRecords.length <= 5 ? 'none' : '1px solid #f1f5f9' }}>
+                                  <td style={{ padding: '8px 12px', color: '#64748b', fontFamily: 'monospace' }}>{rec.sticker || '-'}</td>
+                                  <td style={{ padding: '8px 12px', fontWeight: 700, color: 'var(--purple-l)' }}>{rec.model_name || '-'}</td>
+                                  <td style={{ padding: '8px 12px', color: '#64748b', fontFamily: 'monospace' }}>{rec.imei || '-'}</td>
+                                  <td style={{ padding: '8px 12px', color: '#475569' }}>{rec.color || '-'}</td>
+                                  <td style={{ padding: '8px 12px', color: 'var(--green)', fontWeight: 700, textAlign: 'right' }}>
+                                    {rec.purchase_cost_krw ? rec.purchase_cost_krw.toLocaleString() : '0'} ₩
+                                  </td>
+                                </tr>
+                              ))}
+                              {csvPreviewRecords.length > 5 && (
+                                <tr>
+                                  <td colSpan={5} style={{ padding: '8px 12px', textAlign: 'center', color: '#64748b', background: '#f8fafc', fontWeight: 600 }}>
+                                    ... 외 {csvPreviewRecords.length - 5}개의 기기가 파일에 더 들어있습니다. ...
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div style={{ padding: '16px', background: '#fff1f2', border: '1px solid #fecdd3', borderRadius: '10px', color: '#991b1b', fontSize: '12px', textAlign: 'center', fontWeight: 700 }}>
+                          ⚠️ 파일 내용에서 입고 가능한 유효 기기 정보(IMEI 또는 Sticker)를 찾지 못했습니다. 머리글 행 이름과 기기 정보 데이터 칸들을 확인해 주세요.
+                        </div>
+                      )}
                     </div>
                   )}
 
