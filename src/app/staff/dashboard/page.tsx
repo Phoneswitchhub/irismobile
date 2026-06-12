@@ -2241,29 +2241,38 @@ export default function StaffDashboard() {
   const processRawRows = (rows: string[][], dbMap: Map<string, any>, nowString: string) => {
     if (rows.length === 0) return [];
 
-    // 1. Detect header row by scanning the first few rows for IMEI column
+    // 1. Detect header row by scanning the first few rows (up to 25) for IMEI or custom columns
     let headerRowIdx = 0;
     let headerDetected = false;
-    for (let r = 0; r < Math.min(rows.length, 6); r++) {
+    let isCustomExcelLayout = false;
+
+    for (let r = 0; r < Math.min(rows.length, 25); r++) {
       const row = rows[r];
-      const hasImei = row.some(cell => cell && cell.toLowerCase().replace(/\s+/g, '').includes('imei'));
-      if (hasImei) {
+      if (!row) continue;
+      
+      const hasImei = row.some(cell => cell && String(cell).toLowerCase().replace(/\s+/g, '').includes('imei'));
+      
+      // Also check custom layout headers in this row
+      const hasPG = row.some(cell => {
+        const clean = cell ? String(cell).toLowerCase().replace(/\s+/g, '') : '';
+        return clean === 'p/gno' || clean === 'pgno' || clean === '피지넘버';
+      });
+      const hasSelling = row.some(cell => {
+        const clean = cell ? String(cell).toLowerCase().replace(/\s+/g, '') : '';
+        return clean.includes('실판매가') || clean.includes('실판매');
+      });
+
+      if (hasImei || (hasPG && hasSelling)) {
         headerRowIdx = r;
         headerDetected = true;
+        if (hasPG && hasSelling) {
+          isCustomExcelLayout = true;
+        }
         break;
       }
     }
 
     const headerRow = rows[headerRowIdx] || [];
-
-    // 2. Check if this is the custom Excel layout
-    const isCustomExcelLayout = headerRow.some(cell => {
-      const clean = cell ? String(cell).toLowerCase().replace(/\s+/g, '') : '';
-      return clean === 'p/gno' || clean === 'pgno' || clean === '피지넘버';
-    }) && headerRow.some(cell => {
-      const clean = cell ? String(cell).toLowerCase().replace(/\s+/g, '') : '';
-      return clean.includes('실판매가') || clean.includes('실판매');
-    });
 
     // 3. Mapping indices
     let siteDateIdx = -1;
@@ -2284,19 +2293,19 @@ export default function StaffDashboard() {
     if (isCustomExcelLayout) {
       stickerIdx = headerRow.findIndex(cell => {
         const clean = cell ? String(cell).toLowerCase().replace(/\s+/g, '') : '';
-        return clean === 'p/gno' || clean === 'pgno' || clean === '피지넘버';
+        return clean === 'p/gno' || clean === 'pgno' || clean === '피지넘버' || clean.includes('sticker') || clean.includes('스티커');
       });
       modelIdx = headerRow.findIndex(cell => {
         const clean = cell ? String(cell).toLowerCase().replace(/\s+/g, '') : '';
-        return clean === '모델명';
+        return clean.includes('모델') || clean.includes('model') || clean.includes('기기') || clean.includes('품명');
       });
       imeiIdx = headerRow.findIndex(cell => {
-        const clean = cell ? String(cell).toUpperCase() : '';
-        return clean === 'IMEI';
+        const clean = cell ? String(cell).toLowerCase().replace(/\s+/g, '') : '';
+        return clean.includes('imei') || clean.includes('일련번호') || clean.includes('시리얼');
       });
       colorIdx = headerRow.findIndex(cell => {
         const clean = cell ? String(cell).toLowerCase().replace(/\s+/g, '') : '';
-        return clean === '색상';
+        return clean.includes('색상') || clean.includes('color') || clean.includes('색');
       });
       purchaseCostIdx = headerRow.findIndex(cell => {
         const clean = cell ? String(cell).toLowerCase().replace(/\s+/g, '') : '';
@@ -2399,8 +2408,18 @@ export default function StaffDashboard() {
         continue;
       }
 
+      const rawImeiTrimmed = rawImei.trim();
+      const existing = dbMap.get(rawImeiTrimmed);
+
       let model = modelIdx !== -1 && row[modelIdx] ? String(row[modelIdx]).trim() : '';
+      if (!model) {
+        model = existing?.model_name || 'Unknown';
+      }
+      
       let colorVal = colorIdx !== -1 && row[colorIdx] ? String(row[colorIdx]).trim() : '';
+      if (!colorVal) {
+        colorVal = existing?.color || '';
+      }
       
       let isSoldVal = false;
       let loc = 'Shop';
@@ -2448,9 +2467,6 @@ export default function StaffDashboard() {
         saleD = saleDateIdx !== 99 && row[saleDateIdx] ? String(row[saleDateIdx]).trim() : '';
         siteD = siteDateIdx !== 99 && row[siteDateIdx] ? String(row[siteDateIdx]).trim() : '';
       }
-
-      const rawImeiTrimmed = rawImei.trim();
-      const existing = dbMap.get(rawImeiTrimmed);
 
       const newRecord: any = {
         site_date: siteD || null,
