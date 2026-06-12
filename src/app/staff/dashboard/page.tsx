@@ -5474,19 +5474,40 @@ export default function StaffDashboard() {
                           }}
                         >
                           {editingCell?.id === item.id && editingCell?.field === 'color' ? (
-                            <input
-                              type="text"
+                            <select
                               value={editCellValue}
-                              onChange={(e) => setEditCellValue(e.target.value)}
-                              onBlur={() => handleInlineSave(item.id, 'color', editCellValue)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleInlineSave(item.id, 'color', editCellValue);
-                                if (e.key === 'Escape') setEditingCell(null);
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === '___custom___') {
+                                  const customVal = prompt('직접 입력할 색상을 영어로 입력하세요 (예: STARLIGHT):');
+                                  if (customVal !== null) {
+                                    const upper = customVal.trim().toUpperCase();
+                                    if (upper) {
+                                      setEditCellValue(upper);
+                                      handleInlineSave(item.id, 'color', upper);
+                                    }
+                                  }
+                                  setEditingCell(null);
+                                } else {
+                                  setEditCellValue(val);
+                                  handleInlineSave(item.id, 'color', val);
+                                  setEditingCell(null);
+                                }
                               }}
+                              onBlur={() => setEditingCell(null)}
                               autoFocus
                               className="form-input"
                               style={{ margin: 0, padding: '2px 4px', fontSize: '12px', width: '95%' }}
-                            />
+                            >
+                              {item.color && !standardColors.includes(item.color.toUpperCase()) && (
+                                <option value={item.color}>{item.color} (현재값)</option>
+                              )}
+                              <option value="">선택 안함</option>
+                              {standardColors.map(col => (
+                                <option key={col} value={col}>{col}</option>
+                              ))}
+                              <option value="___custom___" style={{ color: 'var(--purple)', fontWeight: 700 }}>✍️ 직접 입력...</option>
+                            </select>
                           ) : (
                             item.color || '-'
                           )}
@@ -9741,14 +9762,32 @@ CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authentic
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
                 <label className="form-label">{t('staff_label_color')}</label>
-                <input
-                  type="text"
-                  placeholder="BLACK"
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
+                <select
+                  value={standardColors.includes(color.toUpperCase()) ? color.toUpperCase() : (color ? '___custom___' : '')}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '___custom___') {
+                      const customVal = prompt('직접 입력할 색상을 영어로 입력하세요 (예: STARLIGHT):');
+                      if (customVal !== null) {
+                        setColor(customVal.trim().toUpperCase());
+                      }
+                    } else {
+                      setColor(val);
+                    }
+                  }}
                   className="form-input"
                   style={{ margin: 0 }}
-                />
+                  disabled={!!editingDevice && !currentPermissions.can_edit_core_device_fields}
+                >
+                  <option value="">선택 안함</option>
+                  {color && !standardColors.includes(color.toUpperCase()) && (
+                    <option value="___custom___">{color} (현재값/직접입력)</option>
+                  )}
+                  {standardColors.map(col => (
+                    <option key={col} value={col}>{col}</option>
+                  ))}
+                  <option value="___custom___" style={{ color: 'var(--purple)', fontWeight: 700 }}>✍️ 직접 입력...</option>
+                </select>
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
