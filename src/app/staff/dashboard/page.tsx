@@ -2301,8 +2301,14 @@ export default function StaffDashboard() {
       });
       imeiIdx = headerRow.findIndex(cell => {
         const clean = cell ? String(cell).toLowerCase().replace(/\s+/g, '') : '';
-        return clean.includes('imei') || clean.includes('일련번호') || clean.includes('시리얼');
+        return clean === 'imei' || clean.includes('imei');
       });
+      if (imeiIdx === -1) {
+        imeiIdx = headerRow.findIndex(cell => {
+          const clean = cell ? String(cell).toLowerCase().replace(/\s+/g, '') : '';
+          return clean.includes('일련번호') || clean.includes('시리얼') || clean.includes('serial');
+        });
+      }
       colorIdx = headerRow.findIndex(cell => {
         const clean = cell ? String(cell).toLowerCase().replace(/\s+/g, '') : '';
         return clean.includes('색상') || clean.includes('color') || clean.includes('색');
