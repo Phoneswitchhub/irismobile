@@ -42,6 +42,30 @@ interface DeviceItem {
   installment_history?: any[];
 }
 
+const standardColors = ['BLACK', 'BLUE', 'BRONZE', 'PINK', 'WHITE', 'GOLD', 'GRAY', 'GREEN', 'PURPLE', 'YELLOW', 'SILVER', 'RED', 'ORANGE', 'CREAM', 'TITANIUM'];
+
+const normalizeColor = (colorStr: string): string => {
+  if (!colorStr) return '';
+  const clean = colorStr.toLowerCase().replace(/\s+/g, '');
+  if (clean.includes('black') || clean.includes('블랙')) return 'BLACK';
+  if (clean.includes('white') || clean.includes('화이트') || clean.includes('스타라이트') || clean.includes('starlight')) return 'WHITE';
+  if (clean.includes('silver') || clean.includes('실버')) return 'SILVER';
+  if (clean.includes('gray') || clean.includes('grey') || clean.includes('그레이') || clean.includes('그라파이트')) return 'GRAY';
+  if (clean.includes('gold') || clean.includes('골드') || clean.includes('골우') || clean.includes('golw')) return 'GOLD';
+  if (clean.includes('yellow') || clean.includes('옐로우') || clean.includes('노랑') || clean.includes('옐로')) return 'YELLOW';
+  if (clean.includes('blue') || clean.includes('블루') || clean.includes('파랑')) return 'BLUE';
+  if (clean.includes('green') || clean.includes('그린') || clean.includes('초록')) return 'GREEN';
+  if (clean.includes('red') || clean.includes('레드') || clean.includes('빨강')) return 'RED';
+  if (clean.includes('pink') || clean.includes('핑크') || clean.includes('코랄')) return 'PINK';
+  if (clean.includes('purple') || clean.includes('퍼플') || clean.includes('보라') || clean.includes('라벤더')) return 'PURPLE';
+  if (clean.includes('bronze') || clean.includes('브론즈')) return 'BRONZE';
+  if (clean.includes('cream') || clean.includes('크림') || clean.includes('아이보리')) return 'CREAM';
+  if (clean.includes('titanium') || clean.includes('티타늄') || clean.includes('내추럴') || clean.includes('내츄럴') || clean.includes('디저트') || clean.includes('네추럴')) return 'TITANIUM';
+  if (clean.includes('orange') || clean.includes('오렌지') || clean.includes('orang')) return 'ORANGE';
+  
+  return colorStr.toUpperCase();
+};
+
 const formatMonthDropdownLabel = (ymStr: string, lang: string) => {
   if (!ymStr || ymStr === 'all') return ymStr;
   const parts = ymStr.split('-');
@@ -2441,14 +2465,14 @@ export default function StaffDashboard() {
         model = existing?.model_name || 'Unknown';
       }
       
-      let colorVal = colorIdx !== -1 && row[colorIdx] ? String(row[colorIdx]).trim() : '';
+      let colorVal = colorIdx !== -1 && row[colorIdx] ? normalizeColor(String(row[colorIdx])) : '';
       if (!colorVal) {
         colorVal = existing?.color || '';
       }
       
       let isSoldVal = false;
       let loc = 'Shop';
-      let battery = '100';
+      let battery = '';
       let seller = '';
       let note = '';
       let sellingPriceVal = 0;
@@ -2464,7 +2488,7 @@ export default function StaffDashboard() {
         
         loc = 'DHL'; // For custom layout, go straight to pending intake DHL
         isSoldVal = false;
-        battery = '100';
+        battery = '';
         
         const d = new Date();
         const yy = String(d.getFullYear()).slice(-2);
@@ -2475,8 +2499,8 @@ export default function StaffDashboard() {
         const isSoldStr = isSoldIdx !== 99 && row[isSoldIdx] ? String(row[isSoldIdx]).trim().toUpperCase() : 'FALSE';
         isSoldVal = isSoldStr === 'TRUE' || isSoldStr === 'YES' || isSoldStr === '예' || isSoldStr === '1';
         loc = locationIdx !== 99 && row[locationIdx] ? String(row[locationIdx]).trim() : 'Shop';
-        const batteryClean = batteryIdx !== 99 && row[batteryIdx] ? String(row[batteryIdx]).trim().replace(/[^\d]/g, '') : '100';
-        battery = batteryClean || '100';
+        const batteryClean = batteryIdx !== 99 && row[batteryIdx] ? String(row[batteryIdx]).trim().replace(/[^\d]/g, '') : '';
+        battery = batteryClean;
         seller = sellerIdx !== 99 && row[sellerIdx] ? String(row[sellerIdx]).trim() : '';
         note = notesIdx !== 99 && row[notesIdx] ? String(row[notesIdx]).trim() : '';
 
