@@ -14,6 +14,9 @@ export default function ContractPage() {
   const { t } = useTranslation();
 
   // 1. Contract Meta States
+  const [contractType, setContractType] = useState<'installment' | 'purchase'>('installment');
+  const [accessoriesType, setAccessoriesType] = useState<'complete' | 'incomplete' | 'none'>('complete');
+  const [accessoriesText, setAccessoriesText] = useState('');
   const [contractNo, setContractNo] = useState('IRISBUY0072');
   const [contractDate, setContractDate] = useState(new Date().toISOString().split('T')[0]);
   const [storeName, setStoreName] = useState('ร้าน ไอริส โมบาย');
@@ -350,6 +353,10 @@ export default function ContractPage() {
         down_payment_date: downPaymentDate,
         first_installment_date: firstInstallmentDate,
         
+        contract_type: contractType,
+        accessories_type: accessoriesType,
+        accessories_text: accessoriesText,
+        
         status: 'pending_signature',
         seller_id: user.id
       };
@@ -361,7 +368,7 @@ export default function ContractPage() {
         .single();
 
       if (error) {
-        alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + error.message + '\n\n💡 Please check if the contracts table is created in Supabase.');
+        alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + error.message + '\n\n💡 만약 contract_type 또는 accessories_type 컬럼이 없다는 에러가 발생하면, Supabase SQL Editor에 아래 쿼리를 입력해 실행해주세요:\n\nALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS contract_type TEXT DEFAULT \'installment\';\nALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS accessories_type TEXT;\nALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS accessories_text TEXT;');
       } else if (data) {
         const link = `${window.location.origin}/contract/sign/${data.id}`;
         setGeneratedLink(link);
@@ -409,6 +416,10 @@ export default function ContractPage() {
     setInstallmentAmount(c.installment_amount || 0);
     setDownPaymentDate(c.down_payment_date || '');
     setFirstInstallmentDate(c.first_installment_date || '');
+    
+    setContractType(c.contract_type || 'installment');
+    setAccessoriesType(c.accessories_type || 'complete');
+    setAccessoriesText(c.accessories_text || '');
     
     if (c.signature_data) {
       setSignatureData(c.signature_data);
@@ -477,6 +488,10 @@ export default function ContractPage() {
     const d = new Date();
     d.setMonth(d.getMonth() + 1);
     setFirstInstallmentDate(d.toISOString().split('T')[0]);
+
+    setContractType('installment');
+    setAccessoriesType('complete');
+    setAccessoriesText('');
 
     setSignatureData(null);
   };
@@ -705,6 +720,12 @@ export default function ContractPage() {
     setShowSuggestions(false);
   };
 
+  const formatCapacity = (cap: string) => {
+    const clean = (cap || '').trim();
+    if (/^\d+$/.test(clean)) return `${clean}GB`;
+    return clean;
+  };
+
   // Date Formatter helper
   const formatThaiDate = (dateString: string) => {
     if (!dateString) return '';
@@ -855,6 +876,59 @@ export default function ContractPage() {
               </div>
 
               <div className="form-sections-wrapper">
+                {/* Contract Type Selection */}
+                <div className="form-section-card" style={{ borderLeft: '4px solid var(--purple)' }}>
+                  <h4 style={{ color: 'var(--purple)' }}>📝 เลือกประเภทสัญญา (Select Contract Type)</h4>
+                  <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
+                    <button 
+                      type="button"
+                      className={`btn-type-select ${contractType === 'installment' ? 'active' : ''}`}
+                      onClick={() => {
+                        setContractType('installment');
+                        if (contractNo.startsWith('IRISBUY')) {
+                          setContractNo('IRIS' + Math.floor(100000 + Math.random() * 900000));
+                        }
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '12px',
+                        borderRadius: '8px',
+                        border: '1px solid ' + (contractType === 'installment' ? 'var(--purple)' : 'var(--border)'),
+                        background: contractType === 'installment' ? 'rgba(139, 92, 246, 0.1)' : '#fff',
+                        color: contractType === 'installment' ? 'var(--purple)' : 'var(--t2)',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      📃 สัญญาเช่าซื้อ (Hire-Purchase)
+                    </button>
+                    <button 
+                      type="button"
+                      className={`btn-type-select ${contractType === 'purchase' ? 'active' : ''}`}
+                      onClick={() => {
+                        setContractType('purchase');
+                        if (!contractNo.startsWith('IRISBUY')) {
+                          setContractNo('IRISBUY' + Math.floor(100000 + Math.random() * 900000));
+                        }
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '12px',
+                        borderRadius: '8px',
+                        border: '1px solid ' + (contractType === 'purchase' ? 'var(--purple)' : 'var(--border)'),
+                        background: contractType === 'purchase' ? 'rgba(139, 92, 246, 0.1)' : '#fff',
+                        color: contractType === 'purchase' ? 'var(--purple)' : 'var(--t2)',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      📥 หนังสือรับซื้อของเก่า (Purchase)
+                    </button>
+                  </div>
+                </div>
+
             {/* 1. Contract Info */}
             <div className="form-section-card">
               <h4>📋 ข้อมูลสัญญา (Contract Details)</h4>
@@ -926,33 +1000,35 @@ export default function ContractPage() {
             </div>
 
             {/* 3. Guarantor Info */}
-            <div className="form-section-card">
-              <h4>👥 ข้อมูลผู้ค้ำประกัน (Guarantor Details)</h4>
-              <div className="form-group">
-                <label className="form-label">ชื่อ-สกุล ผู้ค้ำประกัน (Guarantor Name)</label>
-                <input type="text" className="form-input" value={guarantorName} onChange={(e) => setGuarantorName(e.target.value)} />
-              </div>
-              <div className="form-grid-2">
+            {contractType !== 'purchase' && (
+              <div className="form-section-card">
+                <h4>👥 ข้อมูลผู้ค้ำประกัน (Guarantor Details)</h4>
                 <div className="form-group">
-                  <label className="form-label">เลขบัตรประชาชน ผู้ค้ำประกัน</label>
-                  <input type="text" className="form-input" value={guarantorIdCard} onChange={(e) => setGuarantorIdCard(e.target.value)} />
+                  <label className="form-label">ชื่อ-สกุล ผู้ค้ำประกัน (Guarantor Name)</label>
+                  <input type="text" className="form-input" value={guarantorName} onChange={(e) => setGuarantorName(e.target.value)} />
+                </div>
+                <div className="form-grid-2">
+                  <div className="form-group">
+                    <label className="form-label">เลขบัตรประชาชน ผู้ค้ำประกัน</label>
+                    <input type="text" className="form-input" value={guarantorIdCard} onChange={(e) => setGuarantorIdCard(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">เบอร์โทรศัพท์ ผู้ค้ำประกัน</label>
+                    <input type="tel" className="form-input" value={guarantorPhone} onChange={(e) => setGuarantorPhone(e.target.value)} />
+                  </div>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">เบอร์โทรศัพท์ ผู้ค้ำประกัน</label>
-                  <input type="tel" className="form-input" value={guarantorPhone} onChange={(e) => setGuarantorPhone(e.target.value)} />
+                  <label className="form-label">ความสัมพันธ์กับผู้เช่าซื้อ (Relationship)</label>
+                  <input type="text" className="form-input" placeholder="e.g. บิดา, มารดา, เพื่อนร่วมงาน" value={relationship} onChange={(e) => setRelationship(e.target.value)} />
                 </div>
               </div>
-              <div className="form-group">
-                <label className="form-label">ความสัมพันธ์กับผู้เช่าซื้อ (Relationship)</label>
-                <input type="text" className="form-input" placeholder="e.g. บิดา, มารดา, เพื่อนร่วมงาน" value={relationship} onChange={(e) => setRelationship(e.target.value)} />
-              </div>
-            </div>
+            )}
 
             {/* 4. Product Details */}
             <div className="form-section-card">
-              <h4>📱 ข้อมูลสินค้า (Leased Device Details)</h4>
+              <h4>📱 {contractType === 'purchase' ? 'ข้อมูลสินทรัพย์ (Asset Details)' : 'ข้อมูลสินค้า (Leased Device Details)'}</h4>
               <div className="form-group">
-                <label className="form-label">ชื่อประเภทสินค้า (Device Type)</label>
+                <label className="form-label">{contractType === 'purchase' ? 'ชื่อประเภทสินค้า (Asset Type)' : 'ชื่อประเภทสินค้า (Device Type)'}</label>
                 <input type="text" className="form-input" value={productName} onChange={(e) => setProductName(e.target.value)} />
               </div>
               <div className="form-grid-3">
@@ -966,7 +1042,19 @@ export default function ContractPage() {
                 </div>
                 <div className="form-group">
                   <label className="form-label">ความจุ (Capacity)</label>
-                  <input type="text" className="form-input" placeholder="e.g. 256GB" value={capacity} onChange={(e) => setCapacity(e.target.value)} />
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="e.g. 256GB" 
+                    value={capacity} 
+                    onChange={(e) => setCapacity(e.target.value)} 
+                    onBlur={(e) => {
+                      const val = e.target.value.trim();
+                      if (/^\d+$/.test(val)) {
+                        setCapacity(val + 'GB');
+                      }
+                    }}
+                  />
                 </div>
               </div>
               <div className="form-grid-2">
@@ -975,24 +1063,35 @@ export default function ContractPage() {
                   <input type="text" className="form-input" value={serialNo} onChange={(e) => setSerialNo(e.target.value)} />
                 </div>
                 <div className="form-group" style={{ position: 'relative' }}>
-                  <label className="form-label">IMEI ({t('autocomplete')} / Autocomplete)</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    placeholder="Type IMEI..." 
-                    value={imei} 
-                    onChange={(e) => handleImeiChange(e.target.value)} 
-                    onFocus={() => {
-                      if (imei.trim().length >= 2 && filteredInventory.length > 0) {
-                        setShowSuggestions(true);
-                      }
-                    }}
-                    onBlur={() => {
-                      // Small delay to allow suggestion click
-                      setTimeout(() => setShowSuggestions(false), 200);
-                    }}
-                  />
-                  {showSuggestions && (
+                  <label className="form-label">
+                    {contractType === 'purchase' ? 'IMEI' : `IMEI (${t('autocomplete')} / Autocomplete)`}
+                  </label>
+                  {contractType === 'purchase' ? (
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder="Type IMEI..." 
+                      value={imei} 
+                      onChange={(e) => setImei(e.target.value)} 
+                    />
+                  ) : (
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder="Type IMEI..." 
+                      value={imei} 
+                      onChange={(e) => handleImeiChange(e.target.value)} 
+                      onFocus={() => {
+                        if (imei.trim().length >= 2 && filteredInventory.length > 0) {
+                          setShowSuggestions(true);
+                        }
+                      }}
+                      onBlur={() => {
+                        setTimeout(() => setShowSuggestions(false), 200);
+                      }}
+                    />
+                  )}
+                  {showSuggestions && contractType !== 'purchase' && (
                     <div className="suggestions-dropdown no-print">
                       {filteredInventory.map((item, idx) => (
                         <div 
@@ -1008,17 +1107,82 @@ export default function ContractPage() {
                   )}
                 </div>
               </div>
-              <div className="form-grid-2">
-                <div className="form-group">
-                  <label className="form-label">{t('total_amount_label')} (Total Price) *</label>
-                  <input type="number" className="form-input" value={sellingPrice} onChange={(e) => handleSellingPriceChange(e.target.value)} />
+
+              {/* Accessories selection for Purchase Contract */}
+              {contractType === 'purchase' && (
+                <div className="form-group" style={{ marginTop: '16px', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                  <label className="form-label" style={{ fontWeight: 800 }}>📦 อุปกรณ์ที่มาด้วย (Included Accessories)</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px' }}>
+                      <input 
+                        type="radio" 
+                        name="accessories_radio" 
+                        checked={accessoriesType === 'complete'} 
+                        onChange={() => setAccessoriesType('complete')} 
+                      />
+                      มีอุปกรณ์ครบ (Complete accessories)
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px' }}>
+                      <input 
+                        type="radio" 
+                        name="accessories_radio" 
+                        checked={accessoriesType === 'incomplete'} 
+                        onChange={() => setAccessoriesType('incomplete')} 
+                      />
+                      มีอุปกรณ์ไม่ครบ (Incomplete accessories)
+                    </label>
+                    {accessoriesType === 'incomplete' && (
+                      <input 
+                        type="text" 
+                        className="form-input" 
+                        placeholder="ระบุอุปกรณ์ที่ขาด เช่น กล่อง, สายชาร์จ..." 
+                        value={accessoriesText} 
+                        onChange={(e) => setAccessoriesText(e.target.value)}
+                        style={{ marginLeft: '20px', width: 'calc(100% - 20px)' }}
+                      />
+                    )}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px' }}>
+                      <input 
+                        type="radio" 
+                        name="accessories_radio" 
+                        checked={accessoriesType === 'none'} 
+                        onChange={() => setAccessoriesType('none')} 
+                      />
+                      ไม่มีอุปกรณ์อื่น (No other accessories)
+                    </label>
+                  </div>
                 </div>
+              )}
+
+              <div className="form-grid-2" style={{ marginTop: '12px' }}>
                 <div className="form-group">
-                  <label className="form-label">เงินดาวน์ (Down Payment) *</label>
-                  <input type="number" className="form-input" value={downPayment} onChange={(e) => {
-                    setDownPayment(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0));
-                  }} />
+                  <label className="form-label">
+                    {contractType === 'purchase' ? 'ราคารับซื้อ (Purchase Price) *' : `${t('total_amount_label')} (Total Price) *`}
+                  </label>
+                  {contractType === 'purchase' ? (
+                    <input 
+                      type="number" 
+                      className="form-input" 
+                      value={sellingPrice} 
+                      onChange={(e) => setSellingPrice(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0))} 
+                    />
+                  ) : (
+                    <input 
+                      type="number" 
+                      className="form-input" 
+                      value={sellingPrice} 
+                      onChange={(e) => handleSellingPriceChange(e.target.value)} 
+                    />
+                  )}
                 </div>
+                {contractType !== 'purchase' && (
+                  <div className="form-group">
+                    <label className="form-label">เงินดาวน์ (Down Payment) *</label>
+                    <input type="number" className="form-input" value={downPayment} onChange={(e) => {
+                      setDownPayment(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0));
+                    }} />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1469,194 +1633,341 @@ export default function ContractPage() {
             </div>
           ) : (
             <div className="contract-document" id="printable-contract-area">
-            
-            {/* Header Brand Area */}
-            <div className="doc-header">
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <img 
-                  src="/iris_logo_official.png" 
-                  alt="IRIS MOBILE" 
-                  style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'contain' }} 
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-              </div>
-              
-              <div className="title-box">
-                <h2>หนังสือสัญญาเช่าซื้อ</h2>
-                <div className="brand-sub">IRIS MOBILE</div>
-                <div className="brand-corp">PHONE SWITCH HUB CO., LTD.</div>
-              </div>
-
-              <div className="meta-box">
-                <div><b>เลขที่สัญญา:</b> {contractNo || '.........................'}</div>
-                <div><b>วันที่:</b> {formatThaiDate(contractDate) || '.........................'}</div>
-                <div><b>สินค้ามาจาก:</b> {storeName}</div>
-              </div>
-            </div>
-
-            <div className="doc-body">
-              {/* Contract made info */}
-              <p className="indented-text">
-                ทำสัญญาที่ <b>{storeName}</b> ที่อยู่ <b>{storeAddress}</b>
-              </p>
-              <p style={{ margin: '4px 0 12px' }}>
-                ระหว่าง <b>บริษัท โฟน สวิตช์ ฮับ จำกัด (ผู้ให้เช่าซื้อ)</b> ฝ่ายหนึ่ง กับ
-              </p>
-
-              {/* Parties Details Grid */}
-              <div className="parties-grid">
-                <div><b>ชื่อ-สกุล (ผู้เช่าซื้อ):</b> <span className="fill-value">{customerName || '........................................................'}</span></div>
-                <div><b>สัญชาติ:</b> <span className="fill-value">{nationality || '............'}</span></div>
-                
-                <div style={{ gridColumn: 'span 2' }}>
-                  <b>เลขบัตรประชาชน:</b> <span className="fill-value">{idCardNo || '................................................'}</span>
-                  <span style={{ marginLeft: '24px' }}><b>เลขพาสปอร์ต:</b> <span className="fill-value">{passportNo || '................................................'}</span></span>
-                </div>
-
-                <div style={{ gridColumn: 'span 2' }}><b>ที่อยู่:</b> <span className="fill-value">{customerAddress || '................................................................................................................................................'}</span></div>
-                
-                <div style={{ gridColumn: 'span 2' }}><b>ทำงาน:</b> <span className="fill-value">{workplace || '................................................................................................'}</span></div>
-
-                <div style={{ gridColumn: 'span 2' }}>
-                  <b>เบอร์โทรหลักสำหรับลงทะเบียน:</b> <span className="fill-value">{phoneNo || '....................................'}</span>
-                  <span style={{ marginLeft: '16px' }}><b>ช่องทางการติดต่ออื่น:</b> <span className="fill-value">{facebook || '....................................'}</span></span>
-                </div>
-
-                <div style={{ gridColumn: 'span 2' }}><b>Line ID (จำเป็นต้องมี):</b> <span className="fill-value">{lineId || '........................................................'}</span></div>
-                
-                {/* Guarantor Details */}
-                <div style={{ gridColumn: 'span 2', marginTop: '4px', borderTop: '1px dashed #ddd', paddingTop: '4px' }}>
-                  <b>ชื่อ-สกุล (ผู้ค้ำ1):</b> <span className="fill-value">{guarantorName || '........................................................'}</span>
-                  <span style={{ marginLeft: '16px' }}><b>เลขบัตรประชาชน (ผู้ค้ำ1):</b> <span className="fill-value">{guarantorIdCard || '................................................'}</span></span>
-                </div>
-                <div style={{ gridColumn: 'span 2' }}>
-                  <b>เบอร์ผู้ค้ำ1:</b> <span className="fill-value">{guarantorPhone || '....................................'}</span>
-                  <span style={{ marginLeft: '24px' }}><b>ความสัมพันธ์:</b> <span className="fill-value">{relationship || '....................................'}</span></span>
-                </div>
-              </div>
-
-              {/* Standard text */}
-              <p className="indented-text" style={{ fontSize: '10.5px', margin: '10px 0 8px', lineHeight: 1.4 }}>
-                ซึ่งต่อไปในสัญญาจะเรียกว่า <b>"ผู้เช่าซื้อ"</b> อีกฝ่ายหนึ่ง ทั้งสองฝ่ายตกลงให้เช่าซื้อและเช่าซื้อทรัพย์สินตามรายการทรัพย์สินเช่าซื้อในบัญชีรายการเช่าซื้อด้านล่างนี้ (รวมทั้งส่วนควบ เครื่องอุปกรณ์ อะไหล่ สิ่งที่นำมาแทนของเดิม หรืออื่นๆ)
-              </p>
-
-              {/* Table of Assets */}
-              <div className="section-title">บัญชีทรัพย์สินที่ให้เช่าซื้อ</div>
-              <div className="asset-details-box">
-                <div className="asset-grid">
-                  <div><b>ชื่อสินค้า:</b> {productName}</div>
-                  <div><b>รุ่น:</b> <span className="fill-value">{model || '....................................'}</span></div>
-                  <div><b>สี:</b> <span className="fill-value">{color || '..........................'}</span></div>
-                  <div><b>ความจุ:</b> <span className="fill-value">{capacity || '..........................'}</span></div>
-                  
-                  <div style={{ gridColumn: 'span 2' }}><b>Serial No:</b> <span className="fill-value">{serialNo || '........................................................'}</span></div>
-                  <div style={{ gridColumn: 'span 2' }}><b>IMEI:</b> <span className="fill-value">{imei || '........................................................'}</span></div>
-                  
-                  <div><b>ประกันสินค้า:</b> โทรศัพท์มือถือ</div>
-                  <div style={{ color: 'var(--red)' }}><b>ราคาขาย:</b> <span className="fill-value" style={{ fontWeight: 'bold' }}>{sellingPrice ? `${Number(sellingPrice).toLocaleString()} บาท` : '.......................... บาท'}</span></div>
-                </div>
-              </div>
-
-              {/* Financial calculations */}
-              <div className="section-title" style={{ marginTop: '8px' }}>วิธีคำนวณเงินค่าเช่าซื้อและจำนวนค่าเช่าซื้อ</div>
-              <div className="calc-details-box">
-                <div className="calc-row">
-                  <span>1.) ราคาทีทำสัญญา</span>
-                  <b>{sellingPriceDoc ? `${sellingPriceDoc.toLocaleString()} บาท` : '.......................... บาท'}</b>
-                </div>
-                <div className="calc-row">
-                  <span>2.) เงินดาวน์ (เงินล่วงหน้า) 30% จำนวน</span>
-                  <b>{downPayment ? `${downPayment.toLocaleString()} บาท` : '.......................... บาท'}</b>
-                </div>
-                <div className="calc-row">
-                  <span>3.) ราคาส่วนที่เหลือชำระ</span>
-                  <b>{remainingBalance ? `${remainingBalance.toLocaleString()} บาท` : '.......................... บาท'}</b>
-                </div>
-                <div className="calc-row">
-                  <span>4.) จำนวนงวดที่ผ่อนชำระ</span>
-                  <span style={{ display: 'flex', gap: '30px' }}>
-                    <b>{installmentsCount} งวด</b>
-                    <span style={{ color: 'var(--red)', fontSize: '11px' }}><b>วันที่ชำระเงินดาวน์:</b> {formatThaiDate(downPaymentDate)}</span>
-                  </span>
-                </div>
-                <div className="calc-row" style={{ borderBottom: 'none' }}>
-                  <span>5.) ชำระงวดละ</span>
-                  <span style={{ display: 'flex', gap: '20px' }}>
-                    <b style={{ fontSize: '13px' }}>{installmentAmount ? `${installmentAmount.toLocaleString()} บาท` : '.......................... บาท'}</b>
-                    <span style={{ fontSize: '11px' }}>
-                      <b>งวดแรกวันที่</b> {formatThaiDate(firstInstallmentDate)}
-                    </span>
-                    <span style={{ fontSize: '11px' }}>
-                      <b>ชำระทุกวันที่</b> {installmentDay} ของทุกเดือน
-                    </span>
-                  </span>
-                </div>
-              </div>
-
-              {/* Terms Section */}
-              <div className="section-title" style={{ marginTop: '8px' }}>เงื่อนไขการผ่อนชำระสินค้า</div>
-              <ol className="terms-list">
-                <li>ผู้เช่าซื้อต้องชำระเงินตามระยะเวลาที่ทางผู้ให้เช่าซื้อกำหนด</li>
-                <li>ทางผู้ให้เช่าซื้อจะดำเนินการแจ้งเตือนยอดค่าเช่าซื้อล่วงหน้าอย่างน้อย 3 วัน ทางผู้เช่าซื้อต้องติดต่อได้ทุกกรณี</li>
-                <li>ค้างชำระยอดได้ไม่เกิน 3 วัน มีค่าปรับวันละ 500 บาท</li>
-                <li>กรณีค้างชำระเกิน 3 วัน ทางร้านจะล็อกเครื่องและลบข้อมูลทันทีโดยที่ไม่สามารถกู้ข้อมูลได้ หากมีการต้องชำระยอดค้างเช่าซื้อและค่าปรับจะมีบริการปลดล็อกเพิ่มเติม 2,000 บาท</li>
-                <li>หากผู้เช่าซื้อไม่ทำการชำระยอดตามที่กำหนดและมียอดค้างชำระเกิน 3 วัน ทางผู้ให้เช่าซื้อมีสิทธิ์ยึดคืนสินทรัพย์ทุกกรณี</li>
-                <li>กรณียังผ่อนจ่ายไม่หมด สินทรัพย์ถือว่าเป็นกรรมสิทธิ์ของผู้ให้เช่าซื้ออย่างถูกต้องตามกฎหมาย ผู้เช่าซื้อไม่มีสิทธิ์ขายต่อหรือส่งต่อให้ผู้อื่น หรือห้ามทำการ ปลดล็อก เปลี่ยนแปลงแก้ไขโปรแกรมล็อกเครื่องจนกว่าจะผ่อนชำระหมด (ในกรณีนำไปปลดล็อกหรือดัดแปลงแก้ไข ร้านที่ดำเนินการทำให้ถือว่ามีความผิดร่วมกัน ผู้ให้เช่าซื้อจะดำเนินการทางกฎหมายโทษยักยอกทรัพย์เช่นกัน)</li>
-                <li>หลังจากผ่อนชำระครบทางผู้ให้เช่าซื้อจะปลดล็อกให้ไม่เกิน 7 วันทำการ</li>
-                <li>เงื่อนไขและบริการหลังการขาย ผู้เช่าซื้อได้ตรวจดูคุณภาพสินทรัพย์ที่เช่าซื้อจนเป็นที่พอใจแล้ว การรับประกันไม่ครอบคลุมกรณีหล่นแตก ตกน้ำ เครื่องพังจากการใช้งานรุนแรง หรืออื่นๆ ที่เกิดขึ้นจากผู้เช่าซื้อเอง</li>
-                <li>กรณีผู้เช่าซื้อผิดนัด ทางผู้ให้เช่าซื้อมีสิทธิในการติดตามทวงสินทรัพย์อย่างถูกต้องกฎหมายทุกกรณี</li>
-                <li>กรณีผู้เช่าซื้อต้องการยกเลิกสัญญาก่อนจะผ่อนหมด มีค่ายกเลิกสัญญา 1,500 บาท และค่าปลดล็อกเครื่อง 2,000 บาท</li>
-                <li>กรณีเรียกคืนสินทรัพย์แล้ว ผู้เช่าซื้อไม่ส่งมอบให้ ทางผู้ให้เช่าซื้อจะดำเนินการคดีอาญาโทษยักยอกทรัพย์จนถึงที่สุด</li>
-              </ol>
-              <div style={{ fontSize: '9px', fontWeight: 'bold', marginTop: '2px', textAlign: 'left' }}>
-                *ตามประมวลกฎหมายอาญามาตรา 352 ต้องโทษจำคุกไม่เกิน 3 ปี
-              </div>
-
-              {/* Signatures Area */}
-              <div className="signatures-container">
-                {/* Lessee (Customer) Signature Box */}
-                <div className="sig-box" onClick={() => setShowSignModal(true)} style={{ cursor: 'pointer' }}>
-                  <div className="sig-label">ลงชื่อ</div>
-                  <div className="sig-line-wrapper">
-                    {signatureData ? (
-                      <img src={signatureData} alt="Customer Signature" className="sig-img" />
-                    ) : (
-                      <div className="sig-placeholder no-print">( แตะที่นี่เพื่อเซ็นชื่อ / Tap to sign )</div>
-                    )}
-                  </div>
-                  <div className="sig-name">
-                    ( {customerName || '........................................................'} )
-                  </div>
-                  <div className="sig-role">ผู้เช่าซื้อ</div>
-                </div>
-
-                {/* Lessor (Company) Signature Box with Stamp */}
-                <div className="sig-box" style={{ position: 'relative' }}>
-                  <div className="sig-label">ลงชื่อ</div>
-                  <div className="sig-line-wrapper">
-                    <div style={{ height: '100px', borderBottom: '1px solid #000', width: '200px', margin: '0 auto' }} />
-                    {/* Official transparent company stamp seal */}
+            {contractType === 'purchase' ? (
+              <>
+                {/* Header Brand Area - Second-hand Purchase */}
+                <div className="doc-header">
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
                     <img 
-                      src="/company_stamp_transparent.png" 
-                      alt="Company Seal Stamp" 
-                      className="company-seal-stamp" 
+                      src="/iris_logo_official.png" 
+                      alt="IRIS MOBILE" 
+                      style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'contain' }} 
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
                     />
                   </div>
-                  <div className="sig-name">
-                    ( บริษัท โฟน สวิตช์ ฮับ จำกัด )
+                  
+                  <div className="title-box">
+                    <h2>หนังสือรับซื้อของเก่า</h2>
+                    <div className="brand-sub">IRIS MOBILE</div>
+                    <div className="brand-corp">PHONE SWITCH HUB CO., LTD.</div>
                   </div>
-                  <div className="sig-role">ผู้ให้เช่าซื้อ</div>
+
+                  <div className="meta-box">
+                    <div><b>เลขที่สัญญา:</b> {contractNo || '.........................'}</div>
+                    <div><b>วันที่:</b> {formatThaiDate(contractDate) || '.........................'}</div>
+                  </div>
                 </div>
-              </div>
 
-            </div>
+                <div className="doc-body">
+                  {/* Contract made info */}
+                  <p className="indented-text">
+                    ทำสัญญาที่ <b>{storeName}</b> ที่อยู่ <b>{storeAddress}</b>
+                  </p>
+                  <p style={{ margin: '4px 0 12px' }}>
+                    ระหว่าง <b>{storeName}</b> ซึ่งในใบสัญญานี้ <b>"ผู้รับซื้อ"</b> ฝ่ายหนึ่ง กับ
+                  </p>
+
+                  {/* Customer Details */}
+                  <div className="parties-grid">
+                    <div><b>ชื่อ-สกุล:</b> <span className="fill-value">{customerName || '........................................................'}</span></div>
+                    <div><b>สัญชาติ:</b> <span className="fill-value">{nationality || '............'}</span></div>
+                    
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <b>เลขบัตรประชาชน:</b> <span className="fill-value">{idCardNo || '................................................'}</span>
+                      <span style={{ marginLeft: '24px' }}><b>เลขพาสปอร์ต:</b> <span className="fill-value">{passportNo || '................................................'}</span></span>
+                    </div>
+
+                    <div style={{ gridColumn: 'span 2' }}><b>ที่อยู่:</b> <span className="fill-value">{customerAddress || '................................................................................................................................................'}</span></div>
+                  </div>
+
+                  {/* Contact Channels */}
+                  <h4 style={{ fontSize: '13px', margin: '14px 0 4px', color: '#111', fontWeight: 800 }}>ช่องทางการติดต่อ (Contact Info)</h4>
+                  <div className="parties-grid" style={{ marginTop: '4px' }}>
+                    <div><b>เบอร์โทรศัพท์:</b> <span className="fill-value">{phoneNo || '....................................'}</span></div>
+                    <div><b>Facebook:</b> <span className="fill-value">{facebook || '....................................'}</span></div>
+                    <div style={{ gridColumn: 'span 2' }}><b>Line ID:</b> <span className="fill-value">{lineId || '....................................'}</span></div>
+                  </div>
+
+                  <p className="indented-text" style={{ marginTop: '14px', marginBottom: '14px', lineHeight: 1.5 }}>
+                    ซึ่งต่อไปในสัญญานี้จะเรียกว่า <b>"ผู้ขายของเก่า"</b> อีกฝ่ายหนึ่ง ทั้งสองฝ่ายตกลงซื้อ-ขายทรัพย์สินตามบัญชีรายการด้านล่างนี้ (รวมถึงส่วนควบ เครื่องอุปกรณ์ อะไหล่ สิ่งที่นำมาแทนของเดิม หรืออื่นๆ)
+                  </p>
+
+                  {/* Asset details */}
+                  <h4 style={{ fontSize: '13px', margin: '14px 0 6px', color: '#111', fontWeight: 800 }}>สินทรัพย์ที่นำมาขาย (Asset Details)</h4>
+                  <div className="product-details-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '10px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <div><b>ชื่อสินทรัพย์:</b> <span className="fill-value">{productName || 'โทรศัพท์มือถือ'}</span></div>
+                    <div><b>รุ่น (Model):</b> <span className="fill-value">{model || '....................................'}</span></div>
+                    <div><b>สี (Color):</b> <span className="fill-value">{color || '....................................'}</span></div>
+                    <div><b>ความจุ (Capacity):</b> <span className="fill-value">{capacity ? formatCapacity(capacity) : '....................................'}</span></div>
+                    <div><b>Serial No.:</b> <span className="fill-value">{serialNo || '....................................'}</span></div>
+                    <div><b>IMEI:</b> <span className="fill-value">{imei || '....................................'}</span></div>
+                  </div>
+
+                  {/* Accessories checkboxes */}
+                  <div style={{ display: 'flex', gap: '20px', margin: '14px 0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <input type="checkbox" checked={accessoriesType === 'complete'} readOnly style={{ width: '16px', height: '16px' }} />
+                      <span>มีอุปกรณ์ครบ (Complete Accessories)</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <input type="checkbox" checked={accessoriesType === 'incomplete'} readOnly style={{ width: '16px', height: '16px' }} />
+                      <span>มีอุปกรณ์ไม่ครบ (Incomplete): <u>{accessoriesType === 'incomplete' ? accessoriesText : '........................'}</u></span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <input type="checkbox" checked={accessoriesType === 'none'} readOnly style={{ width: '16px', height: '16px' }} />
+                      <span>ไม่มีอุปกรณ์อื่น (No other accessories)</span>
+                    </div>
+                  </div>
+
+                  {/* Price Section */}
+                  <div style={{ margin: '16px 0', padding: '12px', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '15px', color: '#ef4444', fontWeight: 800 }}>
+                      รับซื้อในราคา : <span style={{ fontSize: '20px' }}>{sellingPrice ? Number(sellingPrice).toLocaleString() : '0'}</span> บาท (Baht)
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#555' }}>
+                      <b>ณ วันที่:</b> {formatThaiDate(contractDate)} | <b>สถานที่รับซื้อ:</b> {storeName}
+                    </div>
+                  </div>
+
+                  {/* Conditions */}
+                  <h4 style={{ fontSize: '13px', margin: '16px 0 6px', color: '#111', fontWeight: 800 }}>เงื่อนไข (Conditions)</h4>
+                  <ol style={{ paddingLeft: '20px', margin: 0, fontSize: '11px', lineHeight: 1.6, color: '#333' }}>
+                    <li>ผู้ขายจะต้องยืนยันสินค้าได้ว่าเป็นของตนเอง (Seller must confirm the product is theirs)</li>
+                    <li>หากทางร้านตรวจสอบแล้วพบว่ามีการนำของขโมยมาขาย ผู้ขายจะมีความผิดตามประมวลกฎหมาย โดยทางร้านจะไม่ขอรับผิดชอบใดๆ และส่งเรื่องให้ทางเจ้าหน้าที่ตำรวจดำเนินการทางกฎหมายทันที (If the product is stolen, the shop will not take responsibility and will report to the police immediately)</li>
+                    <li>หลังจากรับซื้อและดำเนินการตกลงราคาแล้ว ผู้ซื้อไม่สามารถขอแก้ไขเพิ่มเติมได้ (Price agreement is final)</li>
+                    <li>หลังจากลงนามในสัญญาแล้วสินทรัพย์ถือเป็นของผู้ซื้อทันที (Title transfers to purchaser immediately upon signing)</li>
+                    <li>ผู้เยาว์ที่อายุน้อยกว่า 20 ปี ต้องได้รับการยินยอมจากผู้ปกครองโดยมีเอกสารยินยอมให้ขายสินทรัพย์ตามที่ทางร้านกำหนด (Minors under 20 must have parental consent)</li>
+                  </ol>
+
+                  {/* Signatures Area */}
+                  <div className="signatures-container">
+                    {/* Lessee (Customer) Signature Box */}
+                    <div className="sig-box" onClick={() => setShowSignModal(true)} style={{ cursor: 'pointer' }}>
+                      <div className="sig-label">ลงชื่อ (Signature) ผู้ขาย</div>
+                      <div className="sig-line-wrapper">
+                        {signatureData ? (
+                          <img src={signatureData} alt="Customer Signature" className="sig-img" />
+                        ) : (
+                          <div className="sig-placeholder no-print">( แตะที่นี่เพื่อเซ็นชื่อ / Tap to sign )</div>
+                        )}
+                      </div>
+                      <div className="sig-name">
+                        ( {customerName || '........................................................'} )
+                      </div>
+                      <div className="sig-role">ผู้ขายของเก่า</div>
+                    </div>
+
+                    {/* Lessor (Company) Signature Box with Stamp */}
+                    <div className="sig-box" style={{ position: 'relative' }}>
+                      <div className="sig-label">ลงชื่อ (Signature) ผู้รับซื้อ</div>
+                      <div className="sig-line-wrapper">
+                        <div style={{ height: '100px', borderBottom: '1px solid #000', width: '200px', margin: '0 auto' }} />
+                        {/* Official transparent company stamp seal */}
+                        <img 
+                          src="/company_stamp_transparent.png" 
+                          alt="Company Seal Stamp" 
+                          className="company-seal-stamp" 
+                        />
+                      </div>
+                      <div className="sig-name">
+                        ( {storeName || 'บริษัท โฟน สวิตช์ ฮับ จำกัด'} )
+                      </div>
+                      <div className="sig-role">ผู้รับซื้อ</div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Header Brand Area */}
+                <div className="doc-header">
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <img 
+                      src="/iris_logo_official.png" 
+                      alt="IRIS MOBILE" 
+                      style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'contain' }} 
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                  
+                  <div className="title-box">
+                    <h2>หนังสือสัญญาเช่าซื้อ</h2>
+                    <div className="brand-sub">IRIS MOBILE</div>
+                    <div className="brand-corp">PHONE SWITCH HUB CO., LTD.</div>
+                  </div>
+
+                  <div className="meta-box">
+                    <div><b>เลขที่สัญญา:</b> {contractNo || '.........................'}</div>
+                    <div><b>วันที่:</b> {formatThaiDate(contractDate) || '.........................'}</div>
+                    <div><b>สินค้ามาจาก:</b> {storeName}</div>
+                  </div>
+                </div>
+
+                <div className="doc-body">
+                  {/* Contract made info */}
+                  <p className="indented-text">
+                    ทำสัญญาที่ <b>{storeName}</b> ที่อยู่ <b>{storeAddress}</b>
+                  </p>
+                  <p style={{ margin: '4px 0 12px' }}>
+                    ระหว่าง <b>บริษัท โฟน สวิตช์ ฮับ จำกัด (ผู้ให้เช่าซื้อ)</b> ฝ่ายหนึ่ง กับ
+                  </p>
+
+                  {/* Parties Details Grid */}
+                  <div className="parties-grid">
+                    <div><b>ชื่อ-สกุล (ผู้เช่าซื้อ):</b> <span className="fill-value">{customerName || '........................................................'}</span></div>
+                    <div><b>สัญชาติ:</b> <span className="fill-value">{nationality || '............'}</span></div>
+                    
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <b>เลขบัตรประชาชน:</b> <span className="fill-value">{idCardNo || '................................................'}</span>
+                      <span style={{ marginLeft: '24px' }}><b>เลขพาสปอร์ต:</b> <span className="fill-value">{passportNo || '................................................'}</span></span>
+                    </div>
+
+                    <div style={{ gridColumn: 'span 2' }}><b>ที่อยู่:</b> <span className="fill-value">{customerAddress || '................................................................................................................................................'}</span></div>
+                    
+                    <div style={{ gridColumn: 'span 2' }}><b>ทำงาน:</b> <span className="fill-value">{workplace || '................................................................................................'}</span></div>
+
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <b>เบอร์โทรหลักสำหรับลงทะเบียน:</b> <span className="fill-value">{phoneNo || '....................................'}</span>
+                      <span style={{ marginLeft: '16px' }}><b>ช่องทางการติดต่ออื่น:</b> <span className="fill-value">{facebook || '....................................'}</span></span>
+                    </div>
+
+                    <div style={{ gridColumn: 'span 2' }}><b>Line ID (จำเป็นต้องมี):</b> <span className="fill-value">{lineId || '........................................................'}</span></div>
+                    
+                    {/* Guarantor Details */}
+                    <div style={{ gridColumn: 'span 2', marginTop: '4px', borderTop: '1px dashed #ddd', paddingTop: '4px' }}>
+                      <b>ชื่อ-สกุล (ผู้ค้ำ1):</b> <span className="fill-value">{guarantorName || '........................................................'}</span>
+                      <span style={{ marginLeft: '16px' }}><b>เลขบัตรประชาชน (ผู้ค้ำ1):</b> <span className="fill-value">{guarantorIdCard || '................................................'}</span></span>
+                    </div>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <b>เบอร์ผู้ค้ำ1:</b> <span className="fill-value">{guarantorPhone || '....................................'}</span>
+                      <span style={{ marginLeft: '24px' }}><b>ความสัมพันธ์:</b> <span className="fill-value">{relationship || '....................................'}</span></span>
+                    </div>
+                  </div>
+
+                  {/* Standard text */}
+                  <p className="indented-text" style={{ fontSize: '10.5px', margin: '10px 0 8px', lineHeight: 1.4 }}>
+                    ซึ่งต่อไปในสัญญาจะเรียกว่า <b>"ผู้เช่าซื้อ"</b> อีกฝ่ายหนึ่ง ทั้งสองฝ่ายตกลงให้เช่าซื้อและเช่าซื้อทรัพย์สินตามรายการทรัพย์สินเช่าซื้อในบัญชีรายการเช่าซื้อด้านล่างนี้ (รวมทั้งส่วนควบ เครื่องอุปกรณ์ อะไหล่ สิ่งที่นำมาแทนของเดิม หรืออื่นๆ)
+                  </p>
+
+                  {/* Table of Assets */}
+                  <div className="section-title">บัญชีทรัพย์สินที่ให้เช่าซื้อ</div>
+                  <div className="asset-details-box">
+                    <div className="asset-grid">
+                      <div><b>ชื่อสินค้า:</b> {productName}</div>
+                      <div><b>รุ่น:</b> <span className="fill-value">{model || '....................................'}</span></div>
+                      <div><b>สี:</b> <span className="fill-value">{color || '..........................'}</span></div>
+                      <div><b>ความจุ:</b> <span className="fill-value">{capacity || '..........................'}</span></div>
+                      
+                      <div style={{ gridColumn: 'span 2' }}><b>Serial No:</b> <span className="fill-value">{serialNo || '........................................................'}</span></div>
+                      <div style={{ gridColumn: 'span 2' }}><b>IMEI:</b> <span className="fill-value">{imei || '........................................................'}</span></div>
+                      
+                      <div><b>ประกันสินค้า:</b> โทรศัพท์มือถือ</div>
+                      <div style={{ color: 'var(--red)' }}><b>ราคาขาย:</b> <span className="fill-value" style={{ fontWeight: 'bold' }}>{sellingPrice ? `${Number(sellingPrice).toLocaleString()} บาท` : '.......................... บาท'}</span></div>
+                    </div>
+                  </div>
+
+                  {/* Financial calculations */}
+                  <div className="section-title" style={{ marginTop: '8px' }}>วิธีคำนวณเงินค่าเช่าซื้อและจำนวนค่าเช่าซื้อ</div>
+                  <div className="calc-details-box">
+                    <div className="calc-row">
+                      <span>1.) ราคาทีทำสัญญา</span>
+                      <b>{sellingPriceDoc ? `${sellingPriceDoc.toLocaleString()} บาท` : '.......................... บาท'}</b>
+                    </div>
+                    <div className="calc-row">
+                      <span>2.) เงินดาวน์ (เงินล่วงหน้า) 30% จำนวน</span>
+                      <b>{downPayment ? `${downPayment.toLocaleString()} บาท` : '.......................... บาท'}</b>
+                    </div>
+                    <div className="calc-row">
+                      <span>3.) ราคาส่วนที่เหลือชำระ</span>
+                      <b>{remainingBalance ? `${remainingBalance.toLocaleString()} บาท` : '.......................... บาท'}</b>
+                    </div>
+                    <div className="calc-row">
+                      <span>4.) จำนวนงวดที่ผ่อนชำระ</span>
+                      <span style={{ display: 'flex', gap: '30px' }}>
+                        <b>{installmentsCount} งวด</b>
+                        <span style={{ color: 'var(--red)', fontSize: '11px' }}><b>วันที่ชำระเงินดาวน์:</b> {formatThaiDate(downPaymentDate)}</span>
+                      </span>
+                    </div>
+                    <div className="calc-row" style={{ borderBottom: 'none' }}>
+                      <span>5.) ชำระงวดละ</span>
+                      <span style={{ display: 'flex', gap: '20px' }}>
+                        <b style={{ fontSize: '13px' }}>{installmentAmount ? `${installmentAmount.toLocaleString()} บาท` : '.......................... บาท'}</b>
+                        <span style={{ fontSize: '11px' }}>
+                          <b>งวดแรกวันที่</b> {formatThaiDate(firstInstallmentDate)}
+                        </span>
+                        <span style={{ fontSize: '11px' }}>
+                          <b>ชำระทุกวันที่</b> {installmentDay} ของทุกเดือน
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Terms Section */}
+                  <div className="section-title" style={{ marginTop: '8px' }}>เงื่อนไขการผ่อนชำระสินค้า</div>
+                  <ol className="terms-list">
+                    <li>ผู้เช่าซื้อต้องชำระเงินตามระยะเวลาที่ทางผู้ให้เช่าซื้อกำหนด</li>
+                    <li>ทางผู้ให้เช่าซื้อจะดำเนินการแจ้งเตือนยอดค่าเช่าซื้อล่วงหน้าอย่างน้อย 3 วัน ทางผู้เช่าซื้อต้องติดต่อได้ทุกกรณี</li>
+                    <li>ค้างชำระยอดได้ไม่เกิน 3 วัน มีค่าปรับวันละ 500 บาท</li>
+                    <li>กรณีค้างชำระเกิน 3 วัน ทางร้านจะล็อกเครื่องและลบข้อมูลทันทีโดยที่ไม่สามารถกู้ข้อมูลได้ หากมีการต้องชำระยอดค้างเช่าซื้อและค่าปรับจะมีบริการปลดล็อกเพิ่มเติม 2,000 บาท</li>
+                    <li>หากผู้เช่าซื้อไม่ทำการชำระยอดตามที่กำหนดและมียอดค้างชำระเกิน 3 วัน ทางผู้ให้เช่าซื้อมีสิทธิ์ยึดคืนสินทรัพย์ทุกกรณี</li>
+                    <li>กรณียังผ่อนจ่ายไม่หมด สินทรัพย์ถือว่าเป็นกรรมสิทธิ์ของผู้ให้เช่าซื้ออย่างถูกต้องตามกฎหมาย ผู้เช่าซื้อไม่มีสิทธิ์ขายต่อหรือส่งต่อให้ผู้อื่น หรือห้ามทำการ ปลดล็อก เปลี่ยนแปลงแก้ไขโปรแกรมล็อกเครื่องจนกว่าจะผ่อนชำระหมด (ในกรณีนำไปปลดล็อกหรือดัดแปลงแก้ไข ร้านที่ดำเนินการทำให้ถือว่ามีความผิดร่วมกัน ผู้ให้เช่าซื้อจะดำเนินการทางกฎหมายโทษยักยอกทรัพย์เช่นกัน)</li>
+                    <li>หลังจากผ่อนชำระครบทางผู้ให้เช่าซื้อจะปลดล็อกให้ไม่เกิน 7 วันทำการ</li>
+                    <li>เงื่อนไขและบริการหลังการขาย ผู้เช่าซื้อได้ตรวจดูคุณภาพสินทรัพย์ที่เช่าซื้อจนเป็นที่พอใจแล้ว การรับประกันไม่ครอบคลุมกรณีหล่นแตก ตกน้ำ เครื่องพังจากการใช้งานรุนแรง หรืออื่นๆ ที่เกิดขึ้นจากผู้เช่าซื้อเอง</li>
+                    <li>กรณีผู้เช่าซื้อผิดนัด ทางผู้ให้เช่าซื้อมีสิทธิในการติดตามทวงสินทรัพย์อย่างถูกต้องกฎหมายทุกกรณี</li>
+                    <li>กรณีผู้เช่าซื้อต้องการยกเลิกสัญญาก่อนจะผ่อนหมด มีค่ายกเลิกสัญญา 1,500 บาท และค่าปลดล็อกเครื่อง 2,000 บาท</li>
+                    <li>กรณีเรียกคืนสินทรัพย์แล้ว ผู้เช่าซื้อไม่ส่งมอบให้ ทางผู้ให้เช่าซื้อจะดำเนินการคดีอาญาโทษยักยอกทรัพย์จนถึงที่สุด</li>
+                  </ol>
+                  <div style={{ fontSize: '9px', fontWeight: 'bold', marginTop: '2px', textAlign: 'left' }}>
+                    *ตามประมวลกฎหมายอาญามาตรา 352 ต้องโทษจำคุกไม่เกิน 3 ปี
+                  </div>
+
+                  {/* Signatures Area */}
+                  <div className="signatures-container">
+                    {/* Lessee (Customer) Signature Box */}
+                    <div className="sig-box" onClick={() => setShowSignModal(true)} style={{ cursor: 'pointer' }}>
+                      <div className="sig-label">ลงชื่อ</div>
+                      <div className="sig-line-wrapper">
+                        {signatureData ? (
+                          <img src={signatureData} alt="Customer Signature" className="sig-img" />
+                        ) : (
+                          <div className="sig-placeholder no-print">( แตะที่นี่เพื่อเซ็นชื่อ / Tap to sign )</div>
+                        )}
+                      </div>
+                      <div className="sig-name">
+                        ( {customerName || '........................................................'} )
+                      </div>
+                      <div className="sig-role">ผู้เช่าซื้อ</div>
+                    </div>
+
+                    {/* Lessor (Company) Signature Box with Stamp */}
+                    <div className="sig-box" style={{ position: 'relative' }}>
+                      <div className="sig-label">ลงชื่อ</div>
+                      <div className="sig-line-wrapper">
+                        <div style={{ height: '100px', borderBottom: '1px solid #000', width: '200px', margin: '0 auto' }} />
+                        {/* Official transparent company stamp seal */}
+                        <img 
+                          src="/company_stamp_transparent.png" 
+                          alt="Company Seal Stamp" 
+                          className="company-seal-stamp" 
+                        />
+                      </div>
+                      <div className="sig-name">
+                        ( บริษัท โฟน สวิตช์ ฮับ จำกัด )
+                      </div>
+                      <div className="sig-role">ผู้ให้เช่าซื้อ</div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
-          )}
-        </div>
-
+        )}
       </div>
+    </div>
 
       {/* DRAWING SIGNATURE MODAL - FULL SCREEN */}
       {showSignModal && (
