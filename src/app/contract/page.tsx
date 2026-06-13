@@ -1110,7 +1110,7 @@ export default function ContractPage() {
 
               {/* Accessories selection for Purchase Contract */}
               {contractType === 'purchase' && (
-                <div className="form-group" style={{ marginTop: '16px', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                <div className="form-group" style={{ marginTop: '16px', background: '#0b0f19', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
                   <label className="form-label" style={{ fontWeight: 800 }}>📦 อุปกรณ์ที่มาด้วย (Included Accessories)</label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px' }}>
