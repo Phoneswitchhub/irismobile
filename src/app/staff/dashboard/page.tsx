@@ -6510,8 +6510,8 @@ export default function StaffDashboard() {
                       <th style={{ width: '10%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('selling_price')}>
                         {t('staff_th_payment_vs_total')} {sortField === 'selling_price' && (sortDirection === 'asc' ? '▲' : '▼')}
                       </th>
-                      <th style={{ width: '34%' }}>{t('staff_th_installment_rounds')}</th>
-                      <th style={{ width: '6%', textAlign: 'center' }}>{t('staff_th_actions2')}</th>
+                      <th style={{ width: '30%' }}>{t('staff_th_installment_rounds')}</th>
+                      <th style={{ width: '10%', textAlign: 'center' }}>{t('staff_th_actions2')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -8127,10 +8127,10 @@ CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authentic
                         <th style={{ width: '12%', textAlign: 'right', cursor: 'pointer' }} onClick={() => toggleSort('cod_amount')}>
                           {t('staff_th_cod_unpaid')} {sortField === 'cod_amount' && (sortDirection === 'asc' ? '▲' : '▼')}
                         </th>
-                        <th style={{ width: '10%', textAlign: 'center', cursor: 'pointer' }} onClick={() => toggleSort('payment_status')}>
+                        <th style={{ width: '8%', textAlign: 'center', cursor: 'pointer' }} onClick={() => toggleSort('payment_status')}>
                           {t('staff_cod_status_header')} {sortField === 'payment_status' && (sortDirection === 'asc' ? '▲' : '▼')}
                         </th>
-                        <th style={{ width: '10%', textAlign: 'center' }}>{t('staff_cod_actions_header')}</th>
+                        <th style={{ width: '12%', textAlign: 'center' }}>{t('staff_cod_actions_header')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -8160,7 +8160,7 @@ CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authentic
                                   type="button"
                                   className="btn-sm btn-green"
                                   onClick={() => handleConfirmPayment(item.id)}
-                                  style={{ height: '24px', padding: '0 8px', fontSize: '10.5px', fontWeight: 800, margin: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                  style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 800, margin: 0, cursor: 'pointer', whiteSpace: 'nowrap', display: 'inline-block', borderRadius: '6px' }}
                                 >
                                   {t('staff_btn_confirm_payment')}
                                 </button>
@@ -8169,7 +8169,7 @@ CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authentic
                                   type="button"
                                   className="btn-sm btn-red"
                                   onClick={() => handleCancelPayment(item.id, 'cod')}
-                                  style={{ height: '24px', padding: '0 8px', fontSize: '10.5px', fontWeight: 800, margin: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                  style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 800, margin: 0, cursor: 'pointer', whiteSpace: 'nowrap', display: 'inline-block', borderRadius: '6px' }}
                                 >
                                   {t('staff_btn_cancel_payment')}
                                 </button>
