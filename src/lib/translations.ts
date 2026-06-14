@@ -699,7 +699,19 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     margin_th_cost: "매입원가",
     margin_th_price: "판매금액",
     margin_th_seller_col: "판매사원",
-    margin_th_margin: "마진"
+    margin_th_margin: "마진",
+    margin_real_margin: "실 마진 (Real Margin)",
+    margin_real_margin_desc: "총 정산 마진 - 기타 운영 지출",
+    margin_real_margin_desc_full: "(총 마진에서 기타 지출 ฿{other} 차감)",
+    margin_other_expenses: "기타 운영 지출 (Other Expenses)",
+    margin_remittance_buyback_expenses: "본사송금 및 기기매입 지출",
+    margin_real_margin_report_title: "실 마진 정산 보고서 (Real Margin Settlement Report)",
+    margin_th_total_margin_krw: "총 정산 마진",
+    margin_th_other_expenses: "기타 지출 (THB)",
+    margin_th_other_expenses_krw: "기타 지출 (KRW)",
+    margin_th_real_margin: "실 마진 (KRW)",
+    margin_th_remittance_buyback: "본사송금/기기매입 (THB)",
+    margin_remittance_buyback_note: "※ 마진 차감 제외"
   },
   th: {
     app_title: "PHONE SWITCH HUB",
@@ -1399,7 +1411,19 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     margin_th_cost: "ต้นทุนซื้อ",
     margin_th_price: "ราคาขาย",
     margin_th_seller_col: "พนักงานขาย",
-    margin_th_margin: "มาร์จิน"
+    margin_th_margin: "มาร์จิน",
+    margin_real_margin: "กำไรสุทธิรับจริง (Real Margin)",
+    margin_real_margin_desc: "กำไรมาร์จินรวม - ค่าใช้จ่ายดำเนินงานอื่นๆ",
+    margin_real_margin_desc_full: "(หักค่าใช้จ่ายอื่นๆ ฿{other})",
+    margin_other_expenses: "ค่าใช้จ่ายดำเนินงานอื่นๆ (Other Expenses)",
+    margin_remittance_buyback_expenses: "ส่งเงินสำนักงานใหญ่และซื้อเครื่อง",
+    margin_real_margin_report_title: "รายงานกำไรสุทธิรับจริง (Real Margin Settlement Report)",
+    margin_th_total_margin_krw: "กำไรมาร์จินรวม",
+    margin_th_other_expenses: "ค่าใช้จ่ายอื่นๆ (THB)",
+    margin_th_other_expenses_krw: "ค่าใช้จ่ายอื่นๆ (KRW)",
+    margin_th_real_margin: "กำไรสุทธิ (KRW)",
+    margin_th_remittance_buyback: "ส่งเงิน/ซื้อเครื่อง (THB)",
+    margin_remittance_buyback_note: "※ ไม่หักจากกำไร"
   },
   mm: {
     app_title: "PHONE SWITCH HUB",
@@ -2233,6 +2257,18 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     partner_deposit_occupied: "Occupied Deposit",
     partner_deposit_available: "Available Limit",
     toast_limit_exceeded: "Deposit limit exceeded! You can only request devices within your available limit.",
-    toast_no_deposit_limit: "Deposit limit is not set. Please contact the head office."
+    toast_no_deposit_limit: "Deposit limit is not set. Please contact the head office.",
+    margin_real_margin: "Real Margin",
+    margin_real_margin_desc: "Total Margin - Other Expenses",
+    margin_real_margin_desc_full: "(Deducted other expenses ฿{other})",
+    margin_other_expenses: "Other Operating Expenses",
+    margin_remittance_buyback_expenses: "HQ Remittance & Device Buyback",
+    margin_real_margin_report_title: "Real Margin Settlement Report",
+    margin_th_total_margin_krw: "Total Margin",
+    margin_th_other_expenses: "Other Expenses (THB)",
+    margin_th_other_expenses_krw: "Other Expenses (KRW)",
+    margin_th_real_margin: "Real Margin (KRW)",
+    margin_th_remittance_buyback: "Remittance/Buyback (THB)",
+    margin_remittance_buyback_note: "※ Excluded from margin deduction"
   }
 };

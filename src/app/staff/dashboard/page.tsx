@@ -91,6 +91,10 @@ const formatMonthDropdownLabel = (ymStr: string, lang: string) => {
   return ymStr;
 };
 
+const isDHL = (loc?: string) => {
+  return (loc || '').trim().toUpperCase() === 'DHL';
+};
+
 const getMonthLabel = (ymStr: string, lang: string) => {
   if (!ymStr || ymStr === 'all') {
     return lang === 'ko' ? '모든 월' : (lang === 'th' ? 'ทุกเดือน' : 'All Months');
@@ -609,6 +613,58 @@ export default function StaffDashboard() {
     const actualCollectedTHB = totalSalesTHB - totalUnpaidCODTHB - totalUnpaidInstallmentTHB - totalUnpaidOtherTHB;
     const activeInstallmentCount = soldList.filter(d => d.payment_status === 'collecting').length;
     const unpaidList = soldList.filter(d => d.payment_status === 'unpaid' || d.payment_status === 'collecting');
+
+    // Filter expenses corresponding to the selected margin months
+    const filteredExpensesForMargin = expenses.filter(exp => {
+      if (!exp.expense_date) return false;
+      const ym = exp.expense_date.substring(0, 7);
+      if (marginSelectedMonths.length === 0) return true; // all months
+      return marginSelectedMonths.includes(ym);
+    });
+
+    const isRemittanceOrBuyback = (categoryId: string) => {
+      let currentId = categoryId;
+      for (let i = 0; i < 5; i++) {
+        const cat = expenseCategories.find(c => c.id === currentId);
+        if (!cat) break;
+        const name = (cat.name || '').trim().toLowerCase();
+        if (
+          name.includes('본사 송금') || 
+          name.includes('본사송금') || 
+          name.includes('기기 매입') || 
+          name.includes('기기매입') || 
+          name.includes('기계 매입') || 
+          name.includes('기계매입')
+        ) {
+          return true;
+        }
+        if (cat.parent_id) {
+          currentId = cat.parent_id;
+        } else {
+          break;
+        }
+      }
+      return false;
+    };
+
+    let totalOtherExpensesTHB = 0;
+    let totalOtherExpensesKRW = 0;
+    let totalRemittanceBuybackTHB = 0;
+    let totalRemittanceBuybackKRW = 0;
+
+    filteredExpensesForMargin.forEach(exp => {
+      const amount = Number(exp.amount) || 0;
+      const amountKRW = Math.round(amount * exchangeRate);
+      if (isRemittanceOrBuyback(exp.category_id)) {
+        totalRemittanceBuybackTHB += amount;
+        totalRemittanceBuybackKRW += amountKRW;
+      } else {
+        totalOtherExpensesTHB += amount;
+        totalOtherExpensesKRW += amountKRW;
+      }
+    });
+
+    const realMarginKRW = totalMarginKRW - totalOtherExpensesKRW;
     
     return {
       totalSalesTHB,
@@ -619,9 +675,104 @@ export default function StaffDashboard() {
       actualCollectedTHB,
       activeInstallmentCount,
       unpaidList,
-      soldList
+      soldList,
+      totalOtherExpensesTHB,
+      totalOtherExpensesKRW,
+      totalRemittanceBuybackTHB,
+      totalRemittanceBuybackKRW,
+      realMarginKRW
     };
-  }, [devices, exchangeRate, marginSelectedMonths, getYearMonth]);
+  }, [devices, expenses, expenseCategories, exchangeRate, marginSelectedMonths, getYearMonth]);
+
+  const realMarginMonthlyList = useMemo(() => {
+    const monthsSet = new Set<string>();
+    devices.forEach(d => {
+      if (d.is_sold && d.is_approved && !d.deleted_at) {
+        const ym = getYearMonth(d.sale_date);
+        if (ym && ym !== 'Unknown') monthsSet.add(ym);
+      }
+    });
+    expenses.forEach(exp => {
+      if (exp.expense_date) {
+        const ym = exp.expense_date.substring(0, 7);
+        if (ym && ym.length === 7) monthsSet.add(ym);
+      }
+    });
+
+    const months = Array.from(monthsSet).sort((a, b) => b.localeCompare(a));
+
+    return months.map(ym => {
+      const soldInMonth = devices.filter(d => !d.deleted_at && d.is_sold && d.is_approved && getYearMonth(d.sale_date) === ym);
+      
+      const totalMarginKRW = soldInMonth.reduce((sum, d) => {
+        const price = Number(d.selling_price || 0);
+        const cost = price === 0 ? 0 : Number(d.purchase_cost_krw || 0);
+        const margin = price === 0 ? 0 : (Math.round(price * exchangeRate) - cost);
+        return sum + margin;
+      }, 0);
+
+      const expensesInMonth = expenses.filter(exp => exp.expense_date && exp.expense_date.substring(0, 7) === ym);
+      
+      let otherExpensesTHB = 0;
+      let otherExpensesKRW = 0;
+      let remittanceBuybackTHB = 0;
+      let remittanceBuybackKRW = 0;
+
+      const isRemittanceOrBuyback = (categoryId: string) => {
+        let currentId = categoryId;
+        for (let i = 0; i < 5; i++) {
+          const cat = expenseCategories.find(c => c.id === currentId);
+          if (!cat) break;
+          const name = (cat.name || '').trim().toLowerCase();
+          if (
+            name.includes('본사 송금') || 
+            name.includes('본사송금') || 
+            name.includes('기기 매입') || 
+            name.includes('기기매입') || 
+            name.includes('기계 매입') || 
+            name.includes('기계매입')
+          ) {
+            return true;
+          }
+          if (cat.parent_id) {
+            currentId = cat.parent_id;
+          } else {
+            break;
+          }
+        }
+        return false;
+      };
+
+      expensesInMonth.forEach(exp => {
+        const amount = Number(exp.amount) || 0;
+        const amountKRW = Math.round(amount * exchangeRate);
+        if (isRemittanceOrBuyback(exp.category_id)) {
+          remittanceBuybackTHB += amount;
+          remittanceBuybackKRW += amountKRW;
+        } else {
+          otherExpensesTHB += amount;
+          otherExpensesKRW += amountKRW;
+        }
+      });
+
+      const realMarginKRW = totalMarginKRW - otherExpensesKRW;
+
+      return {
+        yearMonth: ym,
+        totalMarginKRW,
+        otherExpensesTHB,
+        otherExpensesKRW,
+        remittanceBuybackTHB,
+        remittanceBuybackKRW,
+        realMarginKRW
+      };
+    });
+  }, [devices, expenses, expenseCategories, exchangeRate, getYearMonth]);
+
+  const filteredRealMarginMonthlyList = useMemo(() => {
+    if (marginSelectedMonths.length === 0) return realMarginMonthlyList;
+    return realMarginMonthlyList.filter(row => marginSelectedMonths.includes(row.yearMonth));
+  }, [realMarginMonthlyList, marginSelectedMonths]);
 
   const customerMonths = useMemo(() => {
     const months = new Set<string>();
@@ -1552,8 +1703,8 @@ export default function StaffDashboard() {
 
   // 3. Stats Calculations
   const stats = useMemo(() => {
-    const activeStock = devices.filter(d => !d.deleted_at && !d.is_sold && d.stock_location !== 'DHL');
-    const pendingIntake = devices.filter(d => !d.deleted_at && !d.is_sold && d.stock_location === 'DHL');
+    const activeStock = devices.filter(d => !d.deleted_at && !d.is_sold && !isDHL(d.stock_location));
+    const pendingIntake = devices.filter(d => !d.deleted_at && !d.is_sold && isDHL(d.stock_location));
     const soldList = devices.filter(d => !d.deleted_at && d.is_sold);
 
     const totalStockCount = activeStock.length;
@@ -1699,7 +1850,7 @@ export default function StaffDashboard() {
   // categoryFilter를 제외한 검색/위치 필터만 적용된 기기 목록의 길이 (Ledger & Sales)
   const baseActiveDevicesCount = useMemo(() => {
     return devices.filter(d => {
-      if (d.deleted_at || d.is_sold || d.stock_location === 'DHL') return false;
+      if (d.deleted_at || d.is_sold || isDHL(d.stock_location)) return false;
       const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -1710,7 +1861,7 @@ export default function StaffDashboard() {
 
   const basePendingDevicesCount = useMemo(() => {
     return devices.filter(d => {
-      if (d.deleted_at || d.is_sold || d.stock_location !== 'DHL') return false;
+      if (d.deleted_at || d.is_sold || !isDHL(d.stock_location)) return false;
       const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -1753,7 +1904,7 @@ export default function StaffDashboard() {
   // Extract unique models present in current tab's scope (active vs sold vs pending) based on active search/location filters
   const uniqueModels = useMemo(() => {
     const activeStock = devices.filter(d => {
-      if (d.deleted_at || d.is_sold || d.stock_location === 'DHL') return false;
+      if (d.deleted_at || d.is_sold || isDHL(d.stock_location)) return false;
       const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -1762,7 +1913,7 @@ export default function StaffDashboard() {
     });
 
     const pendingStock = devices.filter(d => {
-      if (d.deleted_at || d.is_sold || d.stock_location !== 'DHL') return false;
+      if (d.deleted_at || d.is_sold || !isDHL(d.stock_location)) return false;
       const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -1835,7 +1986,7 @@ export default function StaffDashboard() {
   // Filtered lists
   const filteredActiveDevices = useMemo(() => {
     const list = devices.filter(d => {
-      if (d.deleted_at || d.is_sold || d.stock_location === 'DHL') return false;
+      if (d.deleted_at || d.is_sold || isDHL(d.stock_location)) return false;
       const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -1864,7 +2015,7 @@ export default function StaffDashboard() {
   // Filtered list for Pending Intake
   const filteredPendingDevices = useMemo(() => {
     const list = devices.filter(d => {
-      if (d.deleted_at || d.is_sold || d.stock_location !== 'DHL') return false;
+      if (d.deleted_at || d.is_sold || !isDHL(d.stock_location)) return false;
       const matchSearch = normalizeModelName(d.model_name).includes(normalizeModelName(searchQuery)) || 
                           (d.imei && d.imei.includes(searchQuery)) ||
                           (d.sticker && d.sticker.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -1963,7 +2114,7 @@ export default function StaffDashboard() {
       let targetTab: 'ledger' | 'pending_intake' | 'sales' | 'trash' = 'ledger';
       if (d.deleted_at) targetTab = 'trash';
       else if (d.is_sold) targetTab = 'sales';
-      else if (d.stock_location === 'DHL') targetTab = 'pending_intake';
+      else if (isDHL(d.stock_location)) targetTab = 'pending_intake';
 
       let isVisible = false;
       if (activeTab === targetTab) {
@@ -2010,7 +2161,7 @@ export default function StaffDashboard() {
 
     // Active stock only: !deleted_at && !is_sold && stock_location !== 'DHL'
     const activeDevices = devices.filter(d => {
-      if (d.deleted_at || d.is_sold || d.stock_location === 'DHL') return false;
+      if (d.deleted_at || d.is_sold || isDHL(d.stock_location)) return false;
       if (auditLocationFilter !== 'all' && d.stock_location !== auditLocationFilter) return false;
       return true;
     });
@@ -2051,11 +2202,11 @@ export default function StaffDashboard() {
             status = `판매 완료됨 (${found.sale_date || ''})`;
             badgeColor = '#10b981'; // green
             deviceDetail = ` [${found.model_name || ''}]`;
-          } else if (found.stock_location === 'DHL') {
+          } else if (isDHL(found.stock_location)) {
             status = '입고 대기 중 (DHL)';
             badgeColor = '#d97706'; // yellow/orange
             deviceDetail = ` [${found.model_name || ''}]`;
-          } else if (!found.deleted_at && !found.is_sold && found.stock_location !== 'DHL' && auditLocationFilter !== 'all' && found.stock_location !== auditLocationFilter) {
+          } else if (!found.deleted_at && !found.is_sold && !isDHL(found.stock_location) && auditLocationFilter !== 'all' && found.stock_location !== auditLocationFilter) {
             status = `다른 위치에 있음 (${found.stock_location})`;
             badgeColor = '#3b82f6'; // blue
             deviceDetail = ` [${found.model_name || ''}]`;
@@ -2125,14 +2276,14 @@ export default function StaffDashboard() {
       const targetVal = parseYYMD(date);
 
       // Ingested on this date (not deleted, location !== DHL)
-      const ingested = devices.filter(d => !d.deleted_at && d.stock_location !== 'DHL' && parseYYMD(d.site_date) === targetVal);
+      const ingested = devices.filter(d => !d.deleted_at && !isDHL(d.stock_location) && parseYYMD(d.site_date) === targetVal);
 
       // Sold on this date
       const sold = devices.filter(d => !d.deleted_at && d.is_sold && parseYYMD(d.sale_date) === targetVal);
 
       // Stock at the end of this date
       const stock = devices.filter(d => {
-        if (d.deleted_at || d.stock_location === 'DHL') return false;
+        if (d.deleted_at || isDHL(d.stock_location)) return false;
         const intakeVal = parseYYMD(d.site_date);
         if (intakeVal > 0 && intakeVal > targetVal) return false;
         
@@ -4170,9 +4321,9 @@ export default function StaffDashboard() {
 
       // Determine where the matching items are
       // Order of priority: active stock (ledger), sales, pending_intake, trash
-      const activeMatch = allMatching.find(d => !d.deleted_at && !d.is_sold && d.stock_location !== 'DHL');
+      const activeMatch = allMatching.find(d => !d.deleted_at && !d.is_sold && !isDHL(d.stock_location));
       const soldMatch = allMatching.find(d => !d.deleted_at && d.is_sold);
-      const pendingMatch = allMatching.find(d => !d.deleted_at && !d.is_sold && d.stock_location === 'DHL');
+      const pendingMatch = allMatching.find(d => !d.deleted_at && !d.is_sold && isDHL(d.stock_location));
       const trashMatch = allMatching.find(d => d.deleted_at);
 
       if (currentTab === 'ledger') {
@@ -7248,6 +7399,20 @@ ON CONFLICT (role) DO UPDATE SET
                   </div>
                 </div>
               )}
+
+              {/* Real Margin Card */}
+              {!hideMargin && (
+                <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px', borderLeft: '4px solid var(--green)' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>💵</div>
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>{t('margin_real_margin')}</div>
+                    <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--green)', marginTop: '4px' }}>₩{marginStats.realMarginKRW.toLocaleString()}</div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>
+                      {t('margin_real_margin_desc_full').replace('{other}', marginStats.totalOtherExpensesTHB.toLocaleString())}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Seller Monthly Performance Aggregation */}
@@ -7359,6 +7524,83 @@ ON CONFLICT (role) DO UPDATE SET
                 </div>
               );
             })()}
+
+            {/* Real Operating Margin Breakdown Report */}
+            {!hideMargin && (
+              <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>📉</span> {t('margin_operating_margin_title')}
+                </h4>
+                <div style={{ fontSize: '12px', color: 'var(--t3)', lineHeight: '1.5', padding: '10px 14px', background: '#f8fafc', borderRadius: '8px', borderLeft: '3px solid var(--purple-l)' }}>
+                  💡 <strong>{t('margin_real_margin_calc_label')}</strong> {t('margin_real_margin_calc_desc')}
+                </div>
+                <div className="tbl-wrap" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+                  <table className="tbl" style={{ margin: 0 }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: '15%' }}>{t('margin_th_month')}</th>
+                        <th style={{ width: '20%', textAlign: 'right' }}>{t('margin_th_device_margin')}</th>
+                        <th style={{ width: '25%', textAlign: 'right' }}>{t('margin_th_operational_expenses')}</th>
+                        <th style={{ width: '20%', textAlign: 'right' }}>{t('margin_th_real_margin')}</th>
+                        <th style={{ width: '20%', textAlign: 'right', color: '#94a3b8' }}>{t('margin_th_remittance_buyback')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredRealMarginMonthlyList.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>{t('margin_empty_summary')}</td>
+                        </tr>
+                      ) : (
+                        filteredRealMarginMonthlyList.map(row => (
+                          <tr key={row.yearMonth}>
+                            <td style={{ fontWeight: 700, color: 'var(--purple-l)' }}>{row.yearMonth}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 700 }}>₩{row.totalMarginKRW.toLocaleString()}</td>
+                            <td style={{ textAlign: 'right', color: '#e11d48', fontWeight: 600 }}>
+                              -₩{row.otherExpensesKRW.toLocaleString()}
+                              <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', fontWeight: 400 }}>฿{row.otherExpensesTHB.toLocaleString()}</span>
+                            </td>
+                            <td style={{ textAlign: 'right', fontWeight: 900, color: row.realMarginKRW >= 0 ? 'var(--green)' : '#e11d48', background: 'rgba(16, 185, 129, 0.03)' }}>
+                              ₩{row.realMarginKRW.toLocaleString()}
+                            </td>
+                            <td style={{ textAlign: 'right', color: '#94a3b8', fontSize: '11.5px' }}>
+                              ₩{row.remittanceBuybackKRW.toLocaleString()}
+                              <span style={{ fontSize: '11px', color: '#cbd5e1', display: 'block' }}>฿{row.remittanceBuybackTHB.toLocaleString()}</span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                    {filteredRealMarginMonthlyList.length > 0 && (() => {
+                      const sumDeviceMargin = filteredRealMarginMonthlyList.reduce((sum, r) => sum + r.totalMarginKRW, 0);
+                      const sumOpsExpensesKRW = filteredRealMarginMonthlyList.reduce((sum, r) => sum + r.otherExpensesKRW, 0);
+                      const sumOpsExpensesTHB = filteredRealMarginMonthlyList.reduce((sum, r) => sum + r.otherExpensesTHB, 0);
+                      const sumRealMargin = filteredRealMarginMonthlyList.reduce((sum, r) => sum + r.realMarginKRW, 0);
+                      const sumRemitBuybackKRW = filteredRealMarginMonthlyList.reduce((sum, r) => sum + r.remittanceBuybackKRW, 0);
+                      const sumRemitBuybackTHB = filteredRealMarginMonthlyList.reduce((sum, r) => sum + r.remittanceBuybackTHB, 0);
+                      return (
+                        <tfoot>
+                          <tr style={{ background: '#f8fafc', borderTop: '2px solid var(--border)', fontWeight: 800 }}>
+                            <td style={{ fontWeight: 800 }}>{t('margin_total')}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 800 }}>₩{sumDeviceMargin.toLocaleString()}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 800, color: '#e11d48' }}>
+                              -₩{sumOpsExpensesKRW.toLocaleString()}
+                              <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', fontWeight: 400 }}>฿{sumOpsExpensesTHB.toLocaleString()}</span>
+                            </td>
+                            <td style={{ textAlign: 'right', fontWeight: 900, color: sumRealMargin >= 0 ? 'var(--green)' : '#e11d48', background: 'rgba(16, 185, 129, 0.05)' }}>
+                              ₩{sumRealMargin.toLocaleString()}
+                            </td>
+                            <td style={{ textAlign: 'right', color: '#94a3b8', fontWeight: 700 }}>
+                              ₩{sumRemitBuybackKRW.toLocaleString()}
+                              <span style={{ fontSize: '11px', color: '#cbd5e1', display: 'block', fontWeight: 400 }}>฿{sumRemitBuybackTHB.toLocaleString()}</span>
+                            </td>
+                          </tr>
+                        </tfoot>
+                      );
+                    })()}
+                  </table>
+                </div>
+              </div>
+            )}
 
             {/* Part 2: Complete Margin Ledger */}
             <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
