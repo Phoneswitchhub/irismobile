@@ -1452,6 +1452,69 @@ export default function StaffDashboard() {
     return filteredExpensesList.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
   }, [filteredExpensesList]);
 
+  const expenseClassificationTHB = useMemo(() => {
+    let remittance = 0;
+    let buyback = 0;
+    let other = 0;
+
+    const getExpenseType = (categoryId: string) => {
+      let currentId = categoryId;
+      for (let i = 0; i < 5; i++) {
+        const cat = expenseCategories.find(c => c.id === currentId);
+        if (!cat) break;
+        const name = (cat.name || '').trim().toLowerCase();
+        if (
+          currentId === '21000000-0000-0000-0000-000000000000' || // 본사 송금
+          name.includes('본사 송금') || 
+          name.includes('본사송금') ||
+          name.includes('본사 입금') || 
+          name.includes('본사입금')
+        ) {
+          return 'remittance';
+        }
+        if (
+          currentId === '21100000-0000-0000-0000-000000000000' || // 기기 대금
+          name.includes('현지 기기') || 
+          name.includes('현지 기계') || 
+          name.includes('현지기기') || 
+          name.includes('현지기계') ||
+          name.includes('기기 대금') ||
+          name.includes('기기대금') ||
+          name.includes('기기 매입') ||
+          name.includes('기기매입') ||
+          name.includes('기계 매입') ||
+          name.includes('기계매입')
+        ) {
+          return 'buyback';
+        }
+        if (cat.parent_id) {
+          currentId = cat.parent_id;
+        } else {
+          break;
+        }
+      }
+      return 'other';
+    };
+
+    filteredExpensesList.forEach(exp => {
+      const amount = Number(exp.amount) || 0;
+      const type = getExpenseType(exp.category_id);
+      if (type === 'remittance') {
+        remittance += amount;
+      } else if (type === 'buyback') {
+        buyback += amount;
+      } else {
+        other += amount;
+      }
+    });
+
+    return {
+      remittance,
+      buyback,
+      other
+    };
+  }, [filteredExpensesList, expenseCategories]);
+
   const currentBalanceTHB = useMemo(() => {
     // 1. Calculate all-time (lifetime) actual collected cash
     const allTimeSoldList = devices.filter(d => !d.deleted_at && d.is_sold && d.is_approved);
@@ -8027,18 +8090,51 @@ CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authentic
                   <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span>📊</span> {lang === 'ko' ? '지출 보고서 및 필터' : 'Expense Reports & Filter'}
                   </h4>
-                  <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '8px', padding: '6px 12px', textAlign: 'right' }}>
-                    <div style={{ fontSize: '10px', color: '#92400e', fontWeight: 700, textTransform: 'uppercase' }}>
-                      {filterExpenseSmall !== 'all' 
-                        ? (lang === 'ko' ? '소분류 지출총액' : 'Small Cat Total')
-                        : filterExpenseMedium !== 'all'
-                        ? (lang === 'ko' ? '중분류 지출총액' : 'Medium Cat Total')
-                        : filterExpenseLarge !== 'all'
-                        ? (lang === 'ko' ? '대분류 지출총액' : 'Large Cat Total')
-                        : (lang === 'ko' ? '전체 지출총액' : 'Total Expenses')}
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {/* Headquarter Deposit */}
+                    <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '4px 10px', textAlign: 'right', minWidth: '75px' }}>
+                      <div style={{ fontSize: '9px', color: '#1e40af', fontWeight: 700 }}>
+                        {lang === 'ko' ? '본사 입금' : 'HQ Deposit'}
+                      </div>
+                      <div style={{ fontSize: '13px', fontWeight: 800, color: '#1d4ed8' }}>
+                        ฿{expenseClassificationTHB.remittance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
                     </div>
-                    <div style={{ fontSize: '16px', fontWeight: 900, color: '#b45309' }}>
-                      ฿{totalExpensesTHB.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+
+                    {/* Device Purchase */}
+                    <div style={{ background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: '8px', padding: '4px 10px', textAlign: 'right', minWidth: '75px' }}>
+                      <div style={{ fontSize: '9px', color: '#5b21b6', fontWeight: 700 }}>
+                        {lang === 'ko' ? '기기 매입' : 'Device Purchase'}
+                      </div>
+                      <div style={{ fontSize: '13px', fontWeight: 800, color: '#6d28d9' }}>
+                        ฿{expenseClassificationTHB.buyback.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </div>
+
+                    {/* General Expenses */}
+                    <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '4px 10px', textAlign: 'right', minWidth: '75px' }}>
+                      <div style={{ fontSize: '9px', color: '#991b1b', fontWeight: 700 }}>
+                        {lang === 'ko' ? '지출' : 'Expenses'}
+                      </div>
+                      <div style={{ fontSize: '13px', fontWeight: 800, color: '#b91c1c' }}>
+                        ฿{expenseClassificationTHB.other.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </div>
+
+                    {/* Grand Total */}
+                    <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '8px', padding: '4px 10px', textAlign: 'right', minWidth: '75px' }}>
+                      <div style={{ fontSize: '9px', color: '#92400e', fontWeight: 700 }}>
+                        {filterExpenseSmall !== 'all' 
+                          ? (lang === 'ko' ? '소분류 총액' : 'Small Cat Total')
+                          : filterExpenseMedium !== 'all'
+                          ? (lang === 'ko' ? '중분류 총액' : 'Medium Cat Total')
+                          : filterExpenseLarge !== 'all'
+                          ? (lang === 'ko' ? '대분류 총액' : 'Large Cat Total')
+                          : (lang === 'ko' ? '합계' : 'Total')}
+                      </div>
+                      <div style={{ fontSize: '13px', fontWeight: 900, color: '#b45309' }}>
+                        ฿{totalExpensesTHB.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
                     </div>
                   </div>
                 </div>
