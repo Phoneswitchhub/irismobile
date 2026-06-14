@@ -366,6 +366,11 @@ export default function StaffDashboard() {
   const [newCatParentId, setNewCatParentId] = useState('');
   const [isMarginLogExpanded, setIsMarginLogExpanded] = useState(false);
   const [expenseFilterMonth, setExpenseFilterMonth] = useState<string>('all');
+  const [expenseClassFilter, setExpenseClassFilter] = useState<'all' | 'remittance' | 'buyback' | 'other'>('all');
+
+  useEffect(() => {
+    setExpenseClassFilter('all');
+  }, [expenseFilterMonth, filterExpenseLarge, filterExpenseMedium, filterExpenseSmall]);
 
   // Bulk Partner Share States
   const [isBulkPartnerShareModalOpen, setIsBulkPartnerShareModalOpen] = useState(false);
@@ -1520,6 +1525,61 @@ export default function StaffDashboard() {
       other
     };
   }, [filteredExpensesList, expenseCategories]);
+
+  const displayedExpensesList = useMemo(() => {
+    if (expenseClassFilter === 'all') return filteredExpensesList;
+
+    const getExpenseType = (categoryId: string) => {
+      let currentId = categoryId;
+      let hasRemittance = false;
+      let hasBuyback = false;
+
+      for (let i = 0; i < 5; i++) {
+        const cat = expenseCategories.find(c => c.id === currentId);
+        if (!cat) break;
+        const name = (cat.name || '').trim().toLowerCase();
+        if (
+          currentId === '21000000-0000-0000-0000-000000000000' || // 본사 송금
+          name.includes('본사 송금') || 
+          name.includes('본사송금') ||
+          name.includes('본사 입금') || 
+          name.includes('본사입금')
+        ) {
+          hasRemittance = true;
+        }
+        if (
+          currentId === '21100000-0000-0000-0000-000000000000' || // 기기 대금
+          name.includes('현지 기기') || 
+          name.includes('현지 기계') || 
+          name.includes('현지기기') || 
+          name.includes('현지기계') ||
+          name.includes('기기 대금') ||
+          name.includes('기기대금') ||
+          name.includes('기기 매입') ||
+          name.includes('기기매입') ||
+          name.includes('기계 매입') ||
+          name.includes('기계매입')
+        ) {
+          hasBuyback = true;
+        }
+        if (cat.parent_id) {
+          currentId = cat.parent_id;
+        } else {
+          break;
+        }
+      }
+
+      if (hasRemittance) return 'remittance';
+      if (hasBuyback) return 'buyback';
+      return 'other';
+    };
+
+    return filteredExpensesList.filter(exp => getExpenseType(exp.category_id) === expenseClassFilter);
+  }, [filteredExpensesList, expenseCategories, expenseClassFilter]);
+
+  const displayedExpensesTotalTHB = useMemo(() => {
+    return displayedExpensesList.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+  }, [displayedExpensesList]);
 
   const currentBalanceTHB = useMemo(() => {
     // 1. Calculate all-time (lifetime) actual collected cash
@@ -8098,7 +8158,23 @@ CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authentic
                   </h4>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     {/* Headquarter Deposit */}
-                    <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '4px 10px', textAlign: 'right', minWidth: '75px' }}>
+                    <div 
+                      onClick={() => setExpenseClassFilter(prev => prev === 'remittance' ? 'all' : 'remittance')}
+                      style={{ 
+                        background: expenseClassFilter === 'remittance' ? '#dbeafe' : '#eff6ff', 
+                        border: expenseClassFilter === 'remittance' ? '2px solid #1d4ed8' : '1px solid #bfdbfe', 
+                        borderRadius: '8px', 
+                        padding: expenseClassFilter === 'remittance' ? '3px 9px' : '4px 10px', 
+                        textAlign: 'right', 
+                        minWidth: '75px',
+                        cursor: 'pointer',
+                        opacity: expenseClassFilter === 'all' || expenseClassFilter === 'remittance' ? 1 : 0.5,
+                        transform: expenseClassFilter === 'remittance' ? 'translateY(-2px)' : 'none',
+                        boxShadow: expenseClassFilter === 'remittance' ? '0 4px 6px -1px rgba(29, 78, 216, 0.15)' : 'none',
+                        transition: 'all 0.2s ease-in-out'
+                      }}
+                      title={lang === 'ko' ? '클릭 시 본사 입금 내역만 필터링' : 'Click to filter HQ deposits'}
+                    >
                       <div style={{ fontSize: '9px', color: '#1e40af', fontWeight: 700 }}>
                         {lang === 'ko' ? '본사 입금' : 'HQ Deposit'}
                       </div>
@@ -8108,7 +8184,23 @@ CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authentic
                     </div>
 
                     {/* Device Purchase */}
-                    <div style={{ background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: '8px', padding: '4px 10px', textAlign: 'right', minWidth: '75px' }}>
+                    <div 
+                      onClick={() => setExpenseClassFilter(prev => prev === 'buyback' ? 'all' : 'buyback')}
+                      style={{ 
+                        background: expenseClassFilter === 'buyback' ? '#ede9fe' : '#f5f3ff', 
+                        border: expenseClassFilter === 'buyback' ? '2px solid #6d28d9' : '1px solid #ddd6fe', 
+                        borderRadius: '8px', 
+                        padding: expenseClassFilter === 'buyback' ? '3px 9px' : '4px 10px', 
+                        textAlign: 'right', 
+                        minWidth: '75px',
+                        cursor: 'pointer',
+                        opacity: expenseClassFilter === 'all' || expenseClassFilter === 'buyback' ? 1 : 0.5,
+                        transform: expenseClassFilter === 'buyback' ? 'translateY(-2px)' : 'none',
+                        boxShadow: expenseClassFilter === 'buyback' ? '0 4px 6px -1px rgba(109, 40, 217, 0.15)' : 'none',
+                        transition: 'all 0.2s ease-in-out'
+                      }}
+                      title={lang === 'ko' ? '클릭 시 기기 매입 내역만 필터링' : 'Click to filter device purchases'}
+                    >
                       <div style={{ fontSize: '9px', color: '#5b21b6', fontWeight: 700 }}>
                         {lang === 'ko' ? '기기 매입' : 'Device Purchase'}
                       </div>
@@ -8118,7 +8210,23 @@ CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authentic
                     </div>
 
                     {/* General Expenses */}
-                    <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '4px 10px', textAlign: 'right', minWidth: '75px' }}>
+                    <div 
+                      onClick={() => setExpenseClassFilter(prev => prev === 'other' ? 'all' : 'other')}
+                      style={{ 
+                        background: expenseClassFilter === 'other' ? '#fee2e2' : '#fef2f2', 
+                        border: expenseClassFilter === 'other' ? '2px solid #b91c1c' : '1px solid #fecaca', 
+                        borderRadius: '8px', 
+                        padding: expenseClassFilter === 'other' ? '3px 9px' : '4px 10px', 
+                        textAlign: 'right', 
+                        minWidth: '75px',
+                        cursor: 'pointer',
+                        opacity: expenseClassFilter === 'all' || expenseClassFilter === 'other' ? 1 : 0.5,
+                        transform: expenseClassFilter === 'other' ? 'translateY(-2px)' : 'none',
+                        boxShadow: expenseClassFilter === 'other' ? '0 4px 6px -1px rgba(185, 28, 28, 0.15)' : 'none',
+                        transition: 'all 0.2s ease-in-out'
+                      }}
+                      title={lang === 'ko' ? '클릭 시 일반 지출 내역만 필터링' : 'Click to filter general expenses'}
+                    >
                       <div style={{ fontSize: '9px', color: '#991b1b', fontWeight: 700 }}>
                         {lang === 'ko' ? '지출' : 'Expenses'}
                       </div>
@@ -8128,7 +8236,23 @@ CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authentic
                     </div>
 
                     {/* Grand Total */}
-                    <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '8px', padding: '4px 10px', textAlign: 'right', minWidth: '75px' }}>
+                    <div 
+                      onClick={() => setExpenseClassFilter('all')}
+                      style={{ 
+                        background: expenseClassFilter === 'all' ? '#fef3c7' : '#fffbeb', 
+                        border: expenseClassFilter === 'all' ? '2px solid #b45309' : '1px solid #fde68a', 
+                        borderRadius: '8px', 
+                        padding: expenseClassFilter === 'all' ? '3px 9px' : '4px 10px', 
+                        textAlign: 'right', 
+                        minWidth: '75px',
+                        cursor: 'pointer',
+                        opacity: 1,
+                        transform: expenseClassFilter === 'all' ? 'translateY(-2px)' : 'none',
+                        boxShadow: expenseClassFilter === 'all' ? '0 4px 6px -1px rgba(180, 83, 9, 0.15)' : 'none',
+                        transition: 'all 0.2s ease-in-out'
+                      }}
+                      title={lang === 'ko' ? '클릭 시 전체 내역 보기' : 'Click to view all'}
+                    >
                       <div style={{ fontSize: '9px', color: '#92400e', fontWeight: 700 }}>
                         {filterExpenseSmall !== 'all' 
                           ? (lang === 'ko' ? '소분류 총액' : 'Small Cat Total')
@@ -8240,14 +8364,14 @@ CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authentic
                             {t('loading_data')}
                           </td>
                         </tr>
-                      ) : filteredExpensesList.length === 0 ? (
+                      ) : displayedExpensesList.length === 0 ? (
                         <tr>
                           <td colSpan={5} style={{ textAlign: 'center', padding: '16px', color: 'var(--t3)' }}>
-                            {lang === 'ko' ? '선택된 월/카테고리에 지출 내역이 없습니다.' : 'No expense records found for selected filters.'}
+                            {lang === 'ko' ? '선택된 필터에 지출 내역이 없습니다.' : 'No expense records found for selected filters.'}
                           </td>
                         </tr>
                       ) : (
-                        filteredExpensesList.map(exp => (
+                        displayedExpensesList.map(exp => (
                           <tr key={exp.id}>
                             <td style={{ fontSize: '12.5px' }}>{exp.expense_date}</td>
                             <td style={{ fontWeight: 600, fontSize: '11.5px', color: 'var(--purple-l)' }}>
@@ -8272,12 +8396,12 @@ CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authentic
                         ))
                       )}
                     </tbody>
-                    {filteredExpensesList.length > 0 && (
+                    {displayedExpensesList.length > 0 && (
                       <tfoot>
                         <tr style={{ background: '#f8fafc', borderTop: '2px solid var(--border)', fontWeight: 800 }}>
                           <td colSpan={2}>{lang === 'ko' ? '합계' : 'Total'}</td>
                           <td style={{ textAlign: 'right', color: 'var(--red)' }}>
-                            ฿{totalExpensesTHB.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            ฿{displayedExpensesTotalTHB.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                           <td colSpan={2}></td>
                         </tr>
