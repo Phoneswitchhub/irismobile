@@ -7402,12 +7402,22 @@ ON CONFLICT (role) DO UPDATE SET
 
               {/* Real Margin Card */}
               {!hideMargin && (
-                <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px', borderLeft: '4px solid var(--green)' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>💵</div>
+                <div style={{ 
+                  background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', 
+                  border: 'none', 
+                  borderRadius: '16px', 
+                  padding: '20px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '16px', 
+                  color: '#fff',
+                  boxShadow: '0 4px 20px rgba(16, 185, 129, 0.15)'
+                }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>💵</div>
                   <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600, textTransform: 'uppercase' }}>{t('margin_real_margin')}</div>
-                    <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--green)', marginTop: '4px' }}>₩{marginStats.realMarginKRW.toLocaleString()}</div>
-                    <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>
+                    <div style={{ fontSize: '11px', color: '#a7f3d0', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('margin_real_margin')}</div>
+                    <div style={{ fontSize: '20px', fontWeight: 900, color: '#fff', marginTop: '4px' }}>₩{marginStats.realMarginKRW.toLocaleString()}</div>
+                    <div style={{ fontSize: '11.5px', color: '#d1fae5', marginTop: '2px', fontWeight: 500 }}>
                       {t('margin_real_margin_desc_full').replace('{other}', marginStats.totalOtherExpensesTHB.toLocaleString())}
                     </div>
                   </div>
@@ -7529,7 +7539,7 @@ ON CONFLICT (role) DO UPDATE SET
             {!hideMargin && (
               <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>📉</span> {t('margin_operating_margin_title')}
+                  <span>📉</span> {t('margin_real_margin_report_title')}
                 </h4>
                 <div style={{ fontSize: '12px', color: 'var(--t3)', lineHeight: '1.5', padding: '10px 14px', background: '#f8fafc', borderRadius: '8px', borderLeft: '3px solid var(--purple-l)' }}>
                   💡 <strong>{t('margin_real_margin_calc_label')}</strong> {t('margin_real_margin_calc_desc')}
