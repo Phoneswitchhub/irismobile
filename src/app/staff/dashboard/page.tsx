@@ -2981,6 +2981,36 @@ export default function StaffDashboard() {
       showToast('❌ Model Name and IMEI are required.', 'error');
       return;
     }
+
+    const trimmedSticker = sticker.trim();
+    if (trimmedSticker) {
+      const duplicateStickerDevice = devices.find(d => 
+        !d.deleted_at && 
+        !d.is_sold && 
+        d.sticker && 
+        d.sticker.trim().toLowerCase() === trimmedSticker.toLowerCase() &&
+        d.id !== editingDevice?.id
+      );
+      if (duplicateStickerDevice) {
+        alert(`❌ 이미 사용 중인 스티커 번호입니다.\n[${duplicateStickerDevice.model_name}] 기기(IMEI: ${duplicateStickerDevice.imei})에서 사용 중입니다.`);
+        return;
+      }
+    }
+
+    const cleanImei = imei.trim().replace(/\s+/g, '');
+    if (cleanImei) {
+      const duplicateImeiDevice = devices.find(d =>
+        !d.deleted_at &&
+        d.imei &&
+        d.imei.trim().replace(/\s+/g, '') === cleanImei &&
+        d.id !== editingDevice?.id
+      );
+      if (duplicateImeiDevice) {
+        const statusStr = duplicateImeiDevice.is_sold ? '이미 판매됨' : '재고 보유 중';
+        alert(`❌ 이미 등록된 IMEI 번호입니다.\n[${duplicateImeiDevice.model_name}] 기기(상태: ${statusStr}, 스티커: ${duplicateImeiDevice.sticker || '없음'})로 이미 등록되어 있습니다.`);
+        return;
+      }
+    }
     
     setSavingDevice(true);
     try {
