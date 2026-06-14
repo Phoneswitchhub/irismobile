@@ -325,6 +325,7 @@ export default function StaffDashboard() {
   const [isGlobalSearchHelperCollapsed, setIsGlobalSearchHelperCollapsed] = useState(false);
   const [codSelectedMonth, setCodSelectedMonth] = useState('all');
   const [codSearchQuery, setCodSearchQuery] = useState('');
+  const [codStatusFilter, setCodStatusFilter] = useState<'all' | 'unpaid' | 'paid'>('all');
   const [custSearch, setCustSearch] = useState('');
   const [isDayFilterOpen, setIsDayFilterOpen] = useState(false);
 
@@ -6104,9 +6105,72 @@ export default function StaffDashboard() {
                               📄 {item.installment_number}
                             </div>
                           )}
-                          {(item.customer_name || item.customer_phone) && (
-                            <div style={{ marginTop: '2px', fontSize: '10.5px', color: 'var(--t2)', fontWeight: 'normal' }}>
-                              👤 {item.customer_name || '미기입'} {item.customer_phone ? `(${item.customer_phone})` : ''}
+                          {(item.customer_name || item.customer_phone || staffProfile?.role === 'admin' || currentPermissions.can_edit_customer_info) && (
+                            <div style={{ marginTop: '2px', fontSize: '10.5px', color: 'var(--t2)', fontWeight: 'normal', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                              <span>👤</span>
+                              {/* Customer Name */}
+                              {staffProfile?.role === 'admin' || currentPermissions.can_edit_customer_info ? (
+                                editingCell?.id === item.id && editingCell?.field === 'customer_name' ? (
+                                  <input
+                                    type="text"
+                                    value={editCellValue}
+                                    onChange={(e) => setEditCellValue(e.target.value)}
+                                    onBlur={() => handleInlineSave(item.id, 'customer_name', editCellValue)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleInlineSave(item.id, 'customer_name', editCellValue);
+                                      if (e.key === 'Escape') setEditingCell(null);
+                                    }}
+                                    autoFocus
+                                    className="form-input"
+                                    style={{ margin: 0, padding: '2px 4px', fontSize: '11px', height: '22px', width: '80px', display: 'inline-block' }}
+                                  />
+                                ) : (
+                                  <span
+                                    style={{ cursor: 'pointer', textDecoration: 'underline dotted var(--border)' }}
+                                    onClick={() => {
+                                      setEditingCell({ id: item.id, field: 'customer_name' });
+                                      setEditCellValue(item.customer_name || '');
+                                    }}
+                                    title={t('staff_click_to_edit') || '클릭하여 수정'}
+                                  >
+                                    {item.customer_name || '미기입'}
+                                  </span>
+                                )
+                              ) : (
+                                <span>{item.customer_name || '미기입'}</span>
+                              )}
+
+                              {/* Customer Phone */}
+                              {staffProfile?.role === 'admin' || currentPermissions.can_edit_customer_info ? (
+                                editingCell?.id === item.id && editingCell?.field === 'customer_phone' ? (
+                                  <input
+                                    type="text"
+                                    value={editCellValue}
+                                    onChange={(e) => setEditCellValue(e.target.value)}
+                                    onBlur={() => handleInlineSave(item.id, 'customer_phone', editCellValue)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleInlineSave(item.id, 'customer_phone', editCellValue);
+                                      if (e.key === 'Escape') setEditingCell(null);
+                                    }}
+                                    autoFocus
+                                    className="form-input"
+                                    style={{ margin: 0, padding: '2px 4px', fontSize: '11px', height: '22px', width: '90px', display: 'inline-block' }}
+                                  />
+                                ) : (
+                                  <span
+                                    style={{ cursor: 'pointer', textDecoration: 'underline dotted var(--border)', marginLeft: '2px' }}
+                                    onClick={() => {
+                                      setEditingCell({ id: item.id, field: 'customer_phone' });
+                                      setEditCellValue(item.customer_phone || '');
+                                    }}
+                                    title={t('staff_click_to_edit') || '클릭하여 수정'}
+                                  >
+                                    {item.customer_phone ? `(${item.customer_phone})` : '(전화번호 없음)'}
+                                  </span>
+                                )
+                              ) : (
+                                item.customer_phone ? <span style={{ marginLeft: '2px' }}>({item.customer_phone})</span> : null
+                              )}
                             </div>
                           )}
                         </td>
@@ -7947,6 +8011,9 @@ CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authentic
           const codDevices = devices.filter(d => !d.deleted_at && d.is_sold && d.sale_type === 'cod');
           
           let filteredCOD = codDevices;
+          if (codStatusFilter !== 'all') {
+            filteredCOD = filteredCOD.filter(d => d.payment_status === codStatusFilter);
+          }
           if (!codSearchQuery.trim() && codSelectedMonth !== 'all') {
             filteredCOD = filteredCOD.filter(d => getYearMonth(d.sale_date) === codSelectedMonth);
           }
@@ -8012,6 +8079,17 @@ CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authentic
                     {customerMonths.map(month => (
                       <option key={month} value={month}>{formatMonthDropdownLabel(month, lang)}</option>
                     ))}
+                  </select>
+                  <span style={{ fontSize: '13px', fontWeight: 700, marginLeft: '16px' }}>{t('staff_cod_status_header') || '상태'}:</span>
+                  <select
+                    value={codStatusFilter}
+                    onChange={(e) => setCodStatusFilter(e.target.value as any)}
+                    className="form-input"
+                    style={{ width: '130px', margin: 0, padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                  >
+                    <option value="all">{lang === 'ko' ? '전체 (All)' : lang === 'th' ? 'ทั้งหมด (All)' : 'All'}</option>
+                    <option value="unpaid">{lang === 'ko' ? '미수 (Unpaid)' : lang === 'th' ? 'ค้างชำระ (Unpaid)' : 'Unpaid'}</option>
+                    <option value="paid">{lang === 'ko' ? '완납 (Paid)' : lang === 'th' ? 'จ่ายหมดแล้ว (Paid)' : 'Paid'}</option>
                   </select>
                 </div>
                 <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--purple-l)' }}>
