@@ -1459,6 +1459,9 @@ export default function StaffDashboard() {
 
     const getExpenseType = (categoryId: string) => {
       let currentId = categoryId;
+      let hasRemittance = false;
+      let hasBuyback = false;
+
       for (let i = 0; i < 5; i++) {
         const cat = expenseCategories.find(c => c.id === currentId);
         if (!cat) break;
@@ -1470,7 +1473,7 @@ export default function StaffDashboard() {
           name.includes('본사 입금') || 
           name.includes('본사입금')
         ) {
-          return 'remittance';
+          hasRemittance = true;
         }
         if (
           currentId === '21100000-0000-0000-0000-000000000000' || // 기기 대금
@@ -1485,7 +1488,7 @@ export default function StaffDashboard() {
           name.includes('기계 매입') ||
           name.includes('기계매입')
         ) {
-          return 'buyback';
+          hasBuyback = true;
         }
         if (cat.parent_id) {
           currentId = cat.parent_id;
@@ -1493,6 +1496,9 @@ export default function StaffDashboard() {
           break;
         }
       }
+
+      if (hasRemittance) return 'remittance';
+      if (hasBuyback) return 'buyback';
       return 'other';
     };
 
