@@ -3001,13 +3001,13 @@ export default function StaffDashboard() {
     if (cleanImei) {
       const duplicateImeiDevice = devices.find(d =>
         !d.deleted_at &&
+        !d.is_sold && // Only flag if the device is currently active/unsold in stock
         d.imei &&
         d.imei.trim().replace(/\s+/g, '') === cleanImei &&
         d.id !== editingDevice?.id
       );
       if (duplicateImeiDevice) {
-        const statusStr = duplicateImeiDevice.is_sold ? '이미 판매됨' : '재고 보유 중';
-        alert(`❌ 이미 등록된 IMEI 번호입니다.\n[${duplicateImeiDevice.model_name}] 기기(상태: ${statusStr}, 스티커: ${duplicateImeiDevice.sticker || '없음'})로 이미 등록되어 있습니다.`);
+        alert(`❌ 현재 재고로 등록되어 있는 IMEI 번호입니다.\n[${duplicateImeiDevice.model_name}] 기기(스티커: ${duplicateImeiDevice.sticker || '없음'})가 이미 매장 재고에 존재합니다.`);
         return;
       }
     }
