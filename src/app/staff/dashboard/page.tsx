@@ -420,6 +420,7 @@ export default function StaffDashboard() {
   const [siteDate, setSiteDate] = useState('');
   const [notes, setNotes] = useState('');
   const [savingDevice, setSavingDevice] = useState(false);
+  const [isLocalPurchaseExpense, setIsLocalPurchaseExpense] = useState(false);
 
   // Selling Action Modal States
   const [sellingDevice, setSellingDevice] = useState<DeviceItem | null>(null);
@@ -629,12 +630,16 @@ export default function StaffDashboard() {
         if (!cat) break;
         const name = (cat.name || '').trim().toLowerCase();
         if (
+          currentId === '21000000-0000-0000-0000-000000000000' || // 본사 송금
+          currentId === '21100000-0000-0000-0000-000000000000' || // 기기 대금
           name.includes('본사 송금') || 
           name.includes('본사송금') || 
-          name.includes('기기 매입') || 
-          name.includes('기기매입') || 
-          name.includes('기계 매입') || 
-          name.includes('기계매입')
+          name.includes('현지 기기') || 
+          name.includes('현지 기계') || 
+          name.includes('현지기기') || 
+          name.includes('현지기계') ||
+          name.includes('기기 대금') ||
+          name.includes('기기대금')
         ) {
           return true;
         }
@@ -725,12 +730,16 @@ export default function StaffDashboard() {
           if (!cat) break;
           const name = (cat.name || '').trim().toLowerCase();
           if (
+            currentId === '21000000-0000-0000-0000-000000000000' || // 본사 송금
+            currentId === '21100000-0000-0000-0000-000000000000' || // 기기 대금
             name.includes('본사 송금') || 
             name.includes('본사송금') || 
-            name.includes('기기 매입') || 
-            name.includes('기기매입') || 
-            name.includes('기계 매입') || 
-            name.includes('기계매입')
+            name.includes('현지 기기') || 
+            name.includes('현지 기계') || 
+            name.includes('현지기기') || 
+            name.includes('현지기계') ||
+            name.includes('기기 대금') ||
+            name.includes('기기대금')
           ) {
             return true;
           }
@@ -2959,6 +2968,7 @@ export default function StaffDashboard() {
     setSellingPrice('');
     setSiteDate(new Date().toLocaleDateString('ko-KR').slice(2));
     setNotes('');
+    setIsLocalPurchaseExpense(false);
     setIsManualModalOpen(true);
   };
 
@@ -2996,6 +3006,10 @@ export default function StaffDashboard() {
         finalLocation = customLocationName.trim();
       }
 
+      const costValue = isLocalPurchaseExpense
+        ? Math.round((Number(purchaseCost) || 0) * exchangeRate)
+        : (Number(purchaseCost) || 0);
+
       const payload = {
         sticker: sticker.trim() || null,
         model_name: finalModelName,
@@ -3003,7 +3017,7 @@ export default function StaffDashboard() {
         color: color.trim() || null,
         battery_pct: batteryPct.trim() || '100',
         stock_location: finalLocation,
-        purchase_cost_krw: Number(purchaseCost) || 0,
+        purchase_cost_krw: costValue,
         selling_price: Number(sellingPrice) || 0,
         site_date: siteDate || new Date().toLocaleDateString('ko-KR').slice(2),
         notes: notes.trim() || null,
@@ -3048,6 +3062,65 @@ export default function StaffDashboard() {
         
         if (!error) {
           writeAuditLog('MANUAL_ADD', payload.model_name, payload.imei, `수동 기기 등록: 원가 ฿${formatPrice(payload.purchase_cost_krw)}, 판매가 ฿${formatPrice(payload.selling_price)}`);
+
+          // Automatically record local purchase in the Expense Ledger
+          if (isLocalPurchaseExpense && (Number(purchaseCost) || 0) > 0) {
+            try {
+              let categoryIdToUse = '';
+              let foundCategory = expenseCategories.find(c => {
+                const name = (c.name || '').trim().replace(/\s+/g, '');
+                return name.includes('현지기기매입') || name.includes('현지기계매입');
+              });
+
+              if (!foundCategory) {
+                const parentCat = expenseCategories.find(c => {
+                  const name = (c.name || '').trim().replace(/\s+/g, '');
+                  return name.includes('기기매입비');
+                });
+                if (parentCat) {
+                  foundCategory = expenseCategories.find(c => c.parent_id === parentCat.id && (c.name || '').includes('현지'));
+                }
+              }
+
+              if (foundCategory) {
+                categoryIdToUse = foundCategory.id;
+              } else {
+                categoryIdToUse = '20000000-0000-0000-0000-000000000000'; // Fallback
+              }
+
+              const convertDotDateToYYYYMMDD = (dotDate: string): string => {
+                if (!dotDate) return new Date().toISOString().split('T')[0];
+                const pts = dotDate.split('.').map(p => p.trim()).filter(Boolean);
+                if (pts.length >= 3) {
+                  const y = pts[0].length === 2 ? `20${pts[0]}` : pts[0];
+                  const m = pts[1].padStart(2, '0');
+                  const d = pts[2].padStart(2, '0');
+                  return `${y}-${m}-${d}`;
+                }
+                return new Date().toISOString().split('T')[0];
+              };
+
+              const expenseDate = convertDotDateToYYYYMMDD(payload.site_date);
+
+              const { error: expError } = await supabase
+                .from('sheets_expenses')
+                .insert({
+                  category_id: categoryIdToUse,
+                  amount: Number(purchaseCost) || 0,
+                  description: `${payload.model_name} 현지 매입 (${payload.imei})`,
+                  expense_date: expenseDate
+                });
+
+              if (expError) {
+                console.error('Auto expense creation failed:', expError.message);
+              } else {
+                writeAuditLog('AUTO_EXPENSE', payload.model_name, payload.imei, `현지 매입 지출 자동 등록 완료: ฿${formatPrice(Number(purchaseCost))}`);
+                loadExpenseData();
+              }
+            } catch (e: any) {
+              console.error('Auto expense exception:', e);
+            }
+          }
         }
       }
 
@@ -3056,6 +3129,7 @@ export default function StaffDashboard() {
       showToast(editingDevice ? '✅ Device updated.' : '✅ Device added to stock.', 'success');
       setIsManualModalOpen(false);
       setEditingDevice(null);
+      setIsLocalPurchaseExpense(false);
       
       // Reset Form fields
       setSticker('');
@@ -10189,11 +10263,28 @@ CREATE POLICY "expenses_all_auth" ON public.sheets_expenses FOR ALL TO authentic
                 )}
               </div>
 
+              {!editingDevice && (
+                <div className="form-group" style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="checkbox"
+                    id="isLocalPurchaseExpense"
+                    checked={isLocalPurchaseExpense}
+                    onChange={(e) => setIsLocalPurchaseExpense(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer', margin: 0 }}
+                  />
+                  <label htmlFor="isLocalPurchaseExpense" style={{ fontSize: '13px', fontWeight: 600, cursor: 'pointer', userSelect: 'none', color: 'var(--purple-l)' }}>
+                    현지 기기 매입 (지출장부에 자동 기재)
+                  </label>
+                </div>
+              )}
+
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label className="form-label">{t('staff_label_purchase_cost')}</label>
+                <label className="form-label">
+                  {isLocalPurchaseExpense ? '매입원가 (THB ฿) *' : t('staff_label_purchase_cost')}
+                </label>
                 <input
                   type="number"
-                  placeholder="550000"
+                  placeholder={isLocalPurchaseExpense ? '10000' : '550000'}
                   value={purchaseCost}
                   onChange={(e) => setPurchaseCost(e.target.value)}
                   className="form-input"
